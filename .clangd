@@ -1,0 +1,5 @@
+CompileFlags:
+  Add: 
+    - -Wno-pragma-once-outside-header
+    - -Wno-pragma-once-in-main-file
+    - -Wno-unused-function

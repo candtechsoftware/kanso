@@ -1,0 +1,23 @@
+# Build output
+build/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Compiled executables
+gui_app
+*.exe
+*.out
+
+# Object files
+*.o
+*.obj
+
+# Debug files
+*.dSYM/
+*.pdb
