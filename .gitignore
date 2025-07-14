@@ -22,3 +22,6 @@ gui_app
 *.dSYM/
 *.pdb
 .cache/
+
+
+compile_commands.json
