@@ -21,3 +21,4 @@ gui_app
 # Debug files
 *.dSYM/
 *.pdb
+.cache/

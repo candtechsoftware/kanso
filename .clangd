@@ -3,3 +3,6 @@ CompileFlags:
     - -Wno-pragma-once-outside-header
     - -Wno-pragma-once-in-main-file
     - -Wno-unused-function
+
+Diagnostics:
+  UnusedIncludes: None
