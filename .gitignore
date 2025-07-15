@@ -1,5 +1,11 @@
-# Build output
+# Zig build output
+zig-out/
+zig-cache/
+.zig-cache/
+
+# Build files
 build/
+target/
 
 # IDE and editor files
 .vscode/
@@ -9,19 +15,30 @@ build/
 *~
 .DS_Store
 
-# Compiled executables
-gui_app
+# Executables
 *.exe
 *.out
-
-# Object files
-*.o
-*.obj
+*.app
 
 # Debug files
 *.dSYM/
 *.pdb
-.cache/
 
+# Dependencies
+.zigmod/
+deps.zig
 
-compile_commands.json
+# Test files
+*.test
+
+# Documentation
+docs/
+
+# OS specific files
+Thumbs.db
+Desktop.ini
+
+# Temporary files
+*.tmp
+*.temp
+*.log

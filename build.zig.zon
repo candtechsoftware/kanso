@@ -1,0 +1,13 @@
+.{
+    .name = .kanso,
+    .version = "0.0.0",
+    .fingerprint = 0x300c91f1b83d3cc7, // Changing this has security and trust implications.
+    .minimum_zig_version = "0.15.0-dev.936+fc2c1883b",
+    .dependencies = .{
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+    },
+}
