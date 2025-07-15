@@ -28,87 +28,12 @@ key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
     }
 }
 
-void
-test_simd_performance()
-{
-    printf("\n=== SIMD Matrix Multiplication Performance Test ===\n");
-
-    Mat4x4<f32> a = {{{1, 2, 3, 4},
-                      {5, 6, 7, 8},
-                      {9, 10, 11, 12},
-                      {13, 14, 15, 16}}};
-
-    Mat4x4<f32> b = {{{16, 15, 14, 13},
-                      {12, 11, 10, 9},
-                      {8, 7, 6, 5},
-                      {4, 3, 2, 1}}};
-
-    const int iterations = 1000000;
-
-    auto start = std::chrono::high_resolution_clock::now();
-    Mat4x4<f32> result;
-    for (int i = 0; i < iterations; i++)
-    {
-        result = a * b;
-    }
-    auto end = std::chrono::high_resolution_clock::now();
-
-    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    printf("SIMD 4x4 multiplication: %lld microseconds for %d iterations\n",
-           duration.count(), iterations);
-    printf("Average per operation: %.3f nanoseconds\n",
-           (duration.count() * 1000.0) / iterations);
-
-    printf("\n4x4 Result:\n");
-    for (int i = 0; i < 4; i++)
-    {
-        for (int j = 0; j < 4; j++)
-        {
-            printf("%6.1f ", result.m[i][j]);
-        }
-        printf("\n");
-    }
-
-    Mat3x3<f32> a3 = {{{1, 2, 3},
-                       {4, 5, 6},
-                       {7, 8, 9}}};
-
-    Mat3x3<f32> b3 = {{{9, 8, 7},
-                       {6, 5, 4},
-                       {3, 2, 1}}};
-
-    start = std::chrono::high_resolution_clock::now();
-    Mat3x3<f32> result3;
-    for (int i = 0; i < iterations; i++)
-    {
-        result3 = a3 * b3;
-    }
-    end = std::chrono::high_resolution_clock::now();
-
-    duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    printf("\nSIMD 3x3 multiplication: %lld microseconds for %d iterations\n",
-           duration.count(), iterations);
-    printf("Average per operation: %.3f nanoseconds\n",
-           (duration.count() * 1000.0) / iterations);
-
-    printf("\n3x3 Result:\n");
-    for (int i = 0; i < 3; i++)
-    {
-        for (int j = 0; j < 3; j++)
-        {
-            printf("%6.1f ", result3.m[i][j]);
-        }
-        printf("\n");
-    }
-}
 
 int
 main(void)
 {
     Arena* arena = arena_alloc();
     Arena* frame_arena = arena_alloc();
-
-    test_simd_performance();
 
     GLFWwindow* window;
 
