@@ -49,7 +49,7 @@ pub fn main() !void {
 
     _ = glfw.glfwSetKeyCallback(window, key_callback);
     glfw.glfwMakeContextCurrent(window);
-    glfw.glfwSwapInterval(1);
+    glfw.glfwSwapInterval(0); // Disable vsync for uncapped FPS
 
     var renderer = try Renderer.init(allocator);
     defer renderer.deinit();
@@ -102,8 +102,20 @@ pub fn main() !void {
 
     var rotation: f32 = 0.0;
 
+    // FPS tracking
+    var fps_timer: f64 = glfw.glfwGetTime();
+    var frame_count: u32 = 0;
+    
+    // Delta time tracking
+    var last_frame_time: f64 = glfw.glfwGetTime();
+
     while (glfw.glfwWindowShouldClose(window) == glfw.GLFW_FALSE) {
         frame_arena.clear();
+        
+        // Calculate delta time
+        const current_frame_time = glfw.glfwGetTime();
+        const delta_time = @as(f32, @floatCast(current_frame_time - last_frame_time));
+        last_frame_time = current_frame_time;
 
         var width: c_int = undefined;
         var height: c_int = undefined;
@@ -211,13 +223,23 @@ pub fn main() !void {
 
             geo_pass.params.geo_3d.mesh_batches.slots[0] = mesh_node;
 
-            const inst = mesh_node.batches.pushInstArena(frame_arena, @sizeOf(Renderer.Mesh3DInst), 16) orelse return error.OutOfMemory;
-            const mesh_inst: *Renderer.Mesh3DInst = @ptrCast(@alignCast(inst));
-            mesh_inst.* = .{
-                .xform = kanso.Mat4x4(f32).rotateY(rotation).mul(kanso.Mat4x4(f32).scale(1.0, 1.0, 1.0)),
-            };
+            // Render multiple cubes to create more GPU work
+            const cube_count = 100; // Increase this to stress test
+            var i: u32 = 0;
+            while (i < cube_count) : (i += 1) {
+                const inst = mesh_node.batches.pushInstArena(frame_arena, @sizeOf(Renderer.Mesh3DInst), 16) orelse return error.OutOfMemory;
+                const mesh_inst: *Renderer.Mesh3DInst = @ptrCast(@alignCast(inst));
+                const offset = @as(f32, @floatFromInt(i)) * 0.1;
+                mesh_inst.* = .{
+                    .xform = kanso.Mat4x4(f32).translate(@sin(offset) * 3.0, @cos(offset) * 2.0, 0)
+                        .mul(kanso.Mat4x4(f32).rotateY(rotation + offset))
+                        .mul(kanso.Mat4x4(f32).scale(0.3, 0.3, 0.3)),
+                };
+            }
 
-            rotation += 0.01;
+            // Rotate at 45 degrees per second
+            const rotation_speed = std.math.pi / 4.0; // radians per second
+            rotation += rotation_speed * delta_time;
         }
 
         renderer.windowSubmit(@ptrCast(window), window_equip, &passes);
@@ -226,5 +248,16 @@ pub fn main() !void {
 
         glfw.glfwSwapBuffers(window);
         glfw.glfwPollEvents();
+
+        // Update FPS counter
+        frame_count += 1;
+        const current_time = glfw.glfwGetTime();
+        const elapsed = current_time - fps_timer;
+        if (elapsed >= 1.0) {
+            const fps = @as(f64, @floatFromInt(frame_count)) / elapsed;
+            std.debug.print("FPS: {d:.1}\n", .{fps});
+            fps_timer = current_time;
+            frame_count = 0;
+        }
     }
 }
