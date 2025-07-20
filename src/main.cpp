@@ -1,22 +1,21 @@
-#include <chrono>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
+#include <sys/time.h>
 
-#ifdef __APPLE__
-#    define GL_SILENCE_DEPRECATION
-#    include <OpenGL/gl3.h>
-#endif
+#include "base/base.h"
+#include "base/logger.h"
+#include "os/os.h"
+#include "renderer/renderer_core.h"
 
 #include <GLFW/glfw3.h>
 
-#include "base/base.h"
-#include "os/os.h"
-#include "renderer/renderer_core.h"
+#include "base/profiler.h"
 
 static void
 error_callback(int error, const char* description)
 {
-    fprintf(stderr, "Error: %s\n", description);
+    log_error("GLFW Error {d}: {s}", error, description);
 }
 
 static void
@@ -28,103 +27,37 @@ key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
     }
 }
 
-void
-test_simd_performance()
-{
-    printf("\n=== SIMD Matrix Multiplication Performance Test ===\n");
-
-    Mat4x4<f32> a = {{{1, 2, 3, 4},
-                      {5, 6, 7, 8},
-                      {9, 10, 11, 12},
-                      {13, 14, 15, 16}}};
-
-    Mat4x4<f32> b = {{{16, 15, 14, 13},
-                      {12, 11, 10, 9},
-                      {8, 7, 6, 5},
-                      {4, 3, 2, 1}}};
-
-    const int iterations = 1000000;
-
-    auto start = std::chrono::high_resolution_clock::now();
-    Mat4x4<f32> result;
-    for (int i = 0; i < iterations; i++)
-    {
-        result = a * b;
-    }
-    auto end = std::chrono::high_resolution_clock::now();
-
-    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    printf("SIMD 4x4 multiplication: %lld microseconds for %d iterations\n",
-           duration.count(), iterations);
-    printf("Average per operation: %.3f nanoseconds\n",
-           (duration.count() * 1000.0) / iterations);
-
-    printf("\n4x4 Result:\n");
-    for (int i = 0; i < 4; i++)
-    {
-        for (int j = 0; j < 4; j++)
-        {
-            printf("%6.1f ", result.m[i][j]);
-        }
-        printf("\n");
-    }
-
-    Mat3x3<f32> a3 = {{{1, 2, 3},
-                       {4, 5, 6},
-                       {7, 8, 9}}};
-
-    Mat3x3<f32> b3 = {{{9, 8, 7},
-                       {6, 5, 4},
-                       {3, 2, 1}}};
-
-    start = std::chrono::high_resolution_clock::now();
-    Mat3x3<f32> result3;
-    for (int i = 0; i < iterations; i++)
-    {
-        result3 = a3 * b3;
-    }
-    end = std::chrono::high_resolution_clock::now();
-
-    duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    printf("\nSIMD 3x3 multiplication: %lld microseconds for %d iterations\n",
-           duration.count(), iterations);
-    printf("Average per operation: %.3f nanoseconds\n",
-           (duration.count() * 1000.0) / iterations);
-
-    printf("\n3x3 Result:\n");
-    for (int i = 0; i < 3; i++)
-    {
-        for (int j = 0; j < 3; j++)
-        {
-            printf("%6.1f ", result3.m[i][j]);
-        }
-        printf("\n");
-    }
-}
 
 int
 main(void)
 {
+    log_init("kanso.log");
+    
     Arena* arena = arena_alloc();
     Arena* frame_arena = arena_alloc();
-
-    test_simd_performance();
 
     GLFWwindow* window;
 
     glfwSetErrorCallback(error_callback);
+
+// TODO(Alex) should not need to do this in a main file
+#ifdef USE_WAYLAND
+    glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_WAYLAND);
+#endif
 
     if (!glfwInit())
     {
         return -1;
     }
 
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-#ifdef __APPLE__
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-#endif
+    // WebGPU doesn't need an OpenGL context
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    
+    // Try to disable refresh rate syncing
+    glfwWindowHint(GLFW_REFRESH_RATE, GLFW_DONT_CARE);
+    
+    // Disable GLFW's internal frame pacing
+    glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_FALSE);
 
     window = glfwCreateWindow(800, 600, "Renderer Demo", NULL, NULL);
     if (!window)
@@ -134,8 +67,6 @@ main(void)
     }
 
     glfwSetKeyCallback(window, key_callback);
-    glfwMakeContextCurrent(window);
-    glfwSwapInterval(1);
 
     renderer_init();
 
@@ -162,24 +93,56 @@ main(void)
         };
 
         Vertex vertices[] = {
+            // Front face (z = -0.5)
             {{-0.5f, -0.5f, -0.5f}, {0, 0}, {0, 0, -1}, {1, 0, 0, 1}},
             {{0.5f, -0.5f, -0.5f}, {1, 0}, {0, 0, -1}, {0, 1, 0, 1}},
             {{0.5f, 0.5f, -0.5f}, {1, 1}, {0, 0, -1}, {0, 0, 1, 1}},
             {{-0.5f, 0.5f, -0.5f}, {0, 1}, {0, 0, -1}, {1, 1, 0, 1}},
 
+            // Back face (z = 0.5)
             {{-0.5f, -0.5f, 0.5f}, {0, 0}, {0, 0, 1}, {1, 0, 1, 1}},
             {{0.5f, -0.5f, 0.5f}, {1, 0}, {0, 0, 1}, {0, 1, 1, 1}},
             {{0.5f, 0.5f, 0.5f}, {1, 1}, {0, 0, 1}, {1, 1, 1, 1}},
             {{-0.5f, 0.5f, 0.5f}, {0, 1}, {0, 0, 1}, {0.5f, 0.5f, 0.5f, 1}},
+
+            // Left face (x = -0.5)
+            {{-0.5f, -0.5f, -0.5f}, {0, 0}, {-1, 0, 0}, {1, 0, 0, 1}},
+            {{-0.5f, 0.5f, -0.5f}, {1, 0}, {-1, 0, 0}, {1, 1, 0, 1}},
+            {{-0.5f, 0.5f, 0.5f}, {1, 1}, {-1, 0, 0}, {0.5f, 0.5f, 0.5f, 1}},
+            {{-0.5f, -0.5f, 0.5f}, {0, 1}, {-1, 0, 0}, {1, 0, 1, 1}},
+
+            // Right face (x = 0.5)
+            {{0.5f, -0.5f, -0.5f}, {0, 0}, {1, 0, 0}, {0, 1, 0, 1}},
+            {{0.5f, -0.5f, 0.5f}, {1, 0}, {1, 0, 0}, {0, 1, 1, 1}},
+            {{0.5f, 0.5f, 0.5f}, {1, 1}, {1, 0, 0}, {1, 1, 1, 1}},
+            {{0.5f, 0.5f, -0.5f}, {0, 1}, {1, 0, 0}, {0, 0, 1, 1}},
+
+            // Top face (y = 0.5)
+            {{-0.5f, 0.5f, -0.5f}, {0, 0}, {0, 1, 0}, {1, 1, 0, 1}},
+            {{0.5f, 0.5f, -0.5f}, {1, 0}, {0, 1, 0}, {0, 0, 1, 1}},
+            {{0.5f, 0.5f, 0.5f}, {1, 1}, {0, 1, 0}, {1, 1, 1, 1}},
+            {{-0.5f, 0.5f, 0.5f}, {0, 1}, {0, 1, 0}, {0.5f, 0.5f, 0.5f, 1}},
+
+            // Bottom face (y = -0.5)
+            {{-0.5f, -0.5f, -0.5f}, {0, 0}, {0, -1, 0}, {1, 0, 0, 1}},
+            {{-0.5f, -0.5f, 0.5f}, {1, 0}, {0, -1, 0}, {1, 0, 1, 1}},
+            {{0.5f, -0.5f, 0.5f}, {1, 1}, {0, -1, 0}, {0, 1, 1, 1}},
+            {{0.5f, -0.5f, -0.5f}, {0, 1}, {0, -1, 0}, {0, 1, 0, 1}},
         };
 
         u32 indices[] = {
-            0, 1, 2, 2, 3, 0, // Front face (CCW)
-            4, 7, 6, 6, 5, 4, // Back face (CCW when viewed from front)
-            0, 3, 7, 7, 4, 0, // Left face
-            1, 5, 6, 6, 2, 1, // Right face
-            3, 2, 6, 6, 7, 3, // Top face
-            0, 4, 5, 5, 1, 0  // Bottom face
+            // Front face
+            0, 1, 2, 2, 3, 0,
+            // Back face
+            4, 7, 6, 6, 5, 4,
+            // Left face
+            8, 9, 10, 10, 11, 8,
+            // Right face
+            12, 13, 14, 14, 15, 12,
+            // Top face
+            16, 17, 18, 18, 19, 16,
+            // Bottom face
+            20, 21, 22, 22, 23, 20
         };
 
         cube_vertices = renderer_buffer_alloc(Renderer_Resource_Kind_Static,
@@ -189,21 +152,100 @@ main(void)
     }
 
     f32 rotation = 0.0f;
+    
+    // Cache matrices that don't change every frame
+    int last_width = 0, last_height = 0;
+    Mat4x4<f32> cached_projection;
+    Mat4x4<f32> cached_view = mat4x4_translate(0.0f, 0.0f, -3.0f);
+    
+    // FPS counter with rolling average using POSIX time
+    f32 frames = 0;
+    struct timespec fps_start_time;
+    clock_gettime(CLOCK_MONOTONIC, &fps_start_time);
+    
+    const int FPS_HISTORY_SIZE = 60;
+    f32 fps_history[FPS_HISTORY_SIZE];
+    for (int i = 0; i < FPS_HISTORY_SIZE; i++) {
+        fps_history[i] = 60.0f; // Initialize with reasonable value
+    }
+    int fps_history_index = 0;
+    int fps_history_count = 0; // Track how many samples we have
+    
+    // For precise frame timing
+    struct timespec last_frame_time;
+    clock_gettime(CLOCK_MONOTONIC, &last_frame_time);
+    f64 frame_time = 0.016667; // Default to 60 FPS frame time
 
     while (!glfwWindowShouldClose(window))
     {
+        ZoneScoped;
+        
+        // Get current time
+        struct timespec now;
+        clock_gettime(CLOCK_MONOTONIC, &now);
+        
+        // Calculate frame time
+        frame_time = (now.tv_sec - last_frame_time.tv_sec) + 
+                     (now.tv_nsec - last_frame_time.tv_nsec) / 1000000000.0;
+        last_frame_time = now;
+        
+        frames++;
+        
+        // Calculate elapsed time since FPS counter start
+        f64 elapsed = (now.tv_sec - fps_start_time.tv_sec) + 
+                      (now.tv_nsec - fps_start_time.tv_nsec) / 1000000000.0;
+        
+        if (elapsed >= 0.1) { // Update every 100ms for smoother display
+            f32 instant_fps = frames / elapsed;
+            
+            // Add to rolling average
+            fps_history[fps_history_index] = instant_fps;
+            fps_history_index = (fps_history_index + 1) % FPS_HISTORY_SIZE;
+            if (fps_history_count < FPS_HISTORY_SIZE) {
+                fps_history_count++;
+            }
+            
+            // Calculate average, min, max of actual samples
+            f32 avg_fps = 0;
+            f32 min_fps = 999999.0f;
+            f32 max_fps = 0.0f;
+            int samples = fps_history_count > 0 ? fps_history_count : 1;
+            for (int i = 0; i < samples; i++) {
+                avg_fps += fps_history[i];
+                if (fps_history[i] < min_fps) min_fps = fps_history[i];
+                if (fps_history[i] > max_fps) max_fps = fps_history[i];
+            }
+            avg_fps /= samples;
+            
+            // Log every second with more detail
+            static f64 log_timer = 0;
+            log_timer += elapsed;
+            if (log_timer >= 1.0) {
+                // Calculate frame time in milliseconds
+                f32 avg_frame_time = 1000.0f / avg_fps;
+                log_info("FPS: {f} (avg: {f}, min: {f}, max: {f}) | Frame time: {f} ms", 
+                         instant_fps, avg_fps, min_fps, max_fps, avg_frame_time);
+                log_timer = 0;
+            }
+            
+            frames = 0;
+            fps_start_time = now;
+        }
         arena_clear(frame_arena);
 
         int width, height;
         glfwGetFramebufferSize(window, &width, &height);
-        glViewport(0, 0, width, height);
 
-        renderer_begin_frame();
-        renderer_window_begin_frame(window, window_equip);
+        {
+            ZoneScopedN("Frame Setup");
+            renderer_begin_frame();
+            renderer_window_begin_frame(window, window_equip);
+        }
 
         Renderer_Pass_List passes = list_make<Renderer_Pass>();
 
         {
+            ZoneScopedN("UI Pass Setup");
             Renderer_Pass* ui_pass = renderer_pass_from_kind(frame_arena, &passes, Renderer_Pass_Kind_UI);
             ui_pass->params_ui->rects = list_make<Renderer_Batch_Group_2D_Node>();
 
@@ -228,7 +270,7 @@ main(void)
             rect1->corner_radii[2] = 10;
             rect1->corner_radii[3] = 10;
             rect1->border_thickness = 2;
-            rect1->edge_softness = 1;
+            rect1->edge_softness = 0.5;
             rect1->white_texture_override = 1;
 
             Renderer_Rect_2D_Inst* rect2 = (Renderer_Rect_2D_Inst*)
@@ -244,18 +286,26 @@ main(void)
             rect2->corner_radii[2] = 20;
             rect2->corner_radii[3] = 20;
             rect2->border_thickness = 0;
-            rect2->edge_softness = 2;
+            rect2->edge_softness = 1;
             rect2->white_texture_override = 1;
         }
 
         {
+            ZoneScopedN("3D Pass Setup");
             Renderer_Pass* geo_pass = renderer_pass_from_kind(frame_arena, &passes, Renderer_Pass_Kind_Geo_3D);
             geo_pass->params_geo_3d->viewport = {{0, 0}, {(f32)width, (f32)height}};
             geo_pass->params_geo_3d->clip = {{0, 0}, {(f32)width, (f32)height}};
 
-            f32 aspect = (f32)width / (f32)height;
-            geo_pass->params_geo_3d->projection = mat4x4_perspective(3.14159f / 4.0f, aspect, 0.1f, 100.0f);
-            geo_pass->params_geo_3d->view = mat4x4_translate(0.0f, 0.0f, -3.0f);
+            // Only recalculate projection matrix if window size changed
+            if (width != last_width || height != last_height) {
+                f32 aspect = (f32)width / (f32)height;
+                cached_projection = mat4x4_perspective(3.14159f / 4.0f, aspect, 0.1f, 100.0f);
+                last_width = width;
+                last_height = height;
+            }
+            
+            geo_pass->params_geo_3d->projection = cached_projection;
+            geo_pass->params_geo_3d->view = cached_view;
 
             geo_pass->params_geo_3d->mesh_batches.slots_count = 16;
             geo_pass->params_geo_3d->mesh_batches.slots = push_array_zero(frame_arena, Renderer_Batch_Group_3D_Map_Node*, 16);
@@ -279,15 +329,22 @@ main(void)
                 renderer_batch_list_push_inst(frame_arena, &mesh_node->batches, sizeof(Renderer_Mesh_3D_Inst), 16);
             inst->xform = mat4x4_rotate_y(rotation) * mat4x4_scale(1.0f, 1.0f, 1.0f);
 
-            rotation += 0.01f;
+            rotation += 1.0f * frame_time; // Rotate at 1 radian per second
         }
 
-        renderer_window_submit(window, window_equip, &passes);
-        renderer_window_end_frame(window, window_equip);
-        renderer_end_frame();
+        {
+            ZoneScopedN("Frame Submit");
+            renderer_window_submit(window, window_equip, &passes);
+            renderer_window_end_frame(window, window_equip);
+            renderer_end_frame();
+        }
 
-        glfwSwapBuffers(window);
-        glfwPollEvents();
+        {
+            ZoneScopedN("Poll Events");
+            glfwPollEvents();
+        }
+        
+        FrameMark;
     }
 
     renderer_tex_2d_release(white_texture);
@@ -301,5 +358,8 @@ main(void)
     arena_release(frame_arena);
     arena_release(arena);
 
+    log_info("Application shutting down");
+    log_shutdown();
+    
     return 0;
 }

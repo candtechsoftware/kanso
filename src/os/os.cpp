@@ -2,7 +2,9 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-#define PAGE_SIZE 2 * 1024 * 2024
+#ifndef PAGE_SIZE
+#define PAGE_SIZE 4096  // 4KB typical page size
+#endif
 
 void*
 os_reserve(u64 size)

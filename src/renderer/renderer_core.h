@@ -51,9 +51,9 @@ enum Renderer_Pass_Kind
 
 union Renderer_Handle
 {
-    u64 u64[1];
-    u32 u32[2];
-    u16 u16[4];
+    u64 u64s[1];
+    u32 u32s[2];
+    u16 u16s[4];
 };
 
 struct Renderer_Rect_2D_Inst
@@ -173,7 +173,7 @@ renderer_handle_zero()
 inline b32
 renderer_handle_match(Renderer_Handle a, Renderer_Handle b)
 {
-    return (a.u64[0] == b.u64[0]);
+    return (a.u64s[0] == b.u64s[0]);
 }
 
 inline Renderer_Batch_List
@@ -270,5 +270,14 @@ void
 renderer_window_end_frame(void* window, Renderer_Handle window_equip);
 void
 renderer_window_submit(void* window, Renderer_Handle window_equip, Renderer_Pass_List* passes);
+
+// Include platform-specific renderer implementation
+#ifdef __APPLE__
+#include "renderer_metal.h"
+#elif defined(__linux__)
+#include "renderer_vulkan.h"
+#else
+#include "renderer_webgpu.h"
+#endif
 
 #endif // RENDERER_CORE_H

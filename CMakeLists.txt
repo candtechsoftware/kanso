@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.16)
-project(kanso CXX)
+
+# Use system default clang compiler
+# set(CMAKE_CXX_COMPILER "clang++")
+# set(CMAKE_C_COMPILER "clang")
+
+project(kanso CXX C)
 
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 20)
@@ -15,6 +20,12 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/release)
 
 # Compiler flags
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
+
+# Add SSE3 only on x86/x86_64 architectures
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "(x86_64|i686|AMD64)")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse3")
+endif()
+
 set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -DDEBUG")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
 
@@ -25,17 +36,19 @@ if(APPLE)
     set(CMAKE_XCODE_ATTRIBUTE_DEBUG_INFORMATION_FORMAT "dwarf-with-dsym")
     set(CMAKE_XCODE_ATTRIBUTE_DWARF_DSYM_FOLDER_PATH "${CMAKE_BINARY_DIR}/debug")
     
-    # Find OpenGL and other frameworks
-    find_library(OPENGL_LIBRARY OpenGL)
+    # Find frameworks
     find_library(COCOA_LIBRARY Cocoa)
     find_library(IOKIT_LIBRARY IOKit)
     find_library(COREVIDEO_LIBRARY CoreVideo)
+    find_library(METAL_LIBRARY Metal)
+    find_library(QUARTZCORE_LIBRARY QuartzCore)
     
     set(PLATFORM_LIBRARIES 
-        ${OPENGL_LIBRARY}
         ${COCOA_LIBRARY}
         ${IOKIT_LIBRARY}
         ${COREVIDEO_LIBRARY}
+        ${METAL_LIBRARY}
+        ${QUARTZCORE_LIBRARY}
     )
     
     # Homebrew paths
@@ -45,18 +58,28 @@ if(APPLE)
     
 elseif(UNIX)
     # Linux settings
-    find_package(OpenGL REQUIRED)
-    find_package(GLEW REQUIRED)
     find_package(X11 REQUIRED)
     find_package(Threads REQUIRED)
     
     set(PLATFORM_LIBRARIES
-        ${OPENGL_LIBRARIES}
-        GLEW::GLEW
         ${X11_LIBRARIES}
         ${CMAKE_THREAD_LIBS_INIT}
         ${CMAKE_DL_LIBS}
     )
+endif()
+
+# Windowing system selection (Linux only)
+if(UNIX AND NOT APPLE)
+    set(WINDOWING_SYSTEM "x11" CACHE STRING "Windowing system to use (x11 or wayland)")
+    set_property(CACHE WINDOWING_SYSTEM PROPERTY STRINGS "x11" "wayland")
+    
+    if(WINDOWING_SYSTEM STREQUAL "wayland")
+        add_definitions(-DUSE_WAYLAND)
+        message(STATUS "Using Wayland windowing system")
+    else()
+        add_definitions(-DUSE_X11)
+        message(STATUS "Using X11 windowing system")
+    endif()
 endif()
 
 # Find GLFW
@@ -72,13 +95,115 @@ else()
     set(GLFW_LIBRARIES glfw)
 endif()
 
+# Tracy Profiler - disabled by default unless explicitly enabled
+option(ENABLE_TRACY "Enable Tracy Profiler" OFF)
+if(ENABLE_TRACY)
+    include(FetchContent)
+    FetchContent_Declare(
+        tracy
+        GIT_REPOSITORY https://github.com/wolfpld/tracy.git
+        GIT_TAG v0.11.1
+        GIT_SHALLOW TRUE
+        GIT_PROGRESS TRUE
+    )
+    FetchContent_MakeAvailable(tracy)
+    
+    # Enable Tracy profiler
+    add_definitions(-DTRACY_ENABLE)
+    
+    # Tracy include directories
+    include_directories(SYSTEM ${tracy_SOURCE_DIR}/public)
+    
+    message(STATUS "Tracy Profiler ENABLED - this will impact performance!")
+else()
+    message(STATUS "Tracy Profiler disabled (default)")
+endif()
+
+# Renderer selection based on platform
+if(APPLE)
+    message(STATUS "Building with Metal renderer")
+    set(USE_METAL_RENDERER ON)
+    set(SHADER_PLATFORM "metal")
+elseif(UNIX)
+    message(STATUS "Building with Vulkan renderer")
+    set(USE_VULKAN_RENDERER ON)
+    set(SHADER_PLATFORM "glsl")
+    
+    # Find Vulkan
+    find_package(Vulkan REQUIRED)
+    include_directories(${Vulkan_INCLUDE_DIRS})
+    
+    # Add Wayland libraries if using Wayland
+    if(WINDOWING_SYSTEM STREQUAL "wayland")
+        find_package(PkgConfig REQUIRED)
+        pkg_check_modules(WAYLAND REQUIRED wayland-client)
+        list(APPEND PLATFORM_LIBRARIES ${WAYLAND_LIBRARIES})
+        include_directories(${WAYLAND_INCLUDE_DIRS})
+    endif()
+else()
+    message(STATUS "Building with Dawn WebGPU renderer")
+    set(USE_WEBGPU_RENDERER ON)
+    set(SHADER_PLATFORM "wgsl")
+    
+    # Add Dawn subdirectory
+    set(DAWN_FETCH_DEPENDENCIES ON)
+    set(DAWN_ENABLE_INSTALL OFF)
+    set(DAWN_BUILD_SAMPLES OFF)
+    set(DAWN_USE_GLFW ON)
+    add_subdirectory(thirdparty/dawn)
+    
+    # Dawn include directories
+    include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/thirdparty/dawn/include)
+    include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/thirdparty/dawn/include/webgpu)
+endif()
+
 # Source files
 set(SOURCES
     src/main.cpp
     src/os/os.cpp
     src/base/arena.cpp
-    src/renderer/renderer_opengl.cpp
+    src/base/logger.cpp
+    src/font/font.cpp
+    src/font/font_cache.cpp
 )
+
+# Add Tracy implementation
+if(ENABLE_TRACY)
+    list(APPEND SOURCES ${tracy_SOURCE_DIR}/public/TracyClient.cpp)
+    # Suppress sprintf deprecation warnings from Tracy on macOS
+    if(APPLE)
+        set_source_files_properties(${tracy_SOURCE_DIR}/public/TracyClient.cpp 
+            PROPERTIES COMPILE_FLAGS "-Wno-deprecated-declarations")
+    endif()
+endif()
+
+# Add renderer sources based on platform
+if(USE_METAL_RENDERER)
+    list(APPEND SOURCES 
+        src/renderer/renderer_metal.mm
+        src/renderer/renderer_metal_shaders.mm
+        src/renderer/renderer_metal_passes.mm
+    )
+    # Enable Objective-C++ for Metal files
+    set_source_files_properties(
+        src/renderer/renderer_metal.mm
+        src/renderer/renderer_metal_shaders.mm
+        src/renderer/renderer_metal_passes.mm
+        PROPERTIES COMPILE_FLAGS "-x objective-c++"
+    )
+elseif(USE_VULKAN_RENDERER)
+    list(APPEND SOURCES 
+        src/renderer/renderer_vulkan.cpp
+        src/renderer/renderer_vulkan_shaders.cpp
+        src/renderer/renderer_vulkan_passes.cpp
+    )
+elseif(USE_WEBGPU_RENDERER)
+    list(APPEND SOURCES 
+        src/renderer/renderer_webgpu.cpp
+        src/renderer/renderer_webgpu_shaders.cpp
+        src/renderer/renderer_webgpu_passes.cpp
+    )
+endif()
 
 # Header files
 set(HEADERS
@@ -87,9 +212,62 @@ set(HEADERS
     src/base/arena.h
     src/base/list.h
     src/base/types.h
+    src/base/logger.h
     src/renderer/renderer_core.h
-    src/renderer/renderer_opengl.h
+    src/renderer/renderer_webgpu.h
+    src/renderer/renderer_metal.h
+    src/renderer/renderer_vulkan.h
+    src/font/font.h
+    src/font/font_cache.h
 )
+
+# Build meta program first
+add_executable(meta 
+    src/meta.cpp
+    src/base/arena.cpp
+    src/os/os.cpp
+)
+
+# Add Tracy implementation to meta if enabled
+if(ENABLE_TRACY)
+    target_sources(meta PRIVATE ${tracy_SOURCE_DIR}/public/TracyClient.cpp)
+    target_compile_definitions(meta PRIVATE TRACY_ENABLE)
+    target_include_directories(meta PRIVATE ${tracy_SOURCE_DIR}/public)
+endif()
+
+set_target_properties(meta PROPERTIES 
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+)
+
+# List shader dependencies based on platform
+if(USE_METAL_RENDERER)
+    set(SHADER_DEPS
+        ${CMAKE_SOURCE_DIR}/src/shaders/metal/rect.metal
+        ${CMAKE_SOURCE_DIR}/src/shaders/metal/blur.metal
+        ${CMAKE_SOURCE_DIR}/src/shaders/metal/mesh.metal
+    )
+elseif(USE_VULKAN_RENDERER)
+    set(SHADER_DEPS
+        ${CMAKE_SOURCE_DIR}/src/shaders/glsl/rect.vert
+        ${CMAKE_SOURCE_DIR}/src/shaders/glsl/rect.frag
+        ${CMAKE_SOURCE_DIR}/src/shaders/glsl/blur.vert
+        ${CMAKE_SOURCE_DIR}/src/shaders/glsl/blur.frag
+        ${CMAKE_SOURCE_DIR}/src/shaders/glsl/mesh.vert
+        ${CMAKE_SOURCE_DIR}/src/shaders/glsl/mesh.frag
+    )
+endif()
+
+# Generate shader header
+add_custom_command(
+    OUTPUT ${CMAKE_SOURCE_DIR}/src/generated.h
+    COMMAND meta ${CMAKE_SOURCE_DIR}/src/generated.h ${SHADER_PLATFORM}
+    DEPENDS meta ${SHADER_DEPS}
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    COMMENT "Generating shader header"
+)
+
+# Add generated header as a source so it gets built
+list(APPEND HEADERS src/generated.h)
 
 # Create executable
 add_executable(kanso ${SOURCES} ${HEADERS})
@@ -98,10 +276,41 @@ add_executable(kanso ${SOURCES} ${HEADERS})
 target_include_directories(kanso PRIVATE src)
 
 # Link libraries
-target_link_libraries(kanso 
-    ${GLFW_LIBRARIES}
-    ${PLATFORM_LIBRARIES}
-)
+if(USE_METAL_RENDERER)
+    target_link_libraries(kanso 
+        ${GLFW_LIBRARIES}
+        ${PLATFORM_LIBRARIES}
+    )
+elseif(USE_VULKAN_RENDERER)
+    target_link_libraries(kanso 
+        ${GLFW_LIBRARIES}
+        ${PLATFORM_LIBRARIES}
+        ${Vulkan_LIBRARIES}
+    )
+elseif(USE_WEBGPU_RENDERER)
+    target_link_libraries(kanso 
+        ${GLFW_LIBRARIES}
+        ${PLATFORM_LIBRARIES}
+        dawncpp
+        dawn_proc
+        dawn_native
+    )
+endif()
+
+# Set rpath for runtime library loading
+if(APPLE)
+    set_target_properties(kanso PROPERTIES
+        BUILD_RPATH "@loader_path"
+        INSTALL_RPATH "@loader_path"
+    )
+elseif(UNIX)
+    set_target_properties(kanso PROPERTIES
+        BUILD_RPATH "$ORIGIN"
+        INSTALL_RPATH "$ORIGIN"
+    )
+endif()
+
+# Dawn libraries are statically linked, no need to copy
 
 # Custom target to ensure compile_commands.json is in project root
 add_custom_command(

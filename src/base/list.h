@@ -2,6 +2,7 @@
 #define LIST_H
 
 #include "arena.h"
+#include "profiler.h"
 
 template <typename T>
 struct List_Node
@@ -29,6 +30,7 @@ template <typename T>
 inline void
 list_push(Arena* arena, List<T>* list, T value)
 {
+    ZoneScopedN("ListPush");
     List_Node<T>* node = push_array(arena, List_Node<T>, 1);
     node->v = value;
     node->next = 0;
@@ -49,6 +51,7 @@ template <typename T>
 inline T*
 list_push_new(Arena* arena, List<T>* list)
 {
+    ZoneScopedN("ListPushNew");
     List_Node<T>* node = push_array(arena, List_Node<T>, 1);
     node->next = 0;
 

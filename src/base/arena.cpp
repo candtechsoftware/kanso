@@ -1,6 +1,7 @@
 #include "arena.h"
 #include "../os/os.h"
 #include "util.h"
+#include "profiler.h"
 
 u64 arena_default_reserve_size = MB(64);
 u64 arena_default_commit_size = KB(64);
@@ -8,6 +9,7 @@ u64 arena_default_commit_size = KB(64);
 Arena*
 arena_alloc_(Arena_Params* params)
 {
+    ZoneScopedN("ArenaAlloc");
     u64 reserve_size = params->reserve_size;
     u64 commit_size = params->commit_size;
 
@@ -35,6 +37,7 @@ arena_alloc_(Arena_Params* params)
 void
 arena_release(Arena* arena)
 {
+    ZoneScopedN("ArenaRelease");
     for (Arena *n = arena->current, *prev = 0; n != 0; n = prev)
     {
         prev = n->prev;
@@ -45,6 +48,8 @@ arena_release(Arena* arena)
 void*
 arena_push(Arena* arena, u64 size, u64 align)
 {
+    ZoneScopedN("ArenaPush");
+    
     Arena* curr = arena->current;
     u64 pos_pre = AlignPow2(curr->pos, align);
     u64 pos_pst = pos_pre + size;
@@ -90,6 +95,7 @@ arena_pos(Arena* arena)
 void
 arena_pop_to(Arena* arena, u64 pos)
 {
+    ZoneScopedN("ArenaPopTo");
     u64 big_pos = ClampBot((u64)ARENA_HEADER_SIZE, pos);
     Arena* current = arena->current;
 
@@ -98,7 +104,9 @@ arena_pop_to(Arena* arena, u64 pos)
     u64 new_pos = big_pos - current->base_pos;
     if (new_pos <= current->pos)
     {
-        AsanPoisonMemoryRegion((u8*)current + new_pos, current->pos - new_pos);
+        u64 freed_size = current->pos - new_pos;
+        void* freed_ptr = (u8*)current + new_pos;
+        AsanPoisonMemoryRegion(freed_ptr, freed_size);
         current->pos = new_pos;
     }
 }

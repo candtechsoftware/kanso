@@ -75,7 +75,7 @@ void
 scratch_end(Scratch* scratch);
 
 // Convenience macros for common push operations
-#define push_array(arena, T, count) (T*)arena_push((arena), sizeof(T) * (count), _Alignof(T))
+#define push_array(arena, T, count) (T*)arena_push((arena), sizeof(T) * (count), alignof(T))
 #define push_array_zero(arena, T, count) (T*)MemoryZero(push_array(arena, T, count), sizeof(T) * (count))
 #define push_struct(arena, T) push_array(arena, T, 1)
 #define push_struct_zero(arena, T) push_array_zero(arena, T, 1)
