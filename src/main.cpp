@@ -50,7 +50,6 @@ main(void)
         return -1;
     }
 
-    // WebGPU doesn't need an OpenGL context
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     
     // Try to disable refresh rate syncing

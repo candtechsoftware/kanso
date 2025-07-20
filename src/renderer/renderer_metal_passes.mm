@@ -35,53 +35,12 @@ struct MeshUniforms
     Vec2<f32> clip_max;
 };
 
-// Helper function to get buffer from pool or allocate new one
+// Helper function to get buffer from pool
 static id<MTLBuffer>
 renderer_metal_get_temp_buffer(u64 size)
 {
-    Renderer_Metal_Frame_Data* frame = &r_metal_state->frames[r_metal_state->current_frame_index];
-    
-    // Try to find an unused buffer in the pool that's large enough
-    for (u32 i = 0; i < METAL_BUFFER_POOL_SIZE; i++)
-    {
-        Renderer_Metal_Buffer_Pool_Entry* entry = &frame->buffer_pool[i];
-        if (!entry->in_use && entry->buffer && entry->size >= size)
-        {
-            entry->in_use = true;
-            return metal_buffer(entry->buffer);
-        }
-    }
-    
-    // Try to find an unused slot to create a new buffer
-    for (u32 i = 0; i < METAL_BUFFER_POOL_SIZE; i++)
-    {
-        Renderer_Metal_Buffer_Pool_Entry* entry = &frame->buffer_pool[i];
-        if (!entry->in_use)
-        {
-            // Release old buffer if too small
-            if (entry->buffer && entry->size < size)
-            {
-                metal_release(entry->buffer);
-                entry->buffer = nullptr;
-            }
-            
-            // Create new buffer if needed
-            if (!entry->buffer)
-            {
-                // Use exact size for small buffers to reduce waste
-                entry->size = (size <= 4096) ? size : Max(size, (u64)(16 * 1024));
-                entry->buffer = metal_retain([metal_device(r_metal_state->device) 
-                    newBufferWithLength:entry->size
-                    options:MTLResourceStorageModeShared | MTLResourceCPUCacheModeWriteCombined]);
-            }
-            
-            entry->in_use = true;
-            return metal_buffer(entry->buffer);
-        }
-    }
-    
-    // Pool is full, just use the frame's instance buffer
-    return nullptr;
+    void* buffer = renderer_metal_acquire_buffer_from_pool(size);
+    return buffer ? metal_buffer(buffer) : nullptr;
 }
 
 void
@@ -185,6 +144,9 @@ renderer_metal_render_pass_ui(Renderer_Pass_Params_UI* params, void* command_buf
                 instance_buffer = metal_buffer(frame->rect_instance_buffer);
             }
             
+            // Note: We could use scratch arena here for temporary batch processing if needed
+            // For now, we copy directly to the GPU buffer
+            
             void* buffer_data = [instance_buffer contents];
             u64 offset = 0;
             {
@@ -194,6 +156,7 @@ renderer_metal_render_pass_ui(Renderer_Pass_Params_UI* params, void* command_buf
                     Renderer_Batch* batch = &batch_node->v;
                     if (batch->byte_count > 0)
                     {
+                        // Could process/transform data in scratch arena before final copy
                         memcpy((u8*)buffer_data + offset, batch->v, batch->byte_count);
                         offset += batch->byte_count;
                     }

@@ -141,20 +141,7 @@ elseif(UNIX)
         include_directories(${WAYLAND_INCLUDE_DIRS})
     endif()
 else()
-    message(STATUS "Building with Dawn WebGPU renderer")
-    set(USE_WEBGPU_RENDERER ON)
-    set(SHADER_PLATFORM "wgsl")
-    
-    # Add Dawn subdirectory
-    set(DAWN_FETCH_DEPENDENCIES ON)
-    set(DAWN_ENABLE_INSTALL OFF)
-    set(DAWN_BUILD_SAMPLES OFF)
-    set(DAWN_USE_GLFW ON)
-    add_subdirectory(thirdparty/dawn)
-    
-    # Dawn include directories
-    include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/thirdparty/dawn/include)
-    include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/thirdparty/dawn/include/webgpu)
+    message(FATAL_ERROR "Unsupported platform. Only macOS (Metal) and Linux (Vulkan) are supported.")
 endif()
 
 # Source files
@@ -197,12 +184,6 @@ elseif(USE_VULKAN_RENDERER)
         src/renderer/renderer_vulkan_shaders.cpp
         src/renderer/renderer_vulkan_passes.cpp
     )
-elseif(USE_WEBGPU_RENDERER)
-    list(APPEND SOURCES 
-        src/renderer/renderer_webgpu.cpp
-        src/renderer/renderer_webgpu_shaders.cpp
-        src/renderer/renderer_webgpu_passes.cpp
-    )
 endif()
 
 # Header files
@@ -214,7 +195,6 @@ set(HEADERS
     src/base/types.h
     src/base/logger.h
     src/renderer/renderer_core.h
-    src/renderer/renderer_webgpu.h
     src/renderer/renderer_metal.h
     src/renderer/renderer_vulkan.h
     src/font/font.h
@@ -287,14 +267,6 @@ elseif(USE_VULKAN_RENDERER)
         ${PLATFORM_LIBRARIES}
         ${Vulkan_LIBRARIES}
     )
-elseif(USE_WEBGPU_RENDERER)
-    target_link_libraries(kanso 
-        ${GLFW_LIBRARIES}
-        ${PLATFORM_LIBRARIES}
-        dawncpp
-        dawn_proc
-        dawn_native
-    )
 endif()
 
 # Set rpath for runtime library loading
@@ -309,8 +281,6 @@ elseif(UNIX)
         INSTALL_RPATH "$ORIGIN"
     )
 endif()
-
-# Dawn libraries are statically linked, no need to copy
 
 # Custom target to ensure compile_commands.json is in project root
 add_custom_command(

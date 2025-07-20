@@ -34,11 +34,6 @@ static ShaderSource shaders[] = {
     {"renderer_vulkan_blur_frag_shader_src", "src/shaders/glsl/blur.frag", "glsl"},
     {"renderer_vulkan_mesh_vert_shader_src", "src/shaders/glsl/mesh.vert", "glsl"},
     {"renderer_vulkan_mesh_frag_shader_src", "src/shaders/glsl/mesh.frag", "glsl"},
-    
-    // WebGPU shaders (for future)
-    // {"renderer_webgpu_rect_shader_src", "src/shaders/wgsl/rect.wgsl", "wgsl"},
-    // {"renderer_webgpu_blur_shader_src", "src/shaders/wgsl/blur.wgsl", "wgsl"},
-    // {"renderer_webgpu_mesh_shader_src", "src/shaders/wgsl/mesh.wgsl", "wgsl"},
 };
 
 std::string read_file(const char* path)

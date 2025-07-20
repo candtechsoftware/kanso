@@ -40,7 +40,7 @@ run: all
 # Clean build directory
 clean:
 	@echo "Cleaning build directory..."
-	@rm -rf $(BUILD_DIR) compile_commands.json
+	@rm -rf $(BUILD_DIR) compile_commands.json kanso.log
 
 # Lint the code
 lint:

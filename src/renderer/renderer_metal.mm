@@ -21,7 +21,6 @@
 
 Renderer_Metal_State* r_metal_state = nullptr;
 
-// Metal shader sources (to be implemented in renderer_metal_shaders.mm)
 extern const char* renderer_metal_rect_shader_src;
 extern const char* renderer_metal_blur_shader_src;
 extern const char* renderer_metal_mesh_shader_src;
@@ -82,7 +81,6 @@ renderer_metal_sample_channel_map_from_tex_2d_format(Renderer_Tex_2D_Format fmt)
     case Renderer_Tex_2D_Format_RGBA8:
     case Renderer_Tex_2D_Format_BGRA8:
     case Renderer_Tex_2D_Format_RGBA16:
-        // Identity matrix - already set
         break;
     }
     
@@ -117,6 +115,8 @@ renderer_init()
     if (!r_metal_state->command_queue)
     {
         log_error("Failed to create Metal command queue");
+        arena_release(arena);
+        r_metal_state = nullptr;
         return;
     }
     
@@ -150,11 +150,19 @@ renderer_init()
         r_metal_state->frames[i].rect_instance_buffer_size = rect_buffer_size;
         r_metal_state->frames[i].rect_instance_buffer = metal_retain([device newBufferWithLength:rect_buffer_size
                                                                                  options:MTLResourceStorageModeShared | MTLResourceCPUCacheModeWriteCombined]);
+        if (!r_metal_state->frames[i].rect_instance_buffer)
+        {
+            log_error("Failed to create rect instance buffer for frame %u", i);
+        }
         
         // Create mesh uniform buffer per frame
         u64 mesh_uniform_buffer_size = 16 * 1024;
         r_metal_state->frames[i].mesh_uniform_buffer = metal_retain([device newBufferWithLength:mesh_uniform_buffer_size
                                                                                     options:MTLResourceStorageModeShared | MTLResourceCPUCacheModeWriteCombined]);
+        if (!r_metal_state->frames[i].mesh_uniform_buffer)
+        {
+            log_error("Failed to create mesh uniform buffer for frame %u", i);
+        }
         
         // Initialize buffer pool entries
         for (u32 j = 0; j < METAL_BUFFER_POOL_SIZE; j++)
@@ -707,24 +715,17 @@ renderer_window_submit(void* window, Renderer_Handle window_equip, Renderer_Pass
     
     Renderer_Metal_Window_Equip* equip = &r_metal_state->window_equips[slot];
     
-    // Get current frame data
     Renderer_Metal_Frame_Data* frame = &r_metal_state->frames[r_metal_state->current_frame_index];
     
-    // Wait for this frame to be available (CPU-GPU sync)
     dispatch_semaphore_wait((dispatch_semaphore_t)frame->semaphore, DISPATCH_TIME_FOREVER);
     
     CAMetalLayer* layer = metal_layer(equip->layer);
     
-    // Use commandBuffer instead of commandBufferWithUnretainedReferences for better performance
-    // This allows Metal to better manage resource lifetimes
-    // Create command buffer
     id<MTLCommandBuffer> command_buffer = [metal_command_queue(r_metal_state->command_queue) commandBuffer];
     
-    // Get drawable after creating command buffer to reduce blocking
     id<CAMetalDrawable> drawable = nullptr;
     {
         ZoneScopedN("MetalGetDrawable");
-        // Disable implicit CATransaction animations which might sync to display
         [CATransaction begin];
         [CATransaction setDisableActions:YES];
         
@@ -732,10 +733,8 @@ renderer_window_submit(void* window, Renderer_Handle window_equip, Renderer_Pass
         
         [CATransaction commit];
         
-        // If no drawable available, we're likely at vsync limit
         if (!drawable)
         {
-            // Log this as it might indicate performance issues
             static u64 drawable_miss_count = 0;
             if ((++drawable_miss_count % 100) == 0)
             {
@@ -745,17 +744,24 @@ renderer_window_submit(void* window, Renderer_Handle window_equip, Renderer_Pass
     }
     if (!drawable)
     {
-        // Release semaphore if we can't get drawable
         dispatch_semaphore_signal((dispatch_semaphore_t)frame->semaphore);
+        static u64 consecutive_failures = 0;
+        if (++consecutive_failures > 10)
+        {
+            log_error("Failed to get drawable %llu times consecutively", consecutive_failures);
+        }
         return;
     }
+    else
+    {
+        static u64 consecutive_failures = 0;
+        consecutive_failures = 0;
+    }
     
-    // Add completion handler to signal when GPU is done with this frame
     [command_buffer addCompletedHandler:^(id<MTLCommandBuffer> buffer) {
         dispatch_semaphore_signal((dispatch_semaphore_t)frame->semaphore);
     }];
     
-    // Check if we can combine UI and 3D passes
     Renderer_Pass_Params_UI* ui_params = nullptr;
     Renderer_Pass_Params_Geo_3D* geo_params = nullptr;
     bool has_blur = false;
@@ -780,15 +786,12 @@ renderer_window_submit(void* window, Renderer_Handle window_equip, Renderer_Pass
         }
     }
     
-    // If we have both UI and 3D but no blur, we can combine them
     if ((ui_params || geo_params) && !has_blur)
     {
-        // Use combined render pass to reduce overhead
         renderer_metal_render_pass_combined(ui_params, geo_params, command_buffer, drawable.texture, equip->depth_texture);
     }
     else
     {
-        // Render passes normally if blur is involved
         for (Renderer_Pass_Node* pass_node = passes->first; pass_node; pass_node = pass_node->next)
         {
             Renderer_Pass* pass = &pass_node->v;
@@ -810,17 +813,124 @@ renderer_window_submit(void* window, Renderer_Handle window_equip, Renderer_Pass
         }
     }
     
-    // Present without waiting for display vsync
-    // Try different presentation methods to bypass vsync
     [command_buffer presentDrawable:drawable];
     [command_buffer commit];
     
-    // Don't wait for command buffer to complete - let CPU run ahead
-    // This allows the CPU to prepare the next frame while GPU is working
+    renderer_metal_reset_frame_pools();
     
-    // Don't wait for scheduled - let it run async
-    // [command_buffer waitUntilScheduled]; // DON'T DO THIS
-    
-    // Move to next frame after commit
     r_metal_state->current_frame_index = (r_metal_state->current_frame_index + 1) % METAL_FRAMES_IN_FLIGHT;
+}
+
+void*
+renderer_metal_acquire_buffer_from_pool(u64 size)
+{
+    Renderer_Metal_Frame_Data* frame = &r_metal_state->frames[r_metal_state->current_frame_index];
+    
+    size = (size + 255) & ~255;
+    for (u32 i = 0; i < METAL_BUFFER_POOL_SIZE; i++)
+    {
+        Renderer_Metal_Buffer_Pool_Entry* entry = &frame->buffer_pool[i];
+        if (!entry->in_use && entry->buffer && entry->size >= size && entry->size <= size * 2)
+        {
+            entry->in_use = true;
+            entry->used_size = size;
+            entry->reuse_count++;
+            frame->buffer_pool_hit_count++;
+            return entry->buffer;
+        }
+    }
+    
+    for (u32 i = 0; i < METAL_BUFFER_POOL_SIZE; i++)
+    {
+        Renderer_Metal_Buffer_Pool_Entry* entry = &frame->buffer_pool[i];
+        if (!entry->in_use && entry->buffer && entry->size >= size)
+        {
+            entry->in_use = true;
+            entry->used_size = size;
+            entry->reuse_count++;
+            frame->buffer_pool_hit_count++;
+            return entry->buffer;
+        }
+    }
+    
+    u32 best_slot = METAL_BUFFER_POOL_SIZE;
+    u32 min_reuse_count = UINT32_MAX;
+    
+    for (u32 i = 0; i < METAL_BUFFER_POOL_SIZE; i++)
+    {
+        Renderer_Metal_Buffer_Pool_Entry* entry = &frame->buffer_pool[i];
+        if (!entry->in_use)
+        {
+            if (!entry->buffer || entry->reuse_count < min_reuse_count)
+            {
+                best_slot = i;
+                min_reuse_count = entry->reuse_count;
+            }
+        }
+    }
+    
+    if (best_slot < METAL_BUFFER_POOL_SIZE)
+    {
+        Renderer_Metal_Buffer_Pool_Entry* entry = &frame->buffer_pool[best_slot];
+        
+        if (entry->buffer && entry->size < size)
+        {
+            metal_release(entry->buffer);
+            entry->buffer = nullptr;
+        }
+        
+        if (!entry->buffer)
+        {
+            u64 alloc_size = Max(size, METAL_BUFFER_POOL_MIN_SIZE);
+            if (size > METAL_BUFFER_POOL_MIN_SIZE)
+            {
+                alloc_size = (size * METAL_BUFFER_POOL_GROWTH_FACTOR + 4095) & ~4095;
+            }
+            
+            entry->size = alloc_size;
+            entry->buffer = metal_retain([metal_device(r_metal_state->device) 
+                newBufferWithLength:alloc_size
+                options:MTLResourceStorageModeShared | MTLResourceCPUCacheModeWriteCombined]);
+            if (!entry->buffer)
+            {
+                log_error("Failed to allocate buffer pool entry of size %llu", alloc_size);
+                return nullptr;
+            }
+            entry->reuse_count = 0;
+        }
+        
+        entry->in_use = true;
+        entry->used_size = size;
+        frame->buffer_pool_miss_count++;
+        return entry->buffer;
+    }
+    
+    frame->buffer_pool_miss_count++;
+    return nullptr;
+}
+
+void
+renderer_metal_reset_frame_pools()
+{
+    Renderer_Metal_Frame_Data* frame = &r_metal_state->frames[r_metal_state->current_frame_index];
+    
+    for (u32 i = 0; i < METAL_BUFFER_POOL_SIZE; i++)
+    {
+        frame->buffer_pool[i].in_use = false;
+        frame->buffer_pool[i].used_size = 0;
+    }
+    
+    frame->rect_instance_buffer_used = 0;
+    frame->mesh_uniform_buffer_used = 0;
+    
+    static u64 frame_count = 0;
+    if ((++frame_count % 1000) == 0 && (frame->buffer_pool_hit_count + frame->buffer_pool_miss_count) > 0)
+    {
+        f32 hit_rate = (f32)frame->buffer_pool_hit_count / (f32)(frame->buffer_pool_hit_count + frame->buffer_pool_miss_count) * 100.0f;
+        log_info("Buffer pool hit rate: %.1f%% (hits: %u, misses: %u)", 
+                 hit_rate, frame->buffer_pool_hit_count, frame->buffer_pool_miss_count);
+        
+        frame->buffer_pool_hit_count = 0;
+        frame->buffer_pool_miss_count = 0;
+    }
 }

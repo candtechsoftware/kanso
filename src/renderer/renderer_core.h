@@ -277,7 +277,6 @@ renderer_window_submit(void* window, Renderer_Handle window_equip, Renderer_Pass
 #elif defined(__linux__)
 #include "renderer_vulkan.h"
 #else
-#include "renderer_webgpu.h"
 #endif
 
 #endif // RENDERER_CORE_H
