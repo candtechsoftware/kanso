@@ -11,16 +11,19 @@ struct String
 };
 
 String
-inline to_string(const char* data, u32 size)
+inline cstr_to_string(const char* data, u32 size)
 {
     return {data, size};
 }
 
 String
-inline to_string(char* data, u32 size)
+inline cstr_to_string(char* data, u32 size)
 {
     return {data, size};
 }
+
+// Macro to create a String from a string literal with automatic size calculation
+#define to_string(str) cstr_to_string(str, sizeof(str) - 1)
 
 bool
 inline operator==(const String a, const String b)

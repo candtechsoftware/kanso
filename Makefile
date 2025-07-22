@@ -6,6 +6,9 @@ BINARY_NAME = kanso
 # Windowing option (Linux only)
 WINDOWING ?= x11
 
+# Tracy profiler option
+TRACY_ENABLED ?= 0
+
 .PHONY: all clean release run configure lint format help
 
 # Default target - build debug
@@ -14,15 +17,24 @@ all: configure
 
 # Configure CMake if needed
 configure:
-	@if [ ! -f $(BUILD_DIR)/Makefile ] || [ "$(FORCE_RECONFIGURE)" = "1" ]; then \
-		echo "Configuring CMake (windowing=$(WINDOWING))..."; \
+	@if [ ! -f $(BUILD_DIR)/Makefile ] || [ "$(FORCE_RECONFIGURE)" = "1" ] || \
+	   [ -f $(BUILD_DIR)/CMakeCache.txt ] && ! grep -q "ENABLE_TRACY:BOOL=$(TRACY_ENABLED)" $(BUILD_DIR)/CMakeCache.txt; then \
+		echo "Configuring CMake (windowing=$(WINDOWING), tracy=$(TRACY_ENABLED))..."; \
 		mkdir -p $(BUILD_DIR); \
-		cd $(BUILD_DIR) && cmake -DCMAKE_BUILD_TYPE=$(BUILD_TYPE) -DWINDOWING_SYSTEM=$(WINDOWING) ..; \
+		cd $(BUILD_DIR) && cmake -DCMAKE_BUILD_TYPE=$(BUILD_TYPE) -DWINDOWING_SYSTEM=$(WINDOWING) -DENABLE_TRACY=$(TRACY_ENABLED) $(CMAKE_FLAGS) ..; \
 	fi
 
-# Release build  
+# Release build with maximum optimization for performance and size
 release:
-	@BUILD_TYPE=Release FORCE_RECONFIGURE=1 $(MAKE) all
+	@BUILD_TYPE=Release FORCE_RECONFIGURE=1 \
+		CMAKE_FLAGS="-DCMAKE_CXX_FLAGS_RELEASE='-O3 -march=native -mtune=native -flto=thin -fvisibility=hidden -fvisibility-inlines-hidden -ffunction-sections -fdata-sections -fomit-frame-pointer -DNDEBUG' \
+		-DCMAKE_C_FLAGS_RELEASE='-O3 -march=native -mtune=native -flto=thin -fvisibility=hidden -ffunction-sections -fdata-sections -fomit-frame-pointer -DNDEBUG' \
+		-DCMAKE_EXE_LINKER_FLAGS_RELEASE='-flto=thin -Wl,-dead_strip -Wl,-x -Wl,-S' \
+		-DCMAKE_SHARED_LINKER_FLAGS_RELEASE='-flto=thin -Wl,-dead_strip -Wl,-x -Wl,-S' \
+		-DCMAKE_MODULE_LINKER_FLAGS_RELEASE='-flto=thin -Wl,-dead_strip -Wl,-x -Wl,-S' \
+		-DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON \
+		-DCMAKE_BUILD_TYPE=Release" \
+		$(MAKE) all
 
 # Run the binary
 run: all
@@ -66,10 +78,16 @@ help:
 	@echo "  WINDOWING=x11     - Use X11 windowing (default)"
 	@echo "  WINDOWING=wayland - Use Wayland windowing"
 	@echo ""
+	@echo "Tracy profiler option:"
+	@echo "  TRACY_ENABLED=1   - Enable Tracy profiler (impacts performance)"
+	@echo "  TRACY_ENABLED=0   - Disable Tracy profiler (default)"
+	@echo ""
 	@echo "Examples:"
 	@echo "  make"
 	@echo "  make run"
 	@echo "  WINDOWING=wayland make run"
+	@echo "  TRACY_ENABLED=1 make"
+	@echo "  TRACY_ENABLED=1 make run"
 	@echo ""
 	@echo "Other commands:"
 	@echo "  make lint         - Check code formatting"

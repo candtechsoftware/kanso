@@ -9,7 +9,9 @@
 #include "arena.h"
 #include "list.h"
 #include "simd.h"
-    #include "types.h"
+#include "logger.h"
+#include "string_core.h"
+#include "types.h"
 #include "util.h"
 
 #endif // BASE_H

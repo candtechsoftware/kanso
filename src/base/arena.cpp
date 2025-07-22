@@ -114,7 +114,18 @@ arena_pop_to(Arena* arena, u64 pos)
 void
 arena_clear(Arena* arena)
 {
-    arena_pop_to(arena, 0);
+    // Fast path for clearing arena - just reset position without profiling overhead
+    Arena* current = arena->current;
+    current->pos = ARENA_HEADER_SIZE;
+    
+    // Only poison memory in debug builds with ASAN
+#ifdef __has_feature
+#if __has_feature(address_sanitizer)
+    u64 freed_size = current->pos - ARENA_HEADER_SIZE;
+    void* freed_ptr = (u8*)current + ARENA_HEADER_SIZE;
+    AsanPoisonMemoryRegion(freed_ptr, freed_size);
+#endif
+#endif
 }
 
 void

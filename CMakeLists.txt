@@ -215,6 +215,10 @@ if(ENABLE_TRACY)
     target_include_directories(meta PRIVATE ${tracy_SOURCE_DIR}/public)
 endif()
 
+# Include directories for meta
+target_include_directories(meta PRIVATE src)
+target_include_directories(meta PRIVATE third_party)
+
 set_target_properties(meta PROPERTIES 
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
 )
@@ -254,6 +258,7 @@ add_executable(kanso ${SOURCES} ${HEADERS})
 
 # Include directories
 target_include_directories(kanso PRIVATE src)
+target_include_directories(kanso PRIVATE third_party)
 
 # Link libraries
 if(USE_METAL_RENDERER)

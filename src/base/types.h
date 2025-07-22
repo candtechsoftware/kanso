@@ -108,19 +108,29 @@ mat4x4_mul_simd(const Mat4x4<f32>& a, const Mat4x4<f32>& b)
     Mat4x4<f32> result;
 
 #if defined(__APPLE__) && TARGET_CPU_ARM64
-    // ARM NEON implementation for Apple Silicon
+    // Optimized ARM NEON implementation for Apple Silicon
+    // Transpose b for better memory access pattern
+    float32x4_t b_row0 = vld1q_f32(&b.m[0][0]);
+    float32x4_t b_row1 = vld1q_f32(&b.m[1][0]);
+    float32x4_t b_row2 = vld1q_f32(&b.m[2][0]);
+    float32x4_t b_row3 = vld1q_f32(&b.m[3][0]);
+    
+    // Compute result rows
     for (int i = 0; i < 4; i++)
     {
-        float32x4_t row = vld1q_f32(&a.m[i][0]);
-        for (int j = 0; j < 4; j++)
-        {
-            float32x4_t col = {b.m[0][j], b.m[1][j], b.m[2][j], b.m[3][j]};
-            float32x4_t prod = vmulq_f32(row, col);
-            // Sum all elements of the vector
-            float32x2_t sum_low = vadd_f32(vget_low_f32(prod), vget_high_f32(prod));
-            float32x2_t sum = vpadd_f32(sum_low, sum_low);
-            result.m[i][j] = vget_lane_f32(sum, 0);
-        }
+        float32x4_t a_row = vld1q_f32(&a.m[i][0]);
+        
+        // Broadcast each element of a_row and multiply with corresponding b row
+        float32x4_t prod0 = vmulq_n_f32(b_row0, vgetq_lane_f32(a_row, 0));
+        float32x4_t prod1 = vmulq_n_f32(b_row1, vgetq_lane_f32(a_row, 1));
+        float32x4_t prod2 = vmulq_n_f32(b_row2, vgetq_lane_f32(a_row, 2));
+        float32x4_t prod3 = vmulq_n_f32(b_row3, vgetq_lane_f32(a_row, 3));
+        
+        // Sum all products
+        float32x4_t sum = vaddq_f32(vaddq_f32(prod0, prod1), vaddq_f32(prod2, prod3));
+        
+        // Store result
+        vst1q_f32(&result.m[i][0], sum);
     }
 #elif defined(__aarch64__) || defined(_M_ARM64)
     // Generic ARM NEON implementation
