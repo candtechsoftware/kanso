@@ -7,11 +7,11 @@
 #include "base/base.h"
 #include "base/logger.h"
 #include "base/string_core.h"
+#include "draw/draw.h"
 #include "font/font.h"
 #include "font/font_cache.h"
 #include "os/os.h"
 #include "renderer/renderer_core.h"
-#include "draw/draw.h"
 
 #include <GLFW/glfw3.h>
 
@@ -81,7 +81,7 @@ static void
 app_draw(App* app)
 {
     ZoneScoped;
-    
+
     // Begin draw frame
     draw_begin_frame(app->font);
     Draw_Bucket* bucket = draw_bucket_make();
@@ -145,16 +145,16 @@ app_draw(App* app)
         static f32 fps_update_timer = 0;
         static int last_fps = -1;
         fps_update_timer += elapsed;
-        
+
         int current_fps = (int)avg_fps;
-        
+
         // Update when FPS changes significantly or every second
-        if (!font_tag_match(app->font, font_tag_zero()) && 
+        if (!(app->font == font_tag_zero()) &&
             (fps_update_timer >= 1.0f || abs(current_fps - last_fps) > 5))
         {
             fps_update_timer = 0;
             last_fps = current_fps;
-            
+
             // Create FPS string
             char fps_buffer[32];
             snprintf(fps_buffer, sizeof(fps_buffer), "FPS: %d", current_fps);
@@ -176,7 +176,7 @@ app_draw(App* app)
 
     {
         ZoneScopedN("UI Pass Setup");
-        
+
         // Draw colored rectangles using draw API
         Renderer_Rect_2D_Inst* rect1 = draw_rect({{50, 50}, {200, 150}}, {1, 0, 0, 1}, 10, 2, 0.5);
         if (rect1)
@@ -187,9 +187,9 @@ app_draw(App* app)
             rect1->colors[2] = {0, 0, 1, 1};
             rect1->colors[3] = {1, 1, 0, 1};
         }
-        
+
         draw_rect({{width - 250.0f, 50}, {width - 50.0f, 250}}, {0.5f, 0.5f, 1, 0.8f}, 20, 0, 1);
-        
+
         // Draw FPS text
         if (app->fps_string.size > 0)
         {
@@ -199,7 +199,7 @@ app_draw(App* app)
 
     {
         ZoneScopedN("3D Pass Setup");
-        
+
         // Only recalculate projection matrix if window size changed
         if (width != app->last_width || height != app->last_height)
         {
@@ -208,17 +208,17 @@ app_draw(App* app)
             app->last_width = width;
             app->last_height = height;
         }
-        
+
         // Begin 3D rendering
         draw_geo3d_begin({{0, 0}, {(f32)width, (f32)height}}, app->cached_view, app->cached_projection);
-        
+
         // Draw mesh
         Mat4x4<f32> transform = mat4x4_rotate_y(app->rotation) * mat4x4_scale(1.0f, 1.0f, 1.0f);
-        draw_mesh(app->cube_vertices, app->cube_indices, 
+        draw_mesh(app->cube_vertices, app->cube_indices,
                   Renderer_Geo_Topology_Kind_Triangles,
                   Renderer_Geo_Vertex_Flag_Tex_Coord | Renderer_Geo_Vertex_Flag_Normals | Renderer_Geo_Vertex_Flag_RGBA,
                   app->white_texture, transform);
-        
+
         app->rotation += 1.0f * app->frame_time; // Rotate at 1 radian per second
     }
 
@@ -266,7 +266,7 @@ main(void)
     font_cache_init();
 
     Font_Tag font = font_tag_from_path(to_string("assets/fonts/NotoSans-VariableFont_wdth,wght.ttf"));
-    if (font_tag_match(font, font_tag_zero()))
+    if ((font == font_tag_zero()))
     {
         log_error("Failed to load font");
     }

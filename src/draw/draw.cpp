@@ -411,8 +411,7 @@ draw_text(Vec2<f32> p, String text, Font_Tag font, f32 size, Vec4<f32> color)
             {1.0f, 1.0f}
         };
         
-        Renderer_Handle tex = {{0}};
-        tex.u64s[0] = piece->texture;
+        Renderer_Handle tex = piece->texture;
         
         draw_img(dst, src, tex, color);
         x_offset += piece->advance;
@@ -447,8 +446,7 @@ draw_text_run_list(Vec2<f32> p, Draw_Text_Run_List* list)
                 {1.0f, 1.0f}
             };
             
-                Renderer_Handle tex = {{0}};
-            tex.u64s[0] = piece->texture;
+            Renderer_Handle tex = piece->texture;
             
             draw_img(dst, src, tex, run->color);
             x_offset += piece->advance;

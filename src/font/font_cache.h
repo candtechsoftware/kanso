@@ -6,6 +6,7 @@
 #include "base/array.h"
 #include "base/list.h"
 #include "font/font.h"
+#include "renderer/renderer_core.h"
 
 // Rasterization flags for font rendering
 enum Font_Raster_Flags : u32 {
@@ -18,10 +19,14 @@ struct Font_Tag {
     u64 data[2];
 };
 
+inline bool
+operator==(Font_Tag a, Font_Tag b) {
+    return a.data[0] == b.data[0] && a.data[1] == b.data[1];
+}
+
 // Glyph piece information for rendering
 struct Font_Piece {
-    // TODO(Alex): replace with renderer texture handle when available
-    u64 texture;
+    Renderer_Handle texture;
     Rng2<s16> subrect;
     Vec2<s16> offset;
     f32 advance;
@@ -143,8 +148,7 @@ struct Font_Atlas_Region_Node {
 struct Font_Atlas {
     Font_Atlas* next;
     Font_Atlas* prev;
-    // TODO(Alex): replace with renderer texture handle
-    u64 texture;
+    Renderer_Handle texture;
     Vec2<s16> root_dim;
     Font_Atlas_Region_Node* root;
 };
@@ -178,7 +182,6 @@ u64 font_cache_little_hash_from_string(u64 seed, String string);
 
 // Font tag functions
 Font_Tag font_tag_zero(void);
-bool font_tag_match(Font_Tag a, Font_Tag b);
 Font_Handle font_handle_from_tag(Font_Tag tag);
 Font_Metrics font_metrics_from_tag(Font_Tag tag);
 Font_Tag font_tag_from_path(String path);
