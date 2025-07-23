@@ -3,6 +3,9 @@ CompileFlags:
     - -Wno-pragma-once-outside-header
     - -Wno-pragma-once-in-main-file
     - -Wno-unused-function
+    - -Wno-narrowing
+    - -Wno-implicit-int-conversion 
+    - -Wno-implicit-float-conversion` # float precision loss
 
 Diagnostics:
   UnusedIncludes: None
