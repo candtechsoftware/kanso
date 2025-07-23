@@ -52,7 +52,7 @@ struct UnicodeDecode
     u32 codepoint;
 };
 
-static UnicodeDecode
+static inline UnicodeDecode
 utf8_decode(u8* str, u64 max)
 {
     UnicodeDecode result = {1, 0xFFFD}; // Default to replacement character
@@ -111,7 +111,7 @@ utf8_decode(u8* str, u64 max)
     return result;
 }
 
-static String32
+static inline String32
 string32_from_string(Arena* arena, String in)
 {
     String32 result = {0};

@@ -3,7 +3,9 @@
 #include "base/logger.h"
 #include "base/string_core.h"
 #include "renderer/renderer_core.h"
+#include "font.h"
 #include <cstring>
+#include <stb_truetype.h>
 
 // Global font cache state
 Font_Cache_State* font_cache_state = nullptr;
@@ -369,7 +371,112 @@ font_atlas_region_alloc(Arena* arena, Font_Atlas* atlas, Vec2<s16> needed_size)
 void 
 font_atlas_region_release(Font_Atlas* atlas, Rng2<s16> region)
 {
-    // TODO: Implement region release
+    // Find the node that corresponds to this region
+    Vec2<s16> region_p0 = region.min;
+    Vec2<s16> region_sz = {(s16)(region.max.x - region.min.x), (s16)(region.max.y - region.min.y)};
+    
+    Vec2<s16> current_p0 = {0, 0};
+    Vec2<s16> current_sz = atlas->root_dim;
+    Font_Atlas_Region_Node* node = atlas->root;
+    
+    // Traverse down the tree to find the exact node
+    while (node != nullptr && (current_sz.x != region_sz.x || current_sz.y != region_sz.y))
+    {
+        Vec2<s16> child_size = {(s16)(current_sz.x / 2), (s16)(current_sz.y / 2)};
+        
+        // Determine which quadrant the region is in
+        bool found = false;
+        for (Corner corner = (Corner)0; corner < Corner_COUNT; corner = (Corner)(corner + 1))
+        {
+            Vec2<s32> side_vertex = font_vertex_from_corner(corner);
+            Vec2<s16> child_p0 = {
+                (s16)(current_p0.x + side_vertex.x * child_size.x),
+                (s16)(current_p0.y + side_vertex.y * child_size.y)
+            };
+            
+            if (region_p0.x == child_p0.x && region_p0.y == child_p0.y)
+            {
+                if (node->children[corner] != nullptr)
+                {
+                    node = node->children[corner];
+                    current_p0 = child_p0;
+                    current_sz = child_size;
+                    found = true;
+                    break;
+                }
+            }
+        }
+        
+        if (!found)
+        {
+            // Region not found
+            return;
+        }
+    }
+    
+    // Release the node if found and it's taken
+    if (node != nullptr && (node->flags & Font_Atlas_Region_Flag_Taken))
+    {
+        // Clear the taken flag
+        node->flags = (Font_Atlas_Region_Flags)((u32)node->flags & ~Font_Atlas_Region_Flag_Taken);
+        
+        // Update parent allocated descendants count
+        for (Font_Atlas_Region_Node* p = node->parent; p != nullptr; p = p->parent)
+        {
+            if (p->num_allocated_descendants > 0)
+            {
+                p->num_allocated_descendants -= 1;
+            }
+        }
+        
+        // Update max free sizes in parents
+        for (Font_Atlas_Region_Node* p = node->parent; p != nullptr; p = p->parent)
+        {
+            // Recalculate max free size for each corner
+            for (Corner corner = (Corner)0; corner < Corner_COUNT; corner = (Corner)(corner + 1))
+            {
+                Vec2<s16> max_size = {0, 0};
+                
+                if (p->children[corner] != nullptr)
+                {
+                    Font_Atlas_Region_Node* child = p->children[corner];
+                    
+                    // If child is not taken, use its size
+                    if (!(child->flags & Font_Atlas_Region_Flag_Taken))
+                    {
+                        // Calculate child's actual size based on parent
+                        Vec2<s16> parent_sz = (p->parent != nullptr) ? 
+                            Vec2<s16>{(s16)(current_sz.x * 2), (s16)(current_sz.y * 2)} : 
+                            atlas->root_dim;
+                        Vec2<s16> child_sz = {(s16)(parent_sz.x / 2), (s16)(parent_sz.y / 2)};
+                        
+                        // If child has no allocated descendants, it's fully free
+                        if (child->num_allocated_descendants == 0)
+                        {
+                            max_size = child_sz;
+                        }
+                        else
+                        {
+                            // Otherwise use the max of its children's free sizes
+                            for (Corner child_corner = (Corner)0; child_corner < Corner_COUNT; child_corner = (Corner)(child_corner + 1))
+                            {
+                                if (child->max_free_size[child_corner].x > max_size.x)
+                                {
+                                    max_size.x = child->max_free_size[child_corner].x;
+                                }
+                                if (child->max_free_size[child_corner].y > max_size.y)
+                                {
+                                    max_size.y = child->max_free_size[child_corner].y;
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                p->max_free_size[corner] = max_size;
+            }
+        }
+    }
 }
 
 // Piece array functions
@@ -435,8 +542,48 @@ font_style_from_tag_size_flags(Font_Tag tag, f32 size, Font_Raster_Flags flags)
         node->ascent = metrics.accent * size;
         node->descent = metrics.descent * size;
         
-        // TODO: Calculate column width
-        node->column_width = size * 0.6f; // Rough estimate
+        // Calculate column width using average of common characters
+        Font_Handle font_handle = font_handle_from_tag(tag);
+        Font font = font_from_handle(font_handle);
+        
+        if (font.info != nullptr)
+        {
+            // Calculate scale for the given size
+            f32 scale = stbtt_ScaleForPixelHeight(font.info, size);
+            
+            // Calculate average width using common characters
+            const char* sample_chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            s32 sample_len = (s32)strlen(sample_chars);
+            f32 total_width = 0.0f;
+            s32 valid_chars = 0;
+            
+            for (s32 i = 0; i < sample_len; i++)
+            {
+                s32 advance_width, left_side_bearing;
+                stbtt_GetCodepointHMetrics(font.info, sample_chars[i], &advance_width, &left_side_bearing);
+                
+                if (advance_width > 0)
+                {
+                    total_width += advance_width * scale;
+                    valid_chars++;
+                }
+            }
+            
+            // Use average width if we have valid characters, otherwise use 0.6 * size as fallback
+            if (valid_chars > 0)
+            {
+                node->column_width = total_width / valid_chars;
+            }
+            else
+            {
+                node->column_width = size * 0.6f;
+            }
+        }
+        else
+        {
+            // Fallback if font info is not available
+            node->column_width = size * 0.6f;
+        }
         
         // Initialize hash tables
         node->hash2info_slots_count = 256;
@@ -584,8 +731,152 @@ font_column_size_from_tag_size(Font_Tag tag, f32 size)
 u64 
 font_char_pos_from_tag_size_string_p(Font_Tag tag, f32 size, f32 base_align_px, f32 tab_size_px, String string, f32 p)
 {
-    // TODO: Implement character position from pixel position
-    return 0;
+    // Get font information
+    Font_Handle font_handle = font_handle_from_tag(tag);
+    Font font = font_from_handle(font_handle);
+    
+    if (font.info == nullptr || string.size == 0)
+    {
+        return 0;
+    }
+    
+    // Calculate scale for the given size
+    f32 scale = stbtt_ScaleForPixelHeight(font.info, size);
+    
+    f32 current_x = base_align_px;
+    u64 result_pos = 0;
+    
+    // Iterate through the string
+    for (u32 i = 0; i < string.size; )
+    {
+        // Check if we've passed the target position
+        if (current_x >= p)
+        {
+            // Check if we're closer to current or previous character
+            if (i > 0)
+            {
+                f32 prev_x = current_x;
+                
+                // Get previous character width to find midpoint
+                u32 prev_i = i;
+                while (prev_i > 0 && (string.data[prev_i - 1] & 0xC0) == 0x80)
+                {
+                    prev_i--;
+                }
+                
+                if (prev_i > 0)
+                {
+                    // Get codepoint at prev_i - 1
+                    s32 prev_cp = string.data[prev_i - 1];
+                    if (prev_cp >= 0x80)
+                    {
+                        // Handle UTF-8
+                        s32 bytes_to_read = 0;
+                        if ((prev_cp & 0xE0) == 0xC0) bytes_to_read = 2;
+                        else if ((prev_cp & 0xF0) == 0xE0) bytes_to_read = 3;
+                        else if ((prev_cp & 0xF8) == 0xF0) bytes_to_read = 4;
+                        
+                        if (bytes_to_read > 0 && prev_i - 1 + bytes_to_read <= string.size)
+                        {
+                            prev_cp = 0;
+                            for (s32 j = 0; j < bytes_to_read; j++)
+                            {
+                                prev_cp = (prev_cp << 6) | (string.data[prev_i - 1 + j] & 0x3F);
+                            }
+                        }
+                    }
+                    
+                    s32 advance_width, left_side_bearing;
+                    stbtt_GetCodepointHMetrics(font.info, prev_cp, &advance_width, &left_side_bearing);
+                    f32 char_width = advance_width * scale;
+                    
+                    // Find the midpoint of the previous character
+                    f32 midpoint = prev_x - (char_width / 2.0f);
+                    
+                    if (p < midpoint)
+                    {
+                        // Closer to the start of the previous character
+                        result_pos = prev_i - 1;
+                    }
+                    else
+                    {
+                        // Closer to the current position
+                        result_pos = i;
+                    }
+                }
+                else
+                {
+                    result_pos = i;
+                }
+            }
+            else
+            {
+                result_pos = 0;
+            }
+            return result_pos;
+        }
+        
+        // Decode UTF-8 character
+        s32 codepoint = string.data[i];
+        s32 bytes_consumed = 1;
+        
+        if (codepoint >= 0x80)
+        {
+            // Multi-byte UTF-8
+            if ((codepoint & 0xE0) == 0xC0 && i + 1 < string.size)
+            {
+                codepoint = ((codepoint & 0x1F) << 6) | (string.data[i + 1] & 0x3F);
+                bytes_consumed = 2;
+            }
+            else if ((codepoint & 0xF0) == 0xE0 && i + 2 < string.size)
+            {
+                codepoint = ((codepoint & 0x0F) << 12) | ((string.data[i + 1] & 0x3F) << 6) | (string.data[i + 2] & 0x3F);
+                bytes_consumed = 3;
+            }
+            else if ((codepoint & 0xF8) == 0xF0 && i + 3 < string.size)
+            {
+                codepoint = ((codepoint & 0x07) << 18) | ((string.data[i + 1] & 0x3F) << 12) | 
+                           ((string.data[i + 2] & 0x3F) << 6) | (string.data[i + 3] & 0x3F);
+                bytes_consumed = 4;
+            }
+        }
+        
+        // Handle special characters
+        if (codepoint == '\t')
+        {
+            // Tab handling
+            if (tab_size_px > 0)
+            {
+                f32 next_tab_stop = ((s32)(current_x / tab_size_px) + 1) * tab_size_px;
+                current_x = next_tab_stop;
+            }
+            else
+            {
+                // Default tab width (4 spaces)
+                f32 space_width = font_column_size_from_tag_size(tag, size);
+                current_x += space_width * 4;
+            }
+        }
+        else if (codepoint == '\n' || codepoint == '\r')
+        {
+            // Newline - position is at the end of the line
+            result_pos = i;
+            return result_pos;
+        }
+        else
+        {
+            // Regular character
+            s32 advance_width, left_side_bearing;
+            stbtt_GetCodepointHMetrics(font.info, codepoint, &advance_width, &left_side_bearing);
+            current_x += advance_width * scale;
+        }
+        
+        i += bytes_consumed;
+        result_pos = i;
+    }
+    
+    // If we've reached the end without finding the position, return the end
+    return string.size;
 }
 
 // Metrics functions
