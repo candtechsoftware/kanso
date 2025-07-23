@@ -68,5 +68,9 @@ __asan_unpoison_memory_region(void const volatile* addr, size_t size);
 #define MemoryZero(s, z) memset((s), 0, (z))
 #define MemoryZeroStruct(s) MemoryZero((s), sizeof(*(s)))
 
+#define MemoryCopy(dst, src, size)    memmove((dst), (src), (size))
+#define MemorySet(dst, byte, size)    memset((dst), (byte), (size))
+#define MemoryCompare(a, b, size)     memcmp((a), (b), (size))
+#
 // Alignment
 #define AlignPow2(x, b) (((x) + (b) - 1) & (~((b) - 1)))

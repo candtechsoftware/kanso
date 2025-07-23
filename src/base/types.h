@@ -250,6 +250,15 @@ operator*(const Mat3x3<T>& a, const Mat3x3<T>& b)
 }
 
 template <typename T>
+inline Mat3x3<T>
+mat3x3_identity()
+{
+    Mat3x3<T> result{};
+    result.m[0][0] = result.m[1][1] = result.m[2][2] = 1;
+    return result;
+}
+
+template <typename T>
 inline Mat4x4<T>
 mat4x4_identity()
 {

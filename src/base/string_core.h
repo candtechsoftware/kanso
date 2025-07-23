@@ -3,6 +3,7 @@
 
 #include "arena.h"
 #include "types.h"
+#include "util.h"
 
 struct String
 {
@@ -30,7 +31,7 @@ operator==(const String a, const String b)
     {
         return false;
     }
-    return std::memcmp(a.data, b.data, a.size) == 0;
+    return MemoryCopy(a.data, b.data, a.size) == 0;
 }
 
 bool inline
@@ -131,6 +132,30 @@ string32_from_string(Arena* arena, String in)
         str[size] = 0;
         arena_pop(arena, (cap - size) * 4);
         result = String32{str, size};
+    }
+    return result;
+}
+
+inline bool
+string_match(String a, String b)
+{
+    if (a.size != b.size) return false;
+    for (u32 i = 0; i < a.size; i++)
+    {
+        if (a.data[i] != b.data[i]) return false;
+    }
+    return true;
+}
+
+inline String
+push_string_copy(Arena* arena, String str)
+{
+    String result = {0};
+    if (str.size > 0)
+    {
+        result.data = push_array(arena, u8, str.size);
+        result.size = str.size;
+        MemoryCopy(result.data, str.data, str.size);
     }
     return result;
 }

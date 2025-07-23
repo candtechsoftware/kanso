@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/time.h>
 #include <time.h>
 
@@ -7,8 +8,10 @@
 #include "base/logger.h"
 #include "base/string_core.h"
 #include "font/font.h"
+#include "font/font_cache.h"
 #include "os/os.h"
 #include "renderer/renderer_core.h"
+#include "draw/draw.h"
 
 #include <GLFW/glfw3.h>
 
@@ -25,6 +28,8 @@ struct App
     Renderer_Handle white_texture;
     Renderer_Handle cube_vertices;
     Renderer_Handle cube_indices;
+    Font_Tag font;
+    String fps_string;
 
     // 3D scene state
     f32 rotation;
@@ -76,6 +81,11 @@ static void
 app_draw(App* app)
 {
     ZoneScoped;
+    
+    // Begin draw frame
+    draw_begin_frame(app->font);
+    Draw_Bucket* bucket = draw_bucket_make();
+    draw_push_bucket(bucket);
 
     // Get current time
     struct timespec now;
@@ -131,10 +141,29 @@ app_draw(App* app)
             log_timer = 0;
         }
 
+        // Update FPS text periodically
+        static f32 fps_update_timer = 0;
+        static int last_fps = -1;
+        fps_update_timer += elapsed;
+        
+        int current_fps = (int)avg_fps;
+        
+        // Update when FPS changes significantly or every second
+        if (!font_tag_match(app->font, font_tag_zero()) && 
+            (fps_update_timer >= 1.0f || abs(current_fps - last_fps) > 5))
+        {
+            fps_update_timer = 0;
+            last_fps = current_fps;
+            
+            // Create FPS string
+            char fps_buffer[32];
+            snprintf(fps_buffer, sizeof(fps_buffer), "FPS: %d", current_fps);
+            app->fps_string = push_string_copy(app->frame_arena, cstr_to_string(fps_buffer, strlen(fps_buffer)));
+        }
+
         app->frames = 0;
         app->fps_start_time = now;
     }
-    arena_clear(app->frame_arena);
 
     int width, height;
     glfwGetFramebufferSize(app->window, &width, &height);
@@ -145,60 +174,32 @@ app_draw(App* app)
         renderer_window_begin_frame(app->window, app->window_equip);
     }
 
-    Renderer_Pass_List passes = list_make<Renderer_Pass>();
-
     {
         ZoneScopedN("UI Pass Setup");
-        Renderer_Pass* ui_pass = renderer_pass_from_kind(app->frame_arena, &passes, Renderer_Pass_Kind_UI);
-        ui_pass->params_ui->rects = list_make<Renderer_Batch_Group_2D_Node>();
-
-        Renderer_Batch_Group_2D_Node* group = list_push_new(app->frame_arena, &ui_pass->params_ui->rects);
-        group->params.tex = app->white_texture;
-        group->params.tex_sample_kind = Renderer_Tex_2D_Sample_Kind_Linear;
-        group->params.xform = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
-        group->params.clip = {{0, 0}, {(f32)width, (f32)height}};
-        group->params.transparency = 0.0f;
-        group->batches = renderer_batch_list_make(sizeof(Renderer_Rect_2D_Inst));
-
-        Renderer_Rect_2D_Inst* rect1 = (Renderer_Rect_2D_Inst*)
-            renderer_batch_list_push_inst(app->frame_arena, &group->batches, sizeof(Renderer_Rect_2D_Inst), 256);
-        rect1->dst = {{50, 50}, {200, 150}};
-        rect1->src = {{0, 0}, {1, 1}};
-        rect1->colors[0] = {1, 0, 0, 1};
-        rect1->colors[1] = {0, 1, 0, 1};
-        rect1->colors[2] = {0, 0, 1, 1};
-        rect1->colors[3] = {1, 1, 0, 1};
-        rect1->corner_radii[0] = 10;
-        rect1->corner_radii[1] = 10;
-        rect1->corner_radii[2] = 10;
-        rect1->corner_radii[3] = 10;
-        rect1->border_thickness = 2;
-        rect1->edge_softness = 0.5;
-        rect1->white_texture_override = 1;
-
-        Renderer_Rect_2D_Inst* rect2 = (Renderer_Rect_2D_Inst*)
-            renderer_batch_list_push_inst(app->frame_arena, &group->batches, sizeof(Renderer_Rect_2D_Inst), 256);
-        rect2->dst = {{width - 250.0f, 50}, {width - 50.0f, 250}};
-        rect2->src = {{0, 0}, {1, 1}};
-        rect2->colors[0] = {0.5f, 0.5f, 1, 0.8f};
-        rect2->colors[1] = {0.5f, 0.5f, 1, 0.8f};
-        rect2->colors[2] = {0.5f, 0.5f, 1, 0.8f};
-        rect2->colors[3] = {0.5f, 0.5f, 1, 0.8f};
-        rect2->corner_radii[0] = 20;
-        rect2->corner_radii[1] = 20;
-        rect2->corner_radii[2] = 20;
-        rect2->corner_radii[3] = 20;
-        rect2->border_thickness = 0;
-        rect2->edge_softness = 1;
-        rect2->white_texture_override = 1;
+        
+        // Draw colored rectangles using draw API
+        Renderer_Rect_2D_Inst* rect1 = draw_rect({{50, 50}, {200, 150}}, {1, 0, 0, 1}, 10, 2, 0.5);
+        if (rect1)
+        {
+            // Set gradient colors
+            rect1->colors[0] = {1, 0, 0, 1};
+            rect1->colors[1] = {0, 1, 0, 1};
+            rect1->colors[2] = {0, 0, 1, 1};
+            rect1->colors[3] = {1, 1, 0, 1};
+        }
+        
+        draw_rect({{width - 250.0f, 50}, {width - 50.0f, 250}}, {0.5f, 0.5f, 1, 0.8f}, 20, 0, 1);
+        
+        // Draw FPS text
+        if (app->fps_string.size > 0)
+        {
+            draw_text({10, 10}, app->fps_string, app->font, 32.0f, {1, 1, 1, 1});
+        }
     }
 
     {
         ZoneScopedN("3D Pass Setup");
-        Renderer_Pass* geo_pass = renderer_pass_from_kind(app->frame_arena, &passes, Renderer_Pass_Kind_Geo_3D);
-        geo_pass->params_geo_3d->viewport = {{0, 0}, {(f32)width, (f32)height}};
-        geo_pass->params_geo_3d->clip = {{0, 0}, {(f32)width, (f32)height}};
-
+        
         // Only recalculate projection matrix if window size changed
         if (width != app->last_width || height != app->last_height)
         {
@@ -207,38 +208,25 @@ app_draw(App* app)
             app->last_width = width;
             app->last_height = height;
         }
-
-        geo_pass->params_geo_3d->projection = app->cached_projection;
-        geo_pass->params_geo_3d->view = app->cached_view;
-
-        geo_pass->params_geo_3d->mesh_batches.slots_count = 16;
-        geo_pass->params_geo_3d->mesh_batches.slots = push_array_zero(app->frame_arena, Renderer_Batch_Group_3D_Map_Node*, 16);
-
-        Renderer_Batch_Group_3D_Map_Node* mesh_node = push_struct_zero(app->frame_arena, Renderer_Batch_Group_3D_Map_Node);
-        mesh_node->hash = 1;
-        mesh_node->params.mesh_vertices = app->cube_vertices;
-        mesh_node->params.mesh_indices = app->cube_indices;
-        mesh_node->params.mesh_geo_topology = Renderer_Geo_Topology_Kind_Triangles;
-        mesh_node->params.mesh_geo_vertex_flags = Renderer_Geo_Vertex_Flag_Tex_Coord |
-                                                  Renderer_Geo_Vertex_Flag_Normals |
-                                                  Renderer_Geo_Vertex_Flag_RGBA;
-        mesh_node->params.albedo_tex = app->white_texture;
-        mesh_node->params.albedo_tex_sample_kind = Renderer_Tex_2D_Sample_Kind_Linear;
-        mesh_node->params.xform = mat4x4_identity<f32>();
-        mesh_node->batches = renderer_batch_list_make(sizeof(Renderer_Mesh_3D_Inst));
-
-        geo_pass->params_geo_3d->mesh_batches.slots[0] = mesh_node;
-
-        Renderer_Mesh_3D_Inst* inst = (Renderer_Mesh_3D_Inst*)
-            renderer_batch_list_push_inst(app->frame_arena, &mesh_node->batches, sizeof(Renderer_Mesh_3D_Inst), 16);
-        inst->xform = mat4x4_rotate_y(app->rotation) * mat4x4_scale(1.0f, 1.0f, 1.0f);
-
+        
+        // Begin 3D rendering
+        draw_geo3d_begin({{0, 0}, {(f32)width, (f32)height}}, app->cached_view, app->cached_projection);
+        
+        // Draw mesh
+        Mat4x4<f32> transform = mat4x4_rotate_y(app->rotation) * mat4x4_scale(1.0f, 1.0f, 1.0f);
+        draw_mesh(app->cube_vertices, app->cube_indices, 
+                  Renderer_Geo_Topology_Kind_Triangles,
+                  Renderer_Geo_Vertex_Flag_Tex_Coord | Renderer_Geo_Vertex_Flag_Normals | Renderer_Geo_Vertex_Flag_RGBA,
+                  app->white_texture, transform);
+        
         app->rotation += 1.0f * app->frame_time; // Rotate at 1 radian per second
     }
 
-    renderer_window_submit(app->window, app->window_equip, &passes);
+    draw_pop_bucket();
+    draw_submit_bucket(app->window, app->window_equip, bucket);
     renderer_window_end_frame(app->window, app->window_equip);
     renderer_end_frame();
+    draw_end_frame();
 }
 
 int
@@ -275,8 +263,18 @@ main(void)
     app->frame_time = 0.016667; // Default to 60 FPS frame time
 
     font_init();
+    font_cache_init();
 
-    font_open(to_string("assets/fonts/NotoSans-VariableFont_wdth,wght.ttf"));
+    Font_Tag font = font_tag_from_path(to_string("assets/fonts/NotoSans-VariableFont_wdth,wght.ttf"));
+    if (font_tag_match(font, font_tag_zero()))
+    {
+        log_error("Failed to load font");
+    }
+    else
+    {
+        log_info("Font loaded successfully");
+        app->font = font;
+    }
 
     // Initialize FPS history
     for (int i = 0; i < App::FPS_HISTORY_SIZE; i++)
@@ -397,6 +395,7 @@ main(void)
 
     while (!glfwWindowShouldClose(window))
     {
+        arena_clear(app->frame_arena);
         app_draw(app);
         {
             ZoneScopedN("Frame Submit");

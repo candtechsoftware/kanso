@@ -80,7 +80,7 @@ vertex VertexOutput rect_vertex_main(
     output.position = float4(2.0 * dst_position / uniforms.viewport_size_px - 1.0, 0.0, 1.0);
     output.position.y = -output.position.y;
     output.sdf_sample_pos = dst_position - dst_center;
-    output.texcoord_pct = dst_verts_pct;
+    output.texcoord_pct = src_position;
     output.rect_half_size_px = dst_half_size;
     output.tint = color;
     output.corner_radius = corner_radius;

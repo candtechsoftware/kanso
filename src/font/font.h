@@ -35,6 +35,13 @@ struct Font_Metrics
     f32 line_gap;
 };
 
+struct Font_Raster_Result
+{
+    u8* atlas_data;
+    Vec2<s16> atlas_dim;
+    bool valid;
+};
+
 
 
 // TOOD(Alex) are we going to need this or should I just pass the 
@@ -57,18 +64,18 @@ void
 font_close(Font_Handle font);
 
 Font_Metrics
-Font_mettrics_from_font(Font_Handle font);
+font_metrics_from_font(Font_Handle font);
 
-void
-font_raster(Font_Handle font);
+Font_Raster_Result
+font_raster(Arena* arena, Font_Handle handle, f32 size, String string);
 
 // TODO(Alex) we want to no use the stbtt types here and have this
 // be under an specific impl when we want to use other providers or
 // when we want to have our own.
-static inline Font
+Font
 font_from_handle(Font_Handle handle);
 
-static inline Font_Handle
-font_to_handle(Font Font);
+Font_Handle
+font_to_handle(Font font);
 
 #endif

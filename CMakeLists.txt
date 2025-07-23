@@ -152,6 +152,7 @@ set(SOURCES
     src/base/logger.cpp
     src/font/font.cpp
     src/font/font_cache.cpp
+    src/draw/draw.cpp
 )
 
 # Add Tracy implementation
@@ -199,6 +200,7 @@ set(HEADERS
     src/renderer/renderer_vulkan.h
     src/font/font.h
     src/font/font_cache.h
+    src/draw/draw.h
 )
 
 # Build meta program first
