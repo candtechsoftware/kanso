@@ -1794,6 +1794,9 @@ void renderer_window_begin_frame(void* window, Renderer_Handle window_equip)
     // Reset fence
     vkResetFences(g_vulkan->device, 1, &equip->in_flight_fences[equip->current_frame]);
     
+    // Reset descriptor pool to prevent texture leakage between frames
+    vkResetDescriptorPool(g_vulkan->device, g_vulkan->descriptor_pool, 0);
+    
     // Begin command buffer
     VkCommandBuffer cmd = equip->command_buffers[equip->current_frame];
     vkResetCommandBuffer(cmd, 0);
