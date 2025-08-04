@@ -118,8 +118,8 @@ app_draw(App* app)
         f32 avg_fps = 0;
         f32 min_fps = 999999.0f;
         f32 max_fps = 0.0f;
-        int samples = app->fps_history_count > 0 ? app->fps_history_count : 1;
-        for (int i = 0; i < samples; i++)
+        u32 samples = app->fps_history_count > 0 ? app->fps_history_count : 1;
+        for (u32 i = 0; i < samples; i++)
         {
             avg_fps += app->fps_history[i];
             if (app->fps_history[i] < min_fps)
@@ -127,7 +127,7 @@ app_draw(App* app)
             if (app->fps_history[i] > max_fps)
                 max_fps = app->fps_history[i];
         }
-        avg_fps /= samples;
+        avg_fps /= (f32)samples;
 
         // Log every second with more detail
         static f64 log_timer = 0;
@@ -142,22 +142,22 @@ app_draw(App* app)
         }
 
         // Update FPS text periodically
-        static f32 fps_update_timer = 0;
-        static int last_fps = -1;
+        static f64 fps_update_timer = 0;
+        static s64 last_fps = -1;
         fps_update_timer += elapsed;
 
-        int current_fps = (int)avg_fps;
+        f64 current_fps = avg_fps;
 
         // Update when FPS changes significantly or every second
         if (!(app->font == font_tag_zero()) &&
-            (fps_update_timer >= 1.0f || abs(current_fps - last_fps) > 5))
+            (fps_update_timer >= 1.0f || abs(current_fps - (f64)last_fps) > 5))
         {
             fps_update_timer = 0;
-            last_fps = current_fps;
+            last_fps = (s64)current_fps;
 
             // Create FPS string
             char fps_buffer[32];
-            snprintf(fps_buffer, sizeof(fps_buffer), "FPS: %d", current_fps);
+            snprintf(fps_buffer, sizeof(fps_buffer), "FPS: %f", current_fps);
             app->fps_string = push_string_copy(app->frame_arena, cstr_to_string(fps_buffer, strlen(fps_buffer)));
         }
 
@@ -188,7 +188,7 @@ app_draw(App* app)
             rect1->colors[3] = {1, 1, 0, 1};
         }
 
-        draw_rect({{width - 250.0f, 50}, {width - 50.0f, 250}}, {0.5f, 0.5f, 1, 0.8f}, 20, 0, 1);
+        draw_rect({{(f32)width - 250.0f, 50}, {(f32)width - 50.0f, 250}}, {0.5f, 0.5f, 1, 0.8f}, 20, 0, 1);
 
         // Draw FPS text
         if (app->fps_string.size > 0)
@@ -219,7 +219,7 @@ app_draw(App* app)
                   Renderer_Geo_Vertex_Flag_Tex_Coord | Renderer_Geo_Vertex_Flag_Normals | Renderer_Geo_Vertex_Flag_RGBA,
                   app->white_texture, transform);
 
-        app->rotation += 1.0f * app->frame_time; // Rotate at 1 radian per second
+        app->rotation += f32(1.0f * app->frame_time); // Rotate at 1 radian per second
     }
 
     draw_pop_bucket();
