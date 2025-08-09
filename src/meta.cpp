@@ -23,17 +23,17 @@ struct ShaderSource {
 // List of shaders to compile
 static ShaderSource shaders[] = {
     // Metal shaders
-    {"renderer_metal_rect_shader_src", "src/shaders/metal/rect.metal", "metal"},
-    {"renderer_metal_blur_shader_src", "src/shaders/metal/blur.metal", "metal"},
-    {"renderer_metal_mesh_shader_src", "src/shaders/metal/mesh.metal", "metal"},
+    {"renderer_metal_rect_shader_src", "src/core/renderer/shaders/metal/rect.metal", "metal"},
+    {"renderer_metal_blur_shader_src", "src/core/renderer/shaders/metal/blur.metal", "metal"},
+    {"renderer_metal_mesh_shader_src", "src/core/renderer/shaders/metal/mesh.metal", "metal"},
     
     // GLSL shaders for Vulkan
-    {"renderer_vulkan_rect_vert_shader_src", "src/shaders/glsl/rect.vert", "glsl"},
-    {"renderer_vulkan_rect_frag_shader_src", "src/shaders/glsl/rect.frag", "glsl"},
-    {"renderer_vulkan_blur_vert_shader_src", "src/shaders/glsl/blur.vert", "glsl"},
-    {"renderer_vulkan_blur_frag_shader_src", "src/shaders/glsl/blur.frag", "glsl"},
-    {"renderer_vulkan_mesh_vert_shader_src", "src/shaders/glsl/mesh.vert", "glsl"},
-    {"renderer_vulkan_mesh_frag_shader_src", "src/shaders/glsl/mesh.frag", "glsl"},
+    {"renderer_vulkan_rect_vert_shader_src", "src/core/renderer/shaders/glsl/rect.vert", "glsl"},
+    {"renderer_vulkan_rect_frag_shader_src", "src/core/renderer/shaders/glsl/rect.frag", "glsl"},
+    {"renderer_vulkan_blur_vert_shader_src", "src/core/renderer/shaders/glsl/blur.vert", "glsl"},
+    {"renderer_vulkan_blur_frag_shader_src", "src/core/renderer/shaders/glsl/blur.frag", "glsl"},
+    {"renderer_vulkan_mesh_vert_shader_src", "src/core/renderer/shaders/glsl/mesh.vert", "glsl"},
+    {"renderer_vulkan_mesh_frag_shader_src", "src/core/renderer/shaders/glsl/mesh.frag", "glsl"},
 };
 
 std::string read_file(const char* path)
@@ -171,7 +171,7 @@ void write_shader_spirv(FILE* out, const char* name, const Dynamic_Array<u8>* sp
     if (spirv_data->size % 16 != 0) fprintf(out, "\n");
     
     fprintf(out, "};\n");
-    fprintf(out, "const unsigned int %s_size = %llu;\n\n", name, spirv_data->size);
+    fprintf(out, "const unsigned int %s_size = %lu;\n\n", name, spirv_data->size);
 }
 
 int main(int argc, char** argv)

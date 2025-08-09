@@ -1,5 +1,5 @@
 #include "arena.h"
-#include "../os/os.h"
+#include "os.h"
 #include "util.h"
 #include "profiler.h"
 

@@ -1,5 +1,4 @@
-#ifndef ARRAY_H
-#define ARRAY_H
+#pragma once
 
 #include "base.h"
 #include "arena.h"
@@ -158,4 +157,3 @@ dynamic_array_end(Dynamic_Array<T>* array)
     return array->data + array->size;
 }
 
-#endif

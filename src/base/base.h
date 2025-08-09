@@ -1,5 +1,4 @@
-#ifndef BASE_H
-#define BASE_H
+#pragma once
 
 #include <cmath>
 #include <stddef.h>
@@ -14,4 +13,3 @@
 #include "types.h"
 #include "util.h"
 
-#endif // BASE_H

@@ -1,10 +1,11 @@
 #include "renderer_vulkan.h"
-#include "../base/base.h"
-#include "../base/array.h"
-#include "../base/logger.h"
-#include "../base/profiler.h"
-#include "../os/os.h"
+#include "base/base.h"
+#include "base/array.h"
+#include "base/logger.h"
+#include "base/profiler.h"
+#include "base/os.h"
 
+#include <vulkan/vulkan.h>
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
@@ -14,6 +15,10 @@
 #include <GLFW/glfw3native.h>
 #include <vulkan/vulkan_wayland.h>
 #include <vulkan/vulkan_xlib.h>
+// X11 defines Font as a typedef which conflicts with our Font struct
+#ifdef Font
+#undef Font
+#endif
 #endif
 
 #include <cstring>

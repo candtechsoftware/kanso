@@ -1,8 +1,8 @@
 #include "renderer_vulkan.h"
-#include "../base/base.h"
-#include "../base/logger.h"
-#include "../base/profiler.h"
-#include "../os/os.h"
+#include "base/base.h"
+#include "base/logger.h"
+#include "base/profiler.h"
+#include "base/os.h"
 
 // Helper to allocate from a dynamic buffer
 struct Dynamic_Buffer

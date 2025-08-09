@@ -1,5 +1,4 @@
-#ifndef LOGGER_H
-#define LOGGER_H
+#pragma once
 
 #include "types.h"
 #include <stdio.h>
@@ -32,4 +31,3 @@ void _log_impl(LogLevel level, const char* file, u32 line, const char* fmt, ...)
 #define log_warn(fmt, ...) _log_impl(LOG_LEVEL_WARN, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
 #define log_error(fmt, ...) _log_impl(LOG_LEVEL_ERROR, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
 
-#endif // LOGGER_H

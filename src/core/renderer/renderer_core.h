@@ -1,7 +1,6 @@
-#ifndef RENDERER_CORE_H
-#define RENDERER_CORE_H
+#pragma once
 
-#include "../base/base.h"
+#include "base/base.h"
 
 enum
 {
@@ -279,4 +278,3 @@ renderer_window_submit(void* window, Renderer_Handle window_equip, Renderer_Pass
 #else
 #endif
 
-#endif // RENDERER_CORE_H

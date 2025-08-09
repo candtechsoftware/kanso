@@ -1,8 +1,7 @@
-#ifndef RENDERER_METAL_H
-#define RENDERER_METAL_H
+#pragma once
 
-#include "../base/arena.h"
-#include "../base/base.h"
+#include "base/arena.h"
+#include "base/base.h"
 #include "renderer_core.h"
 
 #ifdef __OBJC__

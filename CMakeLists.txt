@@ -144,15 +144,9 @@ else()
     message(FATAL_ERROR "Unsupported platform. Only macOS (Metal) and Linux (Vulkan) are supported.")
 endif()
 
-# Source files
+# Source files - Unity build, only main.cpp is needed
 set(SOURCES
     src/main.cpp
-    src/os/os.cpp
-    src/base/arena.cpp
-    src/base/logger.cpp
-    src/font/font.cpp
-    src/font/font_cache.cpp
-    src/draw/draw.cpp
 )
 
 # Add Tracy implementation
@@ -165,49 +159,30 @@ if(ENABLE_TRACY)
     endif()
 endif()
 
-# Add renderer sources based on platform
-if(USE_METAL_RENDERER)
-    list(APPEND SOURCES 
-        src/renderer/renderer_metal.mm
-        src/renderer/renderer_metal_shaders.mm
-        src/renderer/renderer_metal_passes.mm
-    )
-    # Enable Objective-C++ for Metal files
-    set_source_files_properties(
-        src/renderer/renderer_metal.mm
-        src/renderer/renderer_metal_shaders.mm
-        src/renderer/renderer_metal_passes.mm
-        PROPERTIES COMPILE_FLAGS "-x objective-c++"
-    )
-elseif(USE_VULKAN_RENDERER)
-    list(APPEND SOURCES 
-        src/renderer/renderer_vulkan.cpp
-        src/renderer/renderer_vulkan_shaders.cpp
-        src/renderer/renderer_vulkan_passes.cpp
-    )
-endif()
+# Unity build - renderer sources are included via main.cpp
+# Note: Metal .mm files are included conditionally in renderer_inc.cpp
 
 # Header files
 set(HEADERS
-    src/os/os.h
+    src/base/os.h
     src/base/base.h
     src/base/arena.h
     src/base/list.h
     src/base/types.h
     src/base/logger.h
-    src/renderer/renderer_core.h
-    src/renderer/renderer_metal.h
-    src/renderer/renderer_vulkan.h
-    src/font/font.h
-    src/font/font_cache.h
-    src/draw/draw.h
+    src/core/renderer/renderer_core.h
+    src/core/renderer/renderer_metal.h
+    src/core/renderer/renderer_vulkan.h
+    src/core/font/font.h
+    src/core/font/font_cache.h
+    src/core/draw/draw.h
 )
 
 # Build meta program first
 add_executable(meta 
     src/meta.cpp
     src/base/arena.cpp
-    src/os/os.cpp
+    src/base/os.cpp
 )
 
 # Add Tracy implementation to meta if enabled
@@ -218,8 +193,12 @@ if(ENABLE_TRACY)
 endif()
 
 # Include directories for meta
-target_include_directories(meta PRIVATE src)
-target_include_directories(meta PRIVATE third_party)
+target_include_directories(meta PRIVATE 
+    src
+    src/base
+    src/core
+    third_party
+)
 
 set_target_properties(meta PROPERTIES 
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
@@ -228,39 +207,47 @@ set_target_properties(meta PROPERTIES
 # List shader dependencies based on platform
 if(USE_METAL_RENDERER)
     set(SHADER_DEPS
-        ${CMAKE_SOURCE_DIR}/src/shaders/metal/rect.metal
-        ${CMAKE_SOURCE_DIR}/src/shaders/metal/blur.metal
-        ${CMAKE_SOURCE_DIR}/src/shaders/metal/mesh.metal
+        ${CMAKE_SOURCE_DIR}/src/core/renderer/shaders/metal/rect.metal
+        ${CMAKE_SOURCE_DIR}/src/core/renderer/shaders/metal/blur.metal
+        ${CMAKE_SOURCE_DIR}/src/core/renderer/shaders/metal/mesh.metal
     )
 elseif(USE_VULKAN_RENDERER)
     set(SHADER_DEPS
-        ${CMAKE_SOURCE_DIR}/src/shaders/glsl/rect.vert
-        ${CMAKE_SOURCE_DIR}/src/shaders/glsl/rect.frag
-        ${CMAKE_SOURCE_DIR}/src/shaders/glsl/blur.vert
-        ${CMAKE_SOURCE_DIR}/src/shaders/glsl/blur.frag
-        ${CMAKE_SOURCE_DIR}/src/shaders/glsl/mesh.vert
-        ${CMAKE_SOURCE_DIR}/src/shaders/glsl/mesh.frag
+        ${CMAKE_SOURCE_DIR}/src/core/renderer/shaders/glsl/rect.vert
+        ${CMAKE_SOURCE_DIR}/src/core/renderer/shaders/glsl/rect.frag
+        ${CMAKE_SOURCE_DIR}/src/core/renderer/shaders/glsl/blur.vert
+        ${CMAKE_SOURCE_DIR}/src/core/renderer/shaders/glsl/blur.frag
+        ${CMAKE_SOURCE_DIR}/src/core/renderer/shaders/glsl/mesh.vert
+        ${CMAKE_SOURCE_DIR}/src/core/renderer/shaders/glsl/mesh.frag
     )
 endif()
 
 # Generate shader header
 add_custom_command(
-    OUTPUT ${CMAKE_SOURCE_DIR}/src/generated.h
-    COMMAND meta ${CMAKE_SOURCE_DIR}/src/generated.h ${SHADER_PLATFORM}
+    OUTPUT ${CMAKE_SOURCE_DIR}/src/generated/generated.h
+    COMMAND meta ${CMAKE_SOURCE_DIR}/src/generated/generated.h ${SHADER_PLATFORM}
     DEPENDS meta ${SHADER_DEPS}
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     COMMENT "Generating shader header"
 )
 
 # Add generated header as a source so it gets built
-list(APPEND HEADERS src/generated.h)
+list(APPEND HEADERS src/generated/generated.h)
 
 # Create executable
 add_executable(kanso ${SOURCES} ${HEADERS})
 
-# Include directories
-target_include_directories(kanso PRIVATE src)
-target_include_directories(kanso PRIVATE third_party)
+# Include directories - allows clean includes without ../
+target_include_directories(kanso PRIVATE 
+    src
+    src/base
+    src/core
+    src/core/draw
+    src/core/font
+    src/core/renderer
+    src/generated
+    third_party
+)
 
 # Link libraries
 if(USE_METAL_RENDERER)

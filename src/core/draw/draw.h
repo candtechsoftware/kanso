@@ -1,5 +1,4 @@
-#ifndef DRAW_H
-#define DRAW_H
+#pragma once
 
 #include "base/base.h"
 #include "base/types.h"
@@ -117,4 +116,3 @@ void draw_text_run_list(Vec2<f32> p, Draw_Text_Run_List* list);
 #define Draw_ClipScope(v) DEFER_LOOP(draw_push_clip(v), draw_pop_clip())
 #define Draw_TransparencyScope(v) DEFER_LOOP(draw_push_transparency(v), draw_pop_transparency())
 
-#endif // DRAW_H

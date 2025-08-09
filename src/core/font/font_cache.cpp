@@ -5,7 +5,7 @@
 #include "font.h"
 #include "renderer/renderer_core.h"
 #include <cstring>
-#include <stb_truetype.h>
+#include "stb_truetype_impl.h"
 
 // Global font cache state
 Font_Cache_State* font_cache_state = nullptr;
@@ -544,7 +544,7 @@ font_style_from_tag_size_flags(Font_Tag tag, f32 size, Font_Raster_Flags flags)
 
         // Calculate column width using average of common characters
         Font_Handle font_handle = font_handle_from_tag(tag);
-        Font font = font_from_handle(font_handle);
+        Font_Info font = font_from_handle(font_handle);
 
         if (font.info != nullptr)
         {
@@ -733,7 +733,7 @@ font_char_pos_from_tag_size_string_p(Font_Tag tag, f32 size, f32 base_align_px, 
 {
     // Get font information
     Font_Handle font_handle = font_handle_from_tag(tag);
-    Font font = font_from_handle(font_handle);
+    Font_Info font = font_from_handle(font_handle);
 
     if (font.info == nullptr || string.size == 0)
     {

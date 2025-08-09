@@ -1,4 +1,5 @@
 
+#pragma once
 
 // Compiler detection
 #if defined(__clang__)

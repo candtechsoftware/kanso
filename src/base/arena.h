@@ -1,7 +1,7 @@
-#ifndef ARENA_H
-#define ARENA_H
+#pragma once
 
 #include "types.h"
+#include "util.h"
 
 #define ARENA_HEADER_SIZE 128
 
@@ -84,4 +84,3 @@ scratch_end(Scratch* scratch);
 #define push_array_aligned(a, T, c, align) (T *)MemoryZero(push_array_no_zero_aligned(a, T, c, align), sizeof(T)*(c))
 #define push_array_no_zero(a, T, c) push_array_no_zero_aligned(a, T, c, ((8) > (alignof(T)) ? (8) : (alignof(T))))
 
-#endif // ARENA_H

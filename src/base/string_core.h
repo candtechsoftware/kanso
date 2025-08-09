@@ -1,5 +1,4 @@
-#ifndef STRING_H
-#define STRING_H
+#pragma once
 
 #include "arena.h"
 #include "types.h"
@@ -160,4 +159,3 @@ push_string_copy(Arena* arena, String str)
     return result;
 }
 
-#endif

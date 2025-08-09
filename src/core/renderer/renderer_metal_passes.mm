@@ -1,8 +1,8 @@
 #include "renderer_metal.h"
 #include "renderer_metal_internal.h"
-#include "../base/logger.h"
-#include "../base/base.h"
-#include "../base/profiler.h"
+#include "base/logger.h"
+#include "base/base.h"
+#include "base/profiler.h"
 
 #import <Metal/Metal.h>
 #import <simd/simd.h>

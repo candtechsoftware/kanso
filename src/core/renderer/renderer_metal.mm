@@ -1,6 +1,6 @@
 #include "renderer_metal.h"
-#include "../base/base.h"
-#include "../base/logger.h"
+#include "base/base.h"
+#include "base/logger.h"
 #include "renderer_metal_internal.h"
 #include <cassert>
 #include <cstring>
@@ -17,7 +17,7 @@
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
 
-#include "../base/profiler.h"
+#include "base/profiler.h"
 
 Renderer_Metal_State* r_metal_state = nullptr;
 

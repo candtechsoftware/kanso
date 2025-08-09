@@ -1,5 +1,4 @@
-#ifndef LIST_H
-#define LIST_H
+#pragma once
 
 #include "arena.h"
 #include "profiler.h"
@@ -69,4 +68,3 @@ list_push_new(Arena* arena, List<T>* list)
     return &node->v;
 }
 
-#endif // LIST_H

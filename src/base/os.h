@@ -1,4 +1,6 @@
-#include "../base/base.h"
+#pragma once
+
+#include "base.h"
 #include <sys/mman.h>
 #include <unistd.h>
 

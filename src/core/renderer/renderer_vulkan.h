@@ -1,9 +1,8 @@
-#ifndef RENDERER_VULKAN_H
-#define RENDERER_VULKAN_H
+#pragma once
 
-#include "../base/base.h"
-#include "../base/array.h"
-#include "../base/list.h"
+#include "base/base.h"
+#include "base/array.h"
+#include "base/list.h"
 #include "renderer_core.h"
 #include <vulkan/vulkan.h>
 
@@ -189,4 +188,3 @@ void renderer_vulkan_copy_buffer_to_image(VkBuffer buffer, VkImage image, u32 wi
 VkCommandBuffer renderer_vulkan_begin_single_time_commands();
 void renderer_vulkan_end_single_time_commands(VkCommandBuffer command_buffer);
 
-#endif // RENDERER_VULKAN_H

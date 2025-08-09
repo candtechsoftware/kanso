@@ -6,8 +6,7 @@
 #include <cmath>
 #include <cstdio>
 
-#define STB_TRUETYPE_IMPLEMENTATION
-#include <stb_truetype.h>
+#include "stb_truetype_impl.h"
 
 Font_State* f_state = nullptr;
 
@@ -70,7 +69,7 @@ Font_Handle
 font_open(String path)
 {
     String font_file = load_file(path);
-    Font font = {};
+    Font_Info font = {};
     
     // Allocate memory for stbtt_fontinfo
     font.info = push_struct(f_state->arena, stbtt_fontinfo);
@@ -88,11 +87,11 @@ font_open(String path)
     return handle;
 }
 
-Font
+Font_Info
 font_from_handle(Font_Handle handle)
 {
-    Font font = {};
-    Font* stored_font = (Font*)handle.data[0];
+    Font_Info font = {};
+    Font_Info* stored_font = (Font_Info*)handle.data[0];
     if (stored_font)
     {
         font = *stored_font;
@@ -101,11 +100,11 @@ font_from_handle(Font_Handle handle)
 }
 
 Font_Handle
-font_to_handle(Font font)
+font_to_handle(Font_Info font)
 {
     Font_Handle handle = {};
-    // Allocate space for the Font and store pointer in handle
-    Font* stored_font = push_struct(f_state->arena, Font);
+    // Allocate space for the Font_Info and store pointer in handle
+    Font_Info* stored_font = push_struct(f_state->arena, Font_Info);
     *stored_font = font;
     handle.data[0] = (u64)stored_font;
     return handle;
@@ -115,7 +114,7 @@ Font_Raster_Result
 font_raster(Arena* arena, Font_Handle handle, f32 size, String string)
 {
     Font_Raster_Result result = {};
-    Font font = font_from_handle(handle);
+    Font_Info font = font_from_handle(handle);
     
     if (font.info != 0)
     {
@@ -217,7 +216,7 @@ Font_Metrics
 font_metrics_from_font(Font_Handle handle)
 {
     Font_Metrics metrics = {};
-    Font font = font_from_handle(handle);
+    Font_Info font = font_from_handle(handle);
     
     if (font.info != 0)
     {
@@ -242,7 +241,7 @@ font_metrics_from_font(Font_Handle handle)
 Font_Handle
 font_open_from_data(String* data)
 {
-    Font font = {};
+    Font_Info font = {};
     
     // Allocate memory for stbtt_fontinfo
     font.info = push_struct(f_state->arena, stbtt_fontinfo);

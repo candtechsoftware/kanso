@@ -1,10 +1,10 @@
-#ifndef TYPES_H
-#define TYPES_H
+#pragma once
 
 #include "simd.h"
 #include <cstdint>
 #include <stdint.h>
 #include <type_traits>
+#include <cmath>
 
 // Basic types
 typedef uint8_t u8;
@@ -321,5 +321,3 @@ mat4x4_rotate_y(T angle)
 
     return result;
 }
-
-#endif

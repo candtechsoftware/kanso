@@ -1,5 +1,4 @@
-#ifndef FONT_CACHE_H
-#define FONT_CACHE_H
+#pragma once
 
 #include "base/base.h"
 #include "base/types.h"
@@ -214,5 +213,4 @@ void font_cache_init(void);
 void font_cache_reset(void);
 void font_cache_frame(void);
 
-#endif 
 

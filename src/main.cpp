@@ -4,18 +4,16 @@
 #include <sys/time.h>
 #include <time.h>
 
-#include "base/base.h"
-#include "base/logger.h"
-#include "base/string_core.h"
-#include "draw/draw.h"
-#include "font/font.h"
-#include "font/font_cache.h"
-#include "os/os.h"
-#include "renderer/renderer_core.h"
-
+#define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
-#include "base/profiler.h"
+// Unity build - include all implementation files
+// Order matters: renderer must come before others that use Font
+#include "base/base_inc.cpp"
+#include "core/renderer/renderer_inc.cpp"  
+#include "core/draw/draw_inc.cpp"
+#include "core/font/font_inc.cpp"
+#include "core/ui/ui_inc.cpp"
 
 struct App
 {
