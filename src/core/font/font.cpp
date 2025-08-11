@@ -85,7 +85,7 @@ font_open(String path)
     return handle;
 }
 
-Font
+Font_Info
 font_from_handle(Font_Handle handle)
 {
     Font  font = {};
@@ -98,7 +98,7 @@ font_from_handle(Font_Handle handle)
 }
 
 Font_Handle
-font_to_handle(Font font)
+font_to_handle(Font_Info font)
 {
     Font_Handle handle = {};
     // Allocate space for the Font and store pointer in handle

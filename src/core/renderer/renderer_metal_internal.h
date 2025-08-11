@@ -1,5 +1,4 @@
-#ifndef RENDERER_METAL_INTERNAL_H
-#define RENDERER_METAL_INTERNAL_H
+#pragma once
 
 // This header is only included from Objective-C++ files
 #ifdef __OBJC__

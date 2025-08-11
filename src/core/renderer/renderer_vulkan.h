@@ -1,5 +1,4 @@
-#ifndef RENDERER_VULKAN_H
-#define RENDERER_VULKAN_H
+#pragma once
 
 #include "../base/base_inc.h"
 #include "renderer_core.h"
@@ -197,4 +196,3 @@ renderer_vulkan_begin_single_time_commands();
 void
 renderer_vulkan_end_single_time_commands(VkCommandBuffer command_buffer);
 
-#endif // RENDERER_VULKAN_H

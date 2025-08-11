@@ -1,5 +1,4 @@
-#ifndef RENDERER_METAL_H
-#define RENDERER_METAL_H
+#pragma once
 
 #include "../base/base_inc.h"
 #include "renderer_core.h"

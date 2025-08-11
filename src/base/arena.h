@@ -1,7 +1,9 @@
 #pragma once
+#pragma once
 
 #include "util.h"
 #include "types.h"
+#include "util.h"
 
 #define ARENA_HEADER_SIZE 128
 

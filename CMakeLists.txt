@@ -204,32 +204,32 @@ set_target_properties(meta PROPERTIES
 # List shader dependencies based on platform
 if(USE_METAL_RENDERER)
     set(SHADER_DEPS
-        ${CMAKE_SOURCE_DIR}/src/shaders/metal/rect.metal
-        ${CMAKE_SOURCE_DIR}/src/shaders/metal/blur.metal
-        ${CMAKE_SOURCE_DIR}/src/shaders/metal/mesh.metal
+        ${CMAKE_SOURCE_DIR}/src/core/renderer/shaders/metal/rect.metal
+        ${CMAKE_SOURCE_DIR}/src/core/renderer/shaders/metal/blur.metal
+        ${CMAKE_SOURCE_DIR}/src/core/renderer/shaders/metal/mesh.metal
     )
 elseif(USE_VULKAN_RENDERER)
     set(SHADER_DEPS
-        ${CMAKE_SOURCE_DIR}/src/shaders/glsl/rect.vert
-        ${CMAKE_SOURCE_DIR}/src/shaders/glsl/rect.frag
-        ${CMAKE_SOURCE_DIR}/src/shaders/glsl/blur.vert
-        ${CMAKE_SOURCE_DIR}/src/shaders/glsl/blur.frag
-        ${CMAKE_SOURCE_DIR}/src/shaders/glsl/mesh.vert
-        ${CMAKE_SOURCE_DIR}/src/shaders/glsl/mesh.frag
+        ${CMAKE_SOURCE_DIR}/src/core/renderer/shaders/glsl/rect.vert
+        ${CMAKE_SOURCE_DIR}/src/core/renderer/shaders/glsl/rect.frag
+        ${CMAKE_SOURCE_DIR}/src/core/renderer/shaders/glsl/blur.vert
+        ${CMAKE_SOURCE_DIR}/src/core/renderer/shaders/glsl/blur.frag
+        ${CMAKE_SOURCE_DIR}/src/core/renderer/shaders/glsl/mesh.vert
+        ${CMAKE_SOURCE_DIR}/src/core/renderer/shaders/glsl/mesh.frag
     )
 endif()
 
 # Generate shader header
 add_custom_command(
-    OUTPUT ${CMAKE_SOURCE_DIR}/src/generated.h
-    COMMAND meta ${CMAKE_SOURCE_DIR}/src/generated.h ${SHADER_PLATFORM}
+    OUTPUT ${CMAKE_SOURCE_DIR}/src/generated/generated.h
+    COMMAND meta ${CMAKE_SOURCE_DIR}/src/generated/generated.h ${SHADER_PLATFORM}
     DEPENDS meta ${SHADER_DEPS}
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     COMMENT "Generating shader header"
 )
 
 # Add generated header as a source so it gets built
-list(APPEND HEADERS src/generated.h)
+list(APPEND HEADERS src/generated/generated.h)
 
 # Create executable
 add_executable(kanso ${SOURCES} ${HEADERS})

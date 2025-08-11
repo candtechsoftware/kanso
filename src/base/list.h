@@ -1,4 +1,5 @@
 #pragma once
+#pragma once
 
 #include "types.h"
 #include "arena.h"

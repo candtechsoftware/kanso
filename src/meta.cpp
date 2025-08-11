@@ -26,12 +26,12 @@ static ShaderSource shaders[] = {
     {"renderer_metal_mesh_shader_src", "src/shaders/metal/mesh.metal", "metal"},
 
     // GLSL shaders for Vulkan
-    {"renderer_vulkan_rect_vert_shader_src", "src/shaders/glsl/rect.vert", "glsl"},
-    {"renderer_vulkan_rect_frag_shader_src", "src/shaders/glsl/rect.frag", "glsl"},
-    {"renderer_vulkan_blur_vert_shader_src", "src/shaders/glsl/blur.vert", "glsl"},
-    {"renderer_vulkan_blur_frag_shader_src", "src/shaders/glsl/blur.frag", "glsl"},
-    {"renderer_vulkan_mesh_vert_shader_src", "src/shaders/glsl/mesh.vert", "glsl"},
-    {"renderer_vulkan_mesh_frag_shader_src", "src/shaders/glsl/mesh.frag", "glsl"},
+    {"renderer_vulkan_rect_vert_shader_src", "src/core/renderer/shaders/glsl/rect.vert", "glsl"},
+    {"renderer_vulkan_rect_frag_shader_src", "src/core/renderer/shaders/glsl/rect.frag", "glsl"},
+    {"renderer_vulkan_blur_vert_shader_src", "src/core/renderer/shaders/glsl/blur.vert", "glsl"},
+    {"renderer_vulkan_blur_frag_shader_src", "src/core/renderer/shaders/glsl/blur.frag", "glsl"},
+    {"renderer_vulkan_mesh_vert_shader_src", "src/core/renderer/shaders/glsl/mesh.vert", "glsl"},
+    {"renderer_vulkan_mesh_frag_shader_src", "src/core/renderer/shaders/glsl/mesh.frag", "glsl"},
 };
 
 std::string
