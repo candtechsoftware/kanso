@@ -171,14 +171,6 @@ elseif(USE_VULKAN_RENDERER)
     add_definitions(-DUSE_VULKAN)
 endif()
 
-# Header files
-set(HEADERS
-    src/base/base_inc.h
-    src/renderer/renderer_inc.h
-    src/font/font_inc.h
-    src/draw/draw.h
-)
-
 # Build meta program first
 add_executable(meta 
     src/meta.cpp
@@ -228,11 +220,15 @@ add_custom_command(
     COMMENT "Generating shader header"
 )
 
-# Add generated header as a source so it gets built
-list(APPEND HEADERS src/generated/generated.h)
-
 # Create executable
-add_executable(kanso ${SOURCES} ${HEADERS})
+add_executable(kanso ${SOURCES})
+
+# Add dependency on generated header
+add_dependencies(kanso meta)
+set_source_files_properties(${CMAKE_SOURCE_DIR}/src/generated/generated.h PROPERTIES GENERATED TRUE)
+
+# Make main.cpp depend on generated header to force regeneration
+set_source_files_properties(src/main.cpp PROPERTIES OBJECT_DEPENDS ${CMAKE_SOURCE_DIR}/src/generated/generated.h)
 
 # Include directories
 target_include_directories(kanso PRIVATE src)

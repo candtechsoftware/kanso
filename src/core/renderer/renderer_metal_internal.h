@@ -76,5 +76,3 @@ metal_release(void *ptr)
 }
 
 #endif // __OBJC__
-
-#endif // RENDERER_METAL_INTERNAL_H

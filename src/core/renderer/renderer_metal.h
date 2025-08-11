@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../base/base_inc.h"
+#include "../../base/base_inc.h"
 #include "renderer_core.h"
 
 #ifdef __OBJC__
@@ -152,5 +152,3 @@ renderer_metal_acquire_buffer_from_pool(u64 size);
 
 void
 renderer_metal_reset_frame_pools();
-
-#endif

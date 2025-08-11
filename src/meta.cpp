@@ -7,6 +7,7 @@
 #include <sstream>
 #include <cstdint>
 #include <unistd.h>
+#include <sys/stat.h>
 
 // Include our base types for meta tool
 #include "base/base_inc.h"
@@ -21,9 +22,9 @@ struct ShaderSource
 // List of shaders to compile
 static ShaderSource shaders[] = {
     // Metal shaders
-    {"renderer_metal_rect_shader_src", "src/shaders/metal/rect.metal", "metal"},
-    {"renderer_metal_blur_shader_src", "src/shaders/metal/blur.metal", "metal"},
-    {"renderer_metal_mesh_shader_src", "src/shaders/metal/mesh.metal", "metal"},
+    {"renderer_metal_rect_shader_src", "src/core/renderer/shaders/metal/rect.metal", "metal"},
+    {"renderer_metal_blur_shader_src", "src/core/renderer/shaders/metal/blur.metal", "metal"},
+    {"renderer_metal_mesh_shader_src", "src/core/renderer/shaders/metal/mesh.metal", "metal"},
 
     // GLSL shaders for Vulkan
     {"renderer_vulkan_rect_vert_shader_src", "src/core/renderer/shaders/glsl/rect.vert", "glsl"},
@@ -33,6 +34,31 @@ static ShaderSource shaders[] = {
     {"renderer_vulkan_mesh_vert_shader_src", "src/core/renderer/shaders/glsl/mesh.vert", "glsl"},
     {"renderer_vulkan_mesh_frag_shader_src", "src/core/renderer/shaders/glsl/mesh.frag", "glsl"},
 };
+
+void
+create_directory_recursive(const char *path)
+{
+    char temp[256];
+    char *p = nullptr;
+    size_t len;
+
+    snprintf(temp, sizeof(temp), "%s", path);
+    len = strlen(temp);
+    
+    if (temp[len - 1] == '/')
+        temp[len - 1] = 0;
+    
+    for (p = temp + 1; *p; p++)
+    {
+        if (*p == '/')
+        {
+            *p = 0;
+            mkdir(temp, 0755);
+            *p = '/';
+        }
+    }
+    mkdir(temp, 0755);
+}
 
 std::string
 read_file(const char *path)
@@ -218,6 +244,16 @@ main(int argc, char **argv)
 
     const char *output_path = argv[1];
     const char *platform = argv[2];
+
+    // Create directory for output file
+    char output_dir[256];
+    strncpy(output_dir, output_path, sizeof(output_dir));
+    char *last_slash = strrchr(output_dir, '/');
+    if (last_slash)
+    {
+        *last_slash = '\0';
+        create_directory_recursive(output_dir);
+    }
 
     FILE *out = fopen(output_path, "w");
     if (!out)

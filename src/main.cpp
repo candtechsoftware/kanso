@@ -6,14 +6,14 @@
 
 #include <GLFW/glfw3.h>
 #include "base/base_inc.h"
-#include "font/font_inc.h"
-#include "draw/draw.h"
-#include "renderer/renderer_inc.h"
+#include "core/font/font_inc.h"
+#include "core/draw/draw.h"
+#include "core/renderer/renderer_inc.h"
 
 #include "base/base_inc.cpp"
-#include "font/font_inc.cpp"
-#include "renderer/renderer_inc.cpp"
-#include "draw/draw.cpp"
+#include "core/font/font_inc.cpp"
+#include "core/renderer/renderer_inc.cpp"
+#include "core/draw/draw_inc.cpp"
 
 struct App
 {

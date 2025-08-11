@@ -1,7 +1,7 @@
 #include "renderer_metal.h"
 #include "renderer_metal_internal.h"
-#include "../base/base_inc.h"
-#include "../generated.h"
+#include "../../base/base_inc.h"
+#include "generated/generated.h"
 
 void
 renderer_metal_init_shaders()

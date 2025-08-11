@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../base/base_inc.h"
+#include "../../base/base_inc.h"
 #include "../../third_party/stb/stb_truetype.h"
 
 struct Font
@@ -61,7 +61,7 @@ font_raster(Arena *arena, Font_Handle handle, f32 size, String string);
 // TODO(Alex) we want to no use the stbtt types here and have this
 // be under an specific impl when we want to use other providers or
 // when we want to have our own.
-Font_Info
+Font
 font_from_handle(Font_Handle handle);
 
 Font_Handle

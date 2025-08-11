@@ -2,7 +2,7 @@
 #include "base/base.h"
 #include "base/logger.h"
 #include "base/os.h"
-#include "generated/generated.h"
+#include "../../../generated/generated.h"
 
 // Pre-compiled SPIR-V shader bytecode from generated.h
 extern const unsigned char renderer_vulkan_rect_vert_shader_src[];
