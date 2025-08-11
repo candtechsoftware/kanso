@@ -1,26 +1,31 @@
+#include "../base/base_inc.h"
 #include "font_cache.h"
-#include "base/arena.h"
-#include "base/logger.h"
-#include "base/string_core.h"
 #include "font.h"
-#include "renderer/renderer_core.h"
+#include "../renderer/renderer_core.h"
 #include <cstring>
-#include <stb_truetype.h>
+// stb_truetype.h already included via font.h
+
+#if !defined(XXH_IMPLEMENTATION)
+#    define XXH_IMPLEMENTATION
+#    define XXH_STATIC_LINKING_ONLY
+#    include "xxhash/xxhash.h"
+#endif
 
 // Global font cache state
-Font_Cache_State* font_cache_state = nullptr;
+Font_Cache_State *font_cache_state = nullptr;
 
 // Simple hash function for strings (FNV-1a hash)
-u64
+u128
 font_cache_hash_from_string(String string)
 {
-    u64 hash = 14695981039346656037ULL;
-    for (u32 i = 0; i < string.size; i++)
+    union
     {
-        hash ^= (u64)string.data[i];
-        hash *= 1099511628211ULL;
-    }
-    return hash;
+        XXH128_hash_t xxhash;
+        u128          u128;
+    } hash;
+
+    hash.xxhash = XXH3_128bits(string.data, string.size);
+    return hash.u128;
 }
 
 u64
@@ -46,10 +51,10 @@ font_tag_zero(void)
 Font_Handle
 font_handle_from_tag(Font_Tag tag)
 {
-    u64 slot_idx = tag.data[1] % font_cache_state->font_hash_table_size;
-    Font_Cache_Node* existing_node = nullptr;
+    u64              slot_idx = tag.data[1] % font_cache_state->font_hash_table_size;
+    Font_Cache_Node *existing_node = nullptr;
 
-    for (Font_Cache_Node* n = font_cache_state->font_hash_table[slot_idx].first; n != nullptr; n = n->hash_next)
+    for (Font_Cache_Node *n = font_cache_state->font_hash_table[slot_idx].first; n != nullptr; n = n->hash_next)
     {
         if (tag == n->tag)
         {
@@ -70,10 +75,10 @@ font_handle_from_tag(Font_Tag tag)
 Font_Metrics
 font_metrics_from_tag(Font_Tag tag)
 {
-    u64 slot_idx = tag.data[1] % font_cache_state->font_hash_table_size;
-    Font_Cache_Node* existing_node = nullptr;
+    u64              slot_idx = tag.data[1] % font_cache_state->font_hash_table_size;
+    Font_Cache_Node *existing_node = nullptr;
 
-    for (Font_Cache_Node* n = font_cache_state->font_hash_table[slot_idx].first; n != nullptr; n = n->hash_next)
+    for (Font_Cache_Node *n = font_cache_state->font_hash_table[slot_idx].first; n != nullptr; n = n->hash_next)
     {
         if (tag == n->tag)
         {
@@ -96,16 +101,16 @@ font_tag_from_path(String path)
 {
     // Produce tag from hash of path
     Font_Tag result = {0};
-    u64 hash = font_cache_hash_from_string(path);
-    result.data[0] = hash;
-    result.data[1] = hash | (1ULL << 63); // Set high bit to indicate path-based tag
+    u128     hash = font_cache_hash_from_string(path);
+    result.data[0] = hash.u64[0];
+    result.data[1] = hash.u64[1] | (1ULL << 63); // Set high bit to indicate path-based tag
 
     // Tag -> slot index
     u64 slot_idx = result.data[1] % font_cache_state->font_hash_table_size;
 
     // Check for existing node
-    Font_Cache_Node* existing_node = nullptr;
-    for (Font_Cache_Node* n = font_cache_state->font_hash_table[slot_idx].first; n != nullptr; n = n->hash_next)
+    Font_Cache_Node *existing_node = nullptr;
+    for (Font_Cache_Node *n = font_cache_state->font_hash_table[slot_idx].first; n != nullptr; n = n->hash_next)
     {
         if (result == n->tag)
         {
@@ -120,7 +125,7 @@ font_tag_from_path(String path)
         Font_Handle handle = font_open(path);
         if (handle != font_handle_zero())
         {
-            Font_Cache_Slot* slot = &font_cache_state->font_hash_table[slot_idx];
+            Font_Cache_Slot *slot = &font_cache_state->font_hash_table[slot_idx];
             existing_node = push_struct(font_cache_state->permanent_arena, Font_Cache_Node);
             existing_node->tag = result;
             existing_node->handle = handle;
@@ -150,21 +155,21 @@ font_tag_from_path(String path)
 }
 
 Font_Tag
-font_tag_from_data(String* data)
+font_tag_from_data(String *data)
 {
     // Produce tag from hash of data pointer
     Font_Tag result = {0};
-    String ptr_str = {(u8*)&data, sizeof(String*)};
-    u64 hash = font_cache_hash_from_string(ptr_str);
-    result.data[0] = hash;
-    result.data[1] = hash & ~(1ULL << 63); // Clear high bit to indicate data-based tag
+    String   ptr_str = {(u8 *)&data, sizeof(String *)};
+    u128     hash = font_cache_hash_from_string(ptr_str);
+    result.data[0] = hash.u64[0];
+    result.data[1] = hash.u64[1] & ~(1ULL << 63); // Clear high bit to indicate data-based tag
 
     // Tag -> slot index
     u64 slot_idx = result.data[1] % font_cache_state->font_hash_table_size;
 
     // Check for existing node
-    Font_Cache_Node* existing_node = nullptr;
-    for (Font_Cache_Node* n = font_cache_state->font_hash_table[slot_idx].first; n != nullptr; n = n->hash_next)
+    Font_Cache_Node *existing_node = nullptr;
+    for (Font_Cache_Node *n = font_cache_state->font_hash_table[slot_idx].first; n != nullptr; n = n->hash_next)
     {
         if (result == n->tag)
         {
@@ -176,9 +181,9 @@ font_tag_from_data(String* data)
     // Allocate new node if needed
     if (existing_node == nullptr)
     {
-        Font_Handle handle = font_open_from_data(data);
-        Font_Cache_Slot* slot = &font_cache_state->font_hash_table[slot_idx];
-        Font_Cache_Node* new_node = push_struct(font_cache_state->permanent_arena, Font_Cache_Node);
+        Font_Handle      handle = font_open_from_data(data);
+        Font_Cache_Slot *slot = &font_cache_state->font_hash_table[slot_idx];
+        Font_Cache_Node *new_node = push_struct(font_cache_state->permanent_arena, Font_Cache_Node);
         new_node->tag = result;
         new_node->handle = handle;
         new_node->metrics = font_metrics_from_font(handle);
@@ -205,8 +210,8 @@ font_path_from_tag(Font_Tag tag)
 {
     u64 slot_idx = tag.data[1] % font_cache_state->font_hash_table_size;
 
-    Font_Cache_Node* existing_node = nullptr;
-    for (Font_Cache_Node* n = font_cache_state->font_hash_table[slot_idx].first; n != nullptr; n = n->hash_next)
+    Font_Cache_Node *existing_node = nullptr;
+    for (Font_Cache_Node *n = font_cache_state->font_hash_table[slot_idx].first; n != nullptr; n = n->hash_next)
     {
         if (tag == n->tag)
         {
@@ -228,20 +233,20 @@ font_path_from_tag(Font_Tag tag)
 static Vec2<s32>
 font_vertex_from_corner(Corner corner)
 {
-    Vec2<s32> result = {0, 0};
+    Vec2<s32> result = {{0, 0}};
     switch (corner)
     {
     case Corner_00:
-        result = {0, 0};
+        result = {{0, 0}};
         break;
     case Corner_01:
-        result = {0, 1};
+        result = {{0, 1}};
         break;
     case Corner_10:
-        result = {1, 0};
+        result = {{1, 0}};
         break;
     case Corner_11:
-        result = {1, 1};
+        result = {{1, 1}};
         break;
     default:
         break;
@@ -251,17 +256,17 @@ font_vertex_from_corner(Corner corner)
 
 // Atlas region allocation
 Rng2<s16>
-font_atlas_region_alloc(Arena* arena, Font_Atlas* atlas, Vec2<s16> needed_size)
+font_atlas_region_alloc(Arena *arena, Font_Atlas *atlas, Vec2<s16> needed_size)
 {
     // Find node with best-fit size
-    Vec2<s16> region_p0 = {0, 0};
-    Vec2<s16> region_sz = {0, 0};
-    Font_Atlas_Region_Node* node = nullptr;
+    Vec2<s16>               region_p0 = {{0, 0}};
+    Vec2<s16>               region_sz = {{0, 0}};
+    Font_Atlas_Region_Node *node = nullptr;
 
     Vec2<s16> n_supported_size = atlas->root_dim;
-    for (Font_Atlas_Region_Node* n = atlas->root; n != nullptr;)
+    for (Font_Atlas_Region_Node *n = atlas->root; n != nullptr;)
     {
-        Font_Atlas_Region_Node* next = nullptr;
+        Font_Atlas_Region_Node *next = nullptr;
 
         // Check if taken
         if (n->flags & Font_Atlas_Region_Flag_Taken)
@@ -278,10 +283,10 @@ font_atlas_region_alloc(Arena* arena, Font_Atlas* atlas, Vec2<s16> needed_size)
         }
 
         // Calculate child size
-        Vec2<s16> child_size = {(s16)(n_supported_size.x / 2), (s16)(n_supported_size.y / 2)};
+        Vec2<s16> child_size = {{(s16)(n_supported_size.x / 2), (s16)(n_supported_size.y / 2)}};
 
         // Find best child
-        Font_Atlas_Region_Node* best_child = nullptr;
+        Font_Atlas_Region_Node *best_child = nullptr;
         if (child_size.x >= needed_size.x && child_size.y >= needed_size.y)
         {
             for (Corner corner = (Corner)0; corner < Corner_COUNT; corner = (Corner)(corner + 1))
@@ -293,7 +298,7 @@ font_atlas_region_alloc(Arena* arena, Font_Atlas* atlas, Vec2<s16> needed_size)
                     n->children[corner]->max_free_size[Corner_00] =
                         n->children[corner]->max_free_size[Corner_01] =
                             n->children[corner]->max_free_size[Corner_10] =
-                                n->children[corner]->max_free_size[Corner_11] = {(s16)(child_size.x / 2), (s16)(child_size.y / 2)};
+                                n->children[corner]->max_free_size[Corner_11] = {{(s16)(child_size.x / 2), (s16)(child_size.y / 2)}};
                 }
 
                 if (n->max_free_size[corner].x >= needed_size.x &&
@@ -326,22 +331,22 @@ font_atlas_region_alloc(Arena* arena, Font_Atlas* atlas, Vec2<s16> needed_size)
         node->flags = (Font_Atlas_Region_Flags)((u32)node->flags | Font_Atlas_Region_Flag_Taken);
 
         // Update parent allocated descendants
-        for (Font_Atlas_Region_Node* p = node->parent; p != nullptr; p = p->parent)
+        for (Font_Atlas_Region_Node *p = node->parent; p != nullptr; p = p->parent)
         {
             p->num_allocated_descendants += 1;
         }
 
         // Update max free sizes in parents
-        for (Font_Atlas_Region_Node* p = node->parent; p != nullptr; p = p->parent)
+        for (Font_Atlas_Region_Node *p = node->parent; p != nullptr; p = p->parent)
         {
             // Recalculate max free size for each corner
             for (Corner corner = (Corner)0; corner < Corner_COUNT; corner = (Corner)(corner + 1))
             {
-                Vec2<s16> max_size = {0, 0};
+                Vec2<s16> max_size = {{0, 0}};
 
                 if (p->children[corner] != nullptr)
                 {
-                    Font_Atlas_Region_Node* child = p->children[corner];
+                    Font_Atlas_Region_Node *child = p->children[corner];
 
                     // If child is not taken, use its max free sizes
                     if (!(child->flags & Font_Atlas_Region_Flag_Taken))
@@ -367,34 +372,34 @@ font_atlas_region_alloc(Arena* arena, Font_Atlas* atlas, Vec2<s16> needed_size)
     }
 
     // Build result
-    Rng2<s16> result = {{region_p0.x, region_p0.y}, {(s16)(region_p0.x + region_sz.x), (s16)(region_p0.y + region_sz.y)}};
+    Rng2<s16> result = {{{region_p0.x, region_p0.y}}, {{(s16)(region_p0.x + region_sz.x), (s16)(region_p0.y + region_sz.y)}}};
     return result;
 }
 
 void
-font_atlas_region_release(Font_Atlas* atlas, Rng2<s16> region)
+font_atlas_region_release(Font_Atlas *atlas, Rng2<s16> region)
 {
     // Find the node that corresponds to this region
     Vec2<s16> region_p0 = region.min;
-    Vec2<s16> region_sz = {(s16)(region.max.x - region.min.x), (s16)(region.max.y - region.min.y)};
+    Vec2<s16> region_sz = {{(s16)(region.max.x - region.min.x), (s16)(region.max.y - region.min.y)}};
 
-    Vec2<s16> current_p0 = {0, 0};
-    Vec2<s16> current_sz = atlas->root_dim;
-    Font_Atlas_Region_Node* node = atlas->root;
+    Vec2<s16>               current_p0 = {{0, 0}};
+    Vec2<s16>               current_sz = atlas->root_dim;
+    Font_Atlas_Region_Node *node = atlas->root;
 
     // Traverse down the tree to find the exact node
     while (node != nullptr && (current_sz.x != region_sz.x || current_sz.y != region_sz.y))
     {
-        Vec2<s16> child_size = {(s16)(current_sz.x / 2), (s16)(current_sz.y / 2)};
+        Vec2<s16> child_size = {{(s16)(current_sz.x / 2), (s16)(current_sz.y / 2)}};
 
         // Determine which quadrant the region is in
         bool found = false;
         for (Corner corner = (Corner)0; corner < Corner_COUNT; corner = (Corner)(corner + 1))
         {
             Vec2<s32> side_vertex = font_vertex_from_corner(corner);
-            Vec2<s16> child_p0 = {
+            Vec2<s16> child_p0 = {{
                 (s16)(current_p0.x + side_vertex.x * child_size.x),
-                (s16)(current_p0.y + side_vertex.y * child_size.y)};
+                (s16)(current_p0.y + side_vertex.y * child_size.y)}};
 
             if (region_p0.x == child_p0.x && region_p0.y == child_p0.y)
             {
@@ -423,7 +428,7 @@ font_atlas_region_release(Font_Atlas* atlas, Rng2<s16> region)
         node->flags = (Font_Atlas_Region_Flags)((u32)node->flags & ~Font_Atlas_Region_Flag_Taken);
 
         // Update parent allocated descendants count
-        for (Font_Atlas_Region_Node* p = node->parent; p != nullptr; p = p->parent)
+        for (Font_Atlas_Region_Node *p = node->parent; p != nullptr; p = p->parent)
         {
             if (p->num_allocated_descendants > 0)
             {
@@ -432,23 +437,23 @@ font_atlas_region_release(Font_Atlas* atlas, Rng2<s16> region)
         }
 
         // Update max free sizes in parents
-        for (Font_Atlas_Region_Node* p = node->parent; p != nullptr; p = p->parent)
+        for (Font_Atlas_Region_Node *p = node->parent; p != nullptr; p = p->parent)
         {
             // Recalculate max free size for each corner
             for (Corner corner = (Corner)0; corner < Corner_COUNT; corner = (Corner)(corner + 1))
             {
-                Vec2<s16> max_size = {0, 0};
+                Vec2<s16> max_size = {{0, 0}};
 
                 if (p->children[corner] != nullptr)
                 {
-                    Font_Atlas_Region_Node* child = p->children[corner];
+                    Font_Atlas_Region_Node *child = p->children[corner];
 
                     // If child is not taken, use its size
                     if (!(child->flags & Font_Atlas_Region_Flag_Taken))
                     {
                         // Calculate child's actual size based on parent
-                        Vec2<s16> parent_sz = (p->parent != nullptr) ? Vec2<s16>{(s16)(current_sz.x * 2), (s16)(current_sz.y * 2)} : atlas->root_dim;
-                        Vec2<s16> child_sz = {(s16)(parent_sz.x / 2), (s16)(parent_sz.y / 2)};
+                        Vec2<s16> parent_sz = (p->parent != nullptr) ? Vec2<s16>{{(s16)(current_sz.x * 2), (s16)(current_sz.y * 2)}} : atlas->root_dim;
+                        Vec2<s16> child_sz = {{(s16)(parent_sz.x / 2), (s16)(parent_sz.y / 2)}};
 
                         // If child has no allocated descendants, it's fully free
                         if (child->num_allocated_descendants == 0)
@@ -481,48 +486,50 @@ font_atlas_region_release(Font_Atlas* atlas, Rng2<s16> region)
 
 // Piece array functions
 Font_Piece_Array
-font_piece_array_from_list(Arena* arena, Font_Piece_List* list)
+font_piece_array_from_list(Arena *arena, Font_Piece_List *list)
 {
-    Font_Piece_Array result = dynamic_array_make<Font_Piece>();
-    dynamic_array_reserve(arena, &result, list->count);
+    Font_Piece_Array result = array_make<Font_Piece>();
+    result.resizable = true;
+    array_reserve(arena, &result, list->count);
 
-    for (List_Node<Font_Piece>* node = list->first; node != nullptr; node = node->next)
+    for (List_Node<Font_Piece> *node = list->first; node != nullptr; node = node->next)
     {
-        dynamic_array_push(arena, &result, node->v);
+        array_push(arena, &result, node->v);
     }
 
     return result;
 }
 
 Font_Piece_Array
-font_piece_array_copy(Arena* arena, Font_Piece_Array* src)
+font_piece_array_copy(Arena *arena, Font_Piece_Array *src)
 {
-    Font_Piece_Array result = dynamic_array_make<Font_Piece>();
-    dynamic_array_reserve(arena, &result, src->size);
+    Font_Piece_Array result = array_make<Font_Piece>();
+    result.resizable = true;
+    array_reserve(arena, &result, src->size);
 
     for (u64 i = 0; i < src->size; i++)
     {
-        dynamic_array_push(arena, &result, src->data[i]);
+        array_push(arena, &result, src->data[i]);
     }
 
     return result;
 }
 
 // Cache usage functions
-Font_Style_Cache_Node*
+Font_Style_Cache_Node *
 font_style_from_tag_size_flags(Font_Tag tag, f32 size, Font_Raster_Flags flags)
 {
     // Create style hash from tag, size, and flags
     u64 style_hash = tag.data[0] ^ tag.data[1];
-    style_hash ^= *(u64*)&size;
+    style_hash ^= *(u64 *)&size;
     style_hash ^= (u64)flags;
 
     // Find or create style cache node
-    u64 slot_idx = style_hash % font_cache_state->hash2style_slots_count;
-    Font_Style_Cache_Slot* slot = &font_cache_state->hash2style_slots[slot_idx];
+    u64                    slot_idx = style_hash % font_cache_state->hash2style_slots_count;
+    Font_Style_Cache_Slot *slot = &font_cache_state->hash2style_slots[slot_idx];
 
-    Font_Style_Cache_Node* node = nullptr;
-    for (Font_Style_Cache_Node* n = slot->first; n != nullptr; n = n->hash_next)
+    Font_Style_Cache_Node *node = nullptr;
+    for (Font_Style_Cache_Node *n = slot->first; n != nullptr; n = n->hash_next)
     {
         if (n->style_hash == style_hash)
         {
@@ -544,7 +551,7 @@ font_style_from_tag_size_flags(Font_Tag tag, f32 size, Font_Raster_Flags flags)
 
         // Calculate column width using average of common characters
         Font_Handle font_handle = font_handle_from_tag(tag);
-        Font font = font_from_handle(font_handle);
+        Font        font = font_from_handle(font_handle);
 
         if (font.info != nullptr)
         {
@@ -552,10 +559,10 @@ font_style_from_tag_size_flags(Font_Tag tag, f32 size, Font_Raster_Flags flags)
             f32 scale = stbtt_ScaleForPixelHeight(font.info, size);
 
             // Calculate average width using common characters
-            const char* sample_chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-            s32 sample_len = (s32)strlen(sample_chars);
-            f32 total_width = 0.0f;
-            s32 valid_chars = 0;
+            const char *sample_chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            s32         sample_len = (s32)strlen(sample_chars);
+            f32         total_width = 0.0f;
+            s32         valid_chars = 0;
 
             for (s32 i = 0; i < sample_len; i++)
             {
@@ -611,22 +618,23 @@ font_style_from_tag_size_flags(Font_Tag tag, f32 size, Font_Raster_Flags flags)
 Font_Run
 font_run_from_string(Font_Tag tag, f32 size, f32 base_align_px, f32 tab_size_px, Font_Raster_Flags flags, String string)
 {
-    Font_Run result = {{0}};
+    Font_Run result = {0};
 
     // Get style cache node
-    Font_Style_Cache_Node* style_node = font_style_from_tag_size_flags(tag, size, flags);
+    Font_Style_Cache_Node *style_node = font_style_from_tag_size_flags(tag, size, flags);
     if (style_node == nullptr)
     {
         return result;
     }
 
     // Check run cache
-    u64 string_hash = font_cache_hash_from_string(string);
-    u64 run_slot_idx = string_hash % style_node->run_slots_count;
-    Font_Run_Cache_Slot* run_slot = &style_node->run_slots[run_slot_idx];
+    u128                 string_hash = font_cache_hash_from_string(string);
+    u64                  string_hash_low = string_hash.u64[0];
+    u64                  run_slot_idx = string_hash_low % style_node->run_slots_count;
+    Font_Run_Cache_Slot *run_slot = &style_node->run_slots[run_slot_idx];
 
     // Look for cached run
-    for (Font_Run_Cache_Node* n = run_slot->first; n != nullptr; n = n->next)
+    for (Font_Run_Cache_Node *n = run_slot->first; n != nullptr; n = n->next)
     {
         if (string_match(n->string, string))
         {
@@ -651,18 +659,18 @@ font_run_from_string(Font_Tag tag, f32 size, f32 base_align_px, f32 tab_size_px,
     // Create atlas texture if needed
     if (font_cache_state->first_atlas == nullptr)
     {
-        Font_Atlas* atlas = push_struct_zero(font_cache_state->permanent_arena, Font_Atlas);
-        atlas->root_dim = {2048, 2048};
+        Font_Atlas *atlas = push_struct_zero(font_cache_state->permanent_arena, Font_Atlas);
+        atlas->root_dim = {{2048, 2048}};
         atlas->root = push_struct_zero(font_cache_state->permanent_arena, Font_Atlas_Region_Node);
         atlas->root->max_free_size[Corner_00] =
             atlas->root->max_free_size[Corner_01] =
                 atlas->root->max_free_size[Corner_10] =
-                    atlas->root->max_free_size[Corner_11] = {1024, 1024};
+                    atlas->root->max_free_size[Corner_11] = {{1024, 1024}};
 
         // Create actual texture
-        u8* empty_data = push_array_zero(font_cache_state->permanent_arena, u8, 2048 * 2048 * 4);
+        u8             *empty_data = push_array_zero(font_cache_state->permanent_arena, u8, 2048 * 2048 * 4);
         Renderer_Handle tex = renderer_tex_2d_alloc(Renderer_Resource_Kind_Dynamic,
-                                                    {2048, 2048},
+                                                    {{2048, 2048}},
                                                     Renderer_Tex_2D_Format_RGBA8,
                                                     empty_data);
         atlas->texture = tex;
@@ -672,25 +680,26 @@ font_run_from_string(Font_Tag tag, f32 size, f32 base_align_px, f32 tab_size_px,
 
     // For now, create a separate texture for each text run
     Renderer_Handle tex_handle = renderer_tex_2d_alloc(Renderer_Resource_Kind_Dynamic,
-                                                       {(f32)raster.atlas_dim.x, (f32)raster.atlas_dim.y},
+                                                       {{(f32)raster.atlas_dim.x, (f32)raster.atlas_dim.y}},
                                                        Renderer_Tex_2D_Format_RGBA8,
                                                        raster.atlas_data);
 
     // Build font piece
-    result.pieces = dynamic_array_make<Font_Piece>();
-    Font_Piece* piece = dynamic_array_push_new(font_cache_state->frame_arena, &result.pieces);
+    result.pieces = array_make<Font_Piece>();
+    result.pieces.resizable = true;
+    Font_Piece *piece = array_push_new(font_cache_state->frame_arena, &result.pieces);
     piece->texture = tex_handle;
-    piece->subrect = {{0, 0}, {raster.atlas_dim.x, raster.atlas_dim.y}};
-    piece->offset = {0, 0};
+    piece->subrect = {{{0, 0}}, {{raster.atlas_dim.x, raster.atlas_dim.y}}};
+    piece->offset = {{0, 0}};
     piece->advance = (f32)raster.atlas_dim.x;
     piece->decode_size = (u16)size;
 
-    result.dim = {(f32)raster.atlas_dim.x, (f32)raster.atlas_dim.y};
+    result.dim = {{(f32)raster.atlas_dim.x, (f32)raster.atlas_dim.y}};
     result.ascent = style_node->ascent;
     result.descent = style_node->descent;
 
     // Cache the run
-    Font_Run_Cache_Node* cache_node = push_struct(font_cache_state->permanent_arena, Font_Run_Cache_Node);
+    Font_Run_Cache_Node *cache_node = push_struct(font_cache_state->permanent_arena, Font_Run_Cache_Node);
     cache_node->string = push_string_copy(font_cache_state->permanent_arena, string);
     cache_node->run = result;
     cache_node->run.pieces = font_piece_array_copy(font_cache_state->permanent_arena, &result.pieces);
@@ -720,7 +729,7 @@ font_dim_from_tag_size_string(Font_Tag tag, f32 size, f32 base_align_px, f32 tab
 f32
 font_column_size_from_tag_size(Font_Tag tag, f32 size)
 {
-    Font_Style_Cache_Node* style_node = font_style_from_tag_size_flags(tag, size, Font_Raster_Flag_Smooth);
+    Font_Style_Cache_Node *style_node = font_style_from_tag_size_flags(tag, size, Font_Raster_Flag_Smooth);
     if (style_node != nullptr)
     {
         return style_node->column_width;
@@ -733,7 +742,7 @@ font_char_pos_from_tag_size_string_p(Font_Tag tag, f32 size, f32 base_align_px, 
 {
     // Get font information
     Font_Handle font_handle = font_handle_from_tag(tag);
-    Font font = font_from_handle(font_handle);
+    Font        font = font_from_handle(font_handle);
 
     if (font.info == nullptr || string.size == 0)
     {
@@ -895,7 +904,7 @@ font_metrics_from_tag_size(Font_Tag tag, f32 size)
 }
 
 f32
-font_line_height_from_metrics(Font_Metrics* metrics)
+font_line_height_from_metrics(Font_Metrics *metrics)
 {
     return metrics->accent - metrics->descent + metrics->line_gap;
 }
@@ -904,7 +913,7 @@ font_line_height_from_metrics(Font_Metrics* metrics)
 void
 font_cache_init(void)
 {
-    Arena* arena = arena_alloc();
+    Arena *arena = arena_alloc();
     font_cache_state = push_struct(arena, Font_Cache_State);
     font_cache_state->permanent_arena = arena;
     font_cache_state->raster_arena = arena_alloc();

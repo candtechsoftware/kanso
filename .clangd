@@ -1,4 +1,36 @@
 CompileFlags:
   Add: 
-    - -Wno-some-warning
-    - -Wno-another-warning
+    - -Wno-main-file-suspicious-include
+    - -Wno-include-angled-in-module-purview
+    - -Wno-pragma-once-outside-header
+    - -Wno-enum-too-large
+    - -Wno-unused-header
+    - -Wno-header-hygiene
+    - -Wno-unused-includes
+    - -Wno-suspicious-include
+    - -Wno-include-cleaner
+    - -Wno-misc-include-cleaner
+    - -Wno-deprecated-pragma
+    - -Wno-unused-function
+    - -Wno-unused-variable
+    - -Wno-unused-parameter
+
+Diagnostics:
+  Suppress:
+    - main-file-suspicious-include
+    - suspicious-include
+    - pragma-once-outside-header
+    - enum-too-large
+    - unused-includes
+    - misc-include-cleaner
+    - bugprone-suspicious-include
+    - performance-enum-size
+  ClangTidy:
+    Remove:
+      - bugprone-suspicious-include
+      - misc-include-cleaner
+      - modernize-use-trailing-return-type
+      - readability-convert-member-functions-to-static
+      - performance-enum-size
+      - readability-enum-initial-value
+      - bugprone-easily-swappable-parameters

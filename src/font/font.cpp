@@ -1,20 +1,17 @@
 #include "font.h"
-#include "base/arena.h"
-#include "base/string_core.h"
-#include "base/types.h"
 #include <cctype>
 #include <cmath>
 #include <cstdio>
 
 #define STB_TRUETYPE_IMPLEMENTATION
-#include <stb_truetype.h>
+#include "../../third_party/stb/stb_truetype.h"
 
-Font_State* f_state = nullptr;
+Font_State *f_state = nullptr;
 
 void
 font_init(void)
 {
-    Arena* arena = arena_alloc();
+    Arena *arena = arena_alloc();
     f_state = push_array(arena, Font_State, 1);
     f_state->arena = arena;
 }
@@ -22,7 +19,7 @@ font_init(void)
 String
 load_file(String path)
 {
-    FILE* file = fopen((const char*)path.data, "rb");
+    FILE *file = fopen((const char *)path.data, "rb");
     if (!file)
     {
         log_error("Error trying to open file {s}\n", path.data);
@@ -53,7 +50,7 @@ load_file(String path)
         return {};
     }
 
-    u8* buffer = (u8*)arena_push(f_state->arena, size, alignof(u8));
+    u8 *buffer = (u8 *)arena_push(f_state->arena, size, alignof(u8));
     s64 read = (s64)fread(buffer, 1, size, file);
     fclose(file);
 
@@ -70,15 +67,15 @@ Font_Handle
 font_open(String path)
 {
     String font_file = load_file(path);
-    Font font = {};
-    
+    Font   font = {};
+
     // Allocate memory for stbtt_fontinfo
     font.info = push_struct(f_state->arena, stbtt_fontinfo);
-    
-    s32 offset = stbtt_GetFontOffsetForIndex((const unsigned char*)font_file.data, 0);
+
+    s32 offset = stbtt_GetFontOffsetForIndex((const unsigned char *)font_file.data, 0);
     log_info("Offset {d}\n", offset);
 
-    if (!stbtt_InitFont(font.info, (const unsigned char*)font_file.data, offset))
+    if (!stbtt_InitFont(font.info, (const unsigned char *)font_file.data, offset))
     {
         log_error("Error init font\n");
         return {};
@@ -91,8 +88,8 @@ font_open(String path)
 Font
 font_from_handle(Font_Handle handle)
 {
-    Font font = {};
-    Font* stored_font = (Font*)handle.data[0];
+    Font  font = {};
+    Font *stored_font = (Font *)handle.data[0];
     if (stored_font)
     {
         font = *stored_font;
@@ -105,23 +102,23 @@ font_to_handle(Font font)
 {
     Font_Handle handle = {};
     // Allocate space for the Font and store pointer in handle
-    Font* stored_font = push_struct(f_state->arena, Font);
+    Font *stored_font = push_struct(f_state->arena, Font);
     *stored_font = font;
     handle.data[0] = (u64)stored_font;
     return handle;
 }
 
 Font_Raster_Result
-font_raster(Arena* arena, Font_Handle handle, f32 size, String string)
+font_raster(Arena *arena, Font_Handle handle, f32 size, String string)
 {
     Font_Raster_Result result = {};
-    Font font = font_from_handle(handle);
-    
+    Font               font = font_from_handle(handle);
+
     if (font.info != 0)
     {
-        Scratch scratch = scratch_begin(arena);
-        stbtt_fontinfo* info = font.info;
-        f32 scale = stbtt_ScaleForPixelHeight(info, size);
+        Scratch         scratch = scratch_begin(arena);
+        stbtt_fontinfo *info = font.info;
+        f32             scale = stbtt_ScaleForPixelHeight(info, size);
 
         s32 ascent, descent, line_gap;
         stbtt_GetFontVMetrics(info, &ascent, &descent, &line_gap);
@@ -139,16 +136,16 @@ font_raster(Arena* arena, Font_Handle handle, f32 size, String string)
             total_width += (s32)(advance * scale);
         }
 
-        Vec2<s16> dim = {(s16)(total_width + 1), (s16)(height + 1)};
-        u64 atlas_size = dim.x * dim.y * 4;
-        u8* atlas = push_array(arena, u8, atlas_size);
-        
+        Vec2<s16> dim = {{(s16)(total_width + 1), (s16)(height + 1)}};
+        u64       atlas_size = dim.x * dim.y * 4;
+        u8       *atlas = push_array(arena, u8, atlas_size);
+
         // Clear the atlas to transparent black
         for (u64 i = 0; i < atlas_size; i++)
         {
             atlas[i] = 0;
         }
-        
+
         s32 baseline = ascent;
         s32 atlas_write_x = 0;
 
@@ -160,24 +157,24 @@ font_raster(Arena* arena, Font_Handle handle, f32 size, String string)
 
             s32 x0, y0, x1, y1;
             stbtt_GetCodepointBitmapBox(info, codepoint, scale, scale, &x0, &y0, &x1, &y1);
-            
+
             // Calculate glyph dimensions
             s32 glyph_width = x1 - x0;
             s32 glyph_height = y1 - y0;
-            
+
             if (glyph_width > 0 && glyph_height > 0)
             {
                 // Allocate temporary buffer for the glyph bitmap
-                u8* glyph_bitmap = push_array(scratch.arena, u8, glyph_width * glyph_height);
-                
+                u8 *glyph_bitmap = push_array(scratch.arena, u8, glyph_width * glyph_height);
+
                 // Rasterize the glyph
                 stbtt_MakeCodepointBitmap(info, glyph_bitmap, glyph_width, glyph_height,
                                           glyph_width, scale, scale, codepoint);
-                
+
                 // Copy glyph bitmap to atlas (convert from 1-channel to 4-channel RGBA)
                 s32 atlas_x = atlas_write_x + (s32)(left_bearing * scale) + x0;
                 s32 atlas_y = baseline + y0;
-                
+
                 for (s32 y = 0; y < glyph_height; y++)
                 {
                     for (s32 x = 0; x < glyph_width; x++)
@@ -186,30 +183,30 @@ font_raster(Arena* arena, Font_Handle handle, f32 size, String string)
                             atlas_y + y >= 0 && atlas_y + y < dim.y)
                         {
                             // Direct copy without flipping
-                            u8 alpha = glyph_bitmap[y * glyph_width + x];
+                            u8  alpha = glyph_bitmap[y * glyph_width + x];
                             s32 pixel_index = ((atlas_y + y) * dim.x + (atlas_x + x)) * 4;
-                            atlas[pixel_index + 0] = 255;  // R
-                            atlas[pixel_index + 1] = 255;  // G
-                            atlas[pixel_index + 2] = 255;  // B
+                            atlas[pixel_index + 0] = 255;   // R
+                            atlas[pixel_index + 1] = 255;   // G
+                            atlas[pixel_index + 2] = 255;   // B
                             atlas[pixel_index + 3] = alpha; // A
                         }
                     }
                 }
             }
-            
+
             // Advance to next glyph position
             atlas_write_x += (s32)(advance * scale);
         }
-        
+
         result.atlas_data = atlas;
         result.atlas_dim = dim;
         result.valid = true;
-        
+
         log_info("Font rasterized: {d}x{d} atlas for \"{s}\"\n", dim.x, dim.y, string);
 
         scratch_end(&scratch);
     }
-    
+
     return result;
 }
 
@@ -217,44 +214,44 @@ Font_Metrics
 font_metrics_from_font(Font_Handle handle)
 {
     Font_Metrics metrics = {};
-    Font font = font_from_handle(handle);
-    
+    Font         font = font_from_handle(handle);
+
     if (font.info != 0)
     {
-        stbtt_fontinfo* info = font.info;
-        
+        stbtt_fontinfo *info = font.info;
+
         // Get vertical metrics in font units
         s32 ascent, descent, line_gap;
         stbtt_GetFontVMetrics(info, &ascent, &descent, &line_gap);
-        
+
         // We'll return metrics in normalized units (1.0 = full em height)
         // This allows the caller to scale them to any pixel size
         f32 units_per_em = (f32)(ascent - descent);
-        
+
         metrics.accent = (f32)ascent / units_per_em;
         metrics.descent = (f32)descent / units_per_em;
         metrics.line_gap = (f32)line_gap / units_per_em;
     }
-    
+
     return metrics;
 }
 
 Font_Handle
-font_open_from_data(String* data)
+font_open_from_data(String *data)
 {
     Font font = {};
-    
+
     // Allocate memory for stbtt_fontinfo
     font.info = push_struct(f_state->arena, stbtt_fontinfo);
-    
-    s32 offset = stbtt_GetFontOffsetForIndex((const unsigned char*)data->data, 0);
-    
-    if (!stbtt_InitFont(font.info, (const unsigned char*)data->data, offset))
+
+    s32 offset = stbtt_GetFontOffsetForIndex((const unsigned char *)data->data, 0);
+
+    if (!stbtt_InitFont(font.info, (const unsigned char *)data->data, offset))
     {
         log_error("Error init font from data\n");
         return {};
     }
-    
+
     Font_Handle handle = font_to_handle(font);
     return handle;
 }

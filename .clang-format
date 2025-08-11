@@ -3,8 +3,31 @@ IndentWidth: 4
 ColumnLimit: 0
 NamespaceIndentation: All
 BreakBeforeBraces: Allman
-PointerAlignment: Left
+PointerAlignment: Right
 IndentPPDirectives: AfterHash
-AlwaysBreakAfterReturnType: TopLevel
+AlwaysBreakAfterReturnType: TopLevelDefinitions
 AllowShortFunctionsOnASingleLine: None
+AlwaysBreakAfterDefinitionReturnType: TopLevel
+
+# Align struct/class member declarations (will also affect function variables)
+AlignConsecutiveDeclarations: true
+AlignConsecutiveMacros: true
+AlignConsecutiveAssignments: false
+
+# Unity build support - suppress warnings for cpp includes
+IncludeBlocks: Preserve
+SortIncludes: false
+
+# Additional alignment settings
+AlignTrailingComments: true
+AlignOperands: true
+
+# Spacing
+SpaceBeforeParens: ControlStatements
+SpacesInAngles: false
+SpaceInEmptyParentheses: false
+SpacesInCStyleCastParentheses: false
+SpaceAfterCStyleCast: false
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeCpp11BracedList: false
 

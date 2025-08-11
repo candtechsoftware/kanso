@@ -1,61 +1,58 @@
-#ifndef STRING_H
-#define STRING_H
+#pragma once
 
+#include <string.h>
 #include "arena.h"
-#include "types.h"
-#include "util.h"
 
+typedef struct String String;
 struct String
 {
     u8* data;
     u32 size;
 };
 
-String inline cstr_to_string(const char* data, u32 size)
-{
-    return {(u8*)data, size};
-}
-
-inline String cstr_to_string(char* data, u32 size)
-{
-    return {(u8*)data, size};
-}
-
-// Macro to create a String from a string literal with automatic size calculation
-#define to_string(str) cstr_to_string(str, sizeof(str) - 1)
-
-bool inline
-operator==(const String a, const String b)
-{
-    if (a.size != b.size)
-    {
-        return false;
-    }
-    return MemoryCopy(a.data, b.data, a.size) == 0;
-}
-
-bool inline
-operator!=(const String a, const String b)
-{
-    return !(a == b);
-}
-
+typedef struct String32 String32;
 struct String32
 {
     u32* data;
-    u64 size;
+    u64  size;
 };
 
-struct UnicodeDecode
+typedef struct Unicode_Decode Unicode_Decode;
+struct Unicode_Decode
 {
     u32 inc;
     u32 codepoint;
 };
 
-static inline UnicodeDecode
+static inline String
+cstr_to_string(const char* data, u32 size)
+{
+    String result;
+    result.data = (u8*)data;
+    result.size = size;
+    return result;
+}
+
+#define to_string(str) cstr_to_string(str, sizeof(str) - 1)
+#define str_lit(str) cstr_to_string(str, sizeof(str) - 1)
+
+static inline b32
+str_match(String a, String b)
+{
+    if (a.size != b.size)
+        return 0;
+    for (u32 i = 0; i < a.size; i++)
+    {
+        if (a.data[i] != b.data[i])
+            return 0;
+    }
+    return 1;
+}
+
+static inline Unicode_Decode
 utf8_decode(u8* str, u64 max)
 {
-    UnicodeDecode result = {1, 0xFFFD}; // Default to replacement character
+    Unicode_Decode result = {1, 0xFFFD}; // Default to replacement character
 
     if (max < 1)
         return result;
@@ -66,7 +63,7 @@ utf8_decode(u8* str, u64 max)
     if ((byte1 & 0x80) == 0)
     {
         result.codepoint = byte1;
-        result.inc = 1;
+        result.inc       = 1;
     }
     // 2-byte sequence
     else if ((byte1 & 0xE0) == 0xC0)
@@ -78,7 +75,7 @@ utf8_decode(u8* str, u64 max)
             return result;
 
         result.codepoint = ((byte1 & 0x1F) << 6) | (byte2 & 0x3F);
-        result.inc = 2;
+        result.inc       = 2;
     }
     // 3-byte sequence
     else if ((byte1 & 0xF0) == 0xE0)
@@ -91,7 +88,7 @@ utf8_decode(u8* str, u64 max)
             return result;
 
         result.codepoint = ((byte1 & 0x0F) << 12) | ((byte2 & 0x3F) << 6) | (byte3 & 0x3F);
-        result.inc = 3;
+        result.inc       = 3;
     }
     // 4-byte sequence
     else if ((byte1 & 0xF8) == 0xF0)
@@ -104,7 +101,8 @@ utf8_decode(u8* str, u64 max)
         if ((byte2 & 0xC0) != 0x80 || (byte3 & 0xC0) != 0x80 || (byte4 & 0xC0) != 0x80)
             return result;
 
-        result.codepoint = ((byte1 & 0x07) << 18) | ((byte2 & 0x3F) << 12) | ((byte3 & 0x3F) << 6) | (byte4 & 0x3F);
+        result.codepoint = ((byte1 & 0x07) << 18) | ((byte2 & 0x3F) << 12) | ((byte3 & 0x3F) << 6) |
+                           (byte4 & 0x3F);
         result.inc = 4;
     }
 
@@ -114,50 +112,67 @@ utf8_decode(u8* str, u64 max)
 static inline String32
 string32_from_string(Arena* arena, String in)
 {
-    String32 result = {0};
+    String32 res = {0};
     if (in.size)
     {
-        u64 cap = in.size;
-        u32* str = push_array_no_zero(arena, u32, cap + 1);
-        u8* ptr = in.data;
-        u8* opl = ptr + in.size;
-        u64 size = 0;
-        UnicodeDecode consume;
+        u64  cap  = in.size;
+        u32* str  = (u32*)arena_push(arena, sizeof(u32) * (cap + 1), sizeof(u32));
+        u8*  ptr  = in.data;
+        u8*  opl  = ptr + in.size;
+        u64  size = 0;
+        Unicode_Decode consume;
         for (; ptr < opl; ptr += consume.inc)
         {
-            consume = utf8_decode(ptr, opl - ptr);
+            consume   = utf8_decode(ptr, opl - ptr);
             str[size] = consume.codepoint;
-            size += 1;
+            size     += 1;
         }
+
         str[size] = 0;
         arena_pop(arena, (cap - size) * 4);
-        result = String32{str, size};
+        res.data = str;
+        res.size = size;
+    }
+
+    return res;
+}
+
+static inline String
+str8(u8 *data, u32 size)
+{
+    String result;
+    result.data = data;
+    result.size = size;
+    return result;
+}
+
+static inline String
+str8_push_copy(Arena *arena, String src)
+{
+    String result;
+    result.size = src.size;
+    result.data = push_array(arena, u8, src.size);
+    MemoryCopy(result.data, src.data, src.size);
+    return result;
+}
+
+// Create string from C string
+static inline String
+string8_from_cstr(const char* cstr)
+{
+    String result;
+    result.data = (u8*)cstr;
+    result.size = 0;
+    if (cstr)
+    {
+        while (cstr[result.size])
+        {
+            result.size++;
+        }
     }
     return result;
 }
 
-inline bool
-string_match(String a, String b)
-{
-    if (a.size != b.size) return false;
-    for (u32 i = 0; i < a.size; i++)
-    {
-        if (a.data[i] != b.data[i]) return false;
-    }
-    return true;
-}
-
-inline String
-push_string_copy(Arena* arena, String str)
-{
-    String result = {0};
-    if (str.size > 0)
-    {
-        result.data = push_array(arena, u8, str.size);
-        result.size = str.size;
-        MemoryCopy(result.data, str.data, str.size);
-    }
-    return result;
-}
-
-#endif
+// Aliases for compatibility
+#define push_string_copy str8_push_copy
+#define string_match str_match

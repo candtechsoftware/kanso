@@ -19,7 +19,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/debug)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/release)
 
 # Compiler flags
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-narrowing")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-narrowing -Wno-pragma-once-outside-header -Wno-unused-function -Wno-missing-braces")
 
 # Add SSE3 only on x86/x86_64 architectures
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "(x86_64|i686|AMD64)")
@@ -144,16 +144,15 @@ else()
     message(FATAL_ERROR "Unsupported platform. Only macOS (Metal) and Linux (Vulkan) are supported.")
 endif()
 
-# Source files
+# Unity build - only main.cpp as single translation unit
 set(SOURCES
     src/main.cpp
-    src/os/os.cpp
-    src/base/arena.cpp
-    src/base/logger.cpp
-    src/font/font.cpp
-    src/font/font_cache.cpp
-    src/draw/draw.cpp
 )
+
+# On macOS with Metal, compile main.cpp as Objective-C++ for unity build
+if(APPLE AND USE_METAL_RENDERER)
+    set_source_files_properties(src/main.cpp PROPERTIES COMPILE_FLAGS "-x objective-c++")
+endif()
 
 # Add Tracy implementation
 if(ENABLE_TRACY)
@@ -165,49 +164,24 @@ if(ENABLE_TRACY)
     endif()
 endif()
 
-# Add renderer sources based on platform
+# Add renderer defines based on platform
 if(USE_METAL_RENDERER)
-    list(APPEND SOURCES 
-        src/renderer/renderer_metal.mm
-        src/renderer/renderer_metal_shaders.mm
-        src/renderer/renderer_metal_passes.mm
-    )
-    # Enable Objective-C++ for Metal files
-    set_source_files_properties(
-        src/renderer/renderer_metal.mm
-        src/renderer/renderer_metal_shaders.mm
-        src/renderer/renderer_metal_passes.mm
-        PROPERTIES COMPILE_FLAGS "-x objective-c++"
-    )
+    add_definitions(-DUSE_METAL)
 elseif(USE_VULKAN_RENDERER)
-    list(APPEND SOURCES 
-        src/renderer/renderer_vulkan.cpp
-        src/renderer/renderer_vulkan_shaders.cpp
-        src/renderer/renderer_vulkan_passes.cpp
-    )
+    add_definitions(-DUSE_VULKAN)
 endif()
 
 # Header files
 set(HEADERS
-    src/os/os.h
-    src/base/base.h
-    src/base/arena.h
-    src/base/list.h
-    src/base/types.h
-    src/base/logger.h
-    src/renderer/renderer_core.h
-    src/renderer/renderer_metal.h
-    src/renderer/renderer_vulkan.h
-    src/font/font.h
-    src/font/font_cache.h
+    src/base/base_inc.h
+    src/renderer/renderer_inc.h
+    src/font/font_inc.h
     src/draw/draw.h
 )
 
 # Build meta program first
 add_executable(meta 
     src/meta.cpp
-    src/base/arena.cpp
-    src/os/os.cpp
 )
 
 # Add Tracy implementation to meta if enabled
@@ -220,6 +194,8 @@ endif()
 # Include directories for meta
 target_include_directories(meta PRIVATE src)
 target_include_directories(meta PRIVATE third_party)
+target_include_directories(meta PRIVATE third_party/stb)
+target_include_directories(meta PRIVATE third_party/xxhash)
 
 set_target_properties(meta PROPERTIES 
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
@@ -261,6 +237,8 @@ add_executable(kanso ${SOURCES} ${HEADERS})
 # Include directories
 target_include_directories(kanso PRIVATE src)
 target_include_directories(kanso PRIVATE third_party)
+target_include_directories(kanso PRIVATE third_party/stb)
+target_include_directories(kanso PRIVATE third_party/xxhash)
 
 # Link libraries
 if(USE_METAL_RENDERER)

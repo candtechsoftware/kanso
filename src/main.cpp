@@ -4,65 +4,63 @@
 #include <sys/time.h>
 #include <time.h>
 
-#include "base/base.h"
-#include "base/logger.h"
-#include "base/string_core.h"
-#include "draw/draw.h"
-#include "font/font.h"
-#include "font/font_cache.h"
-#include "os/os.h"
-#include "renderer/renderer_core.h"
-
 #include <GLFW/glfw3.h>
+#include "base/base_inc.h"
+#include "font/font_inc.h"
+#include "draw/draw.h"
+#include "renderer/renderer_inc.h"
 
-#include "base/profiler.h"
+#include "base/base_inc.cpp"
+#include "font/font_inc.cpp"
+#include "renderer/renderer_inc.cpp"
+#include "draw/draw.cpp"
 
 struct App
 {
     // Window and rendering
-    GLFWwindow* window;
+    GLFWwindow     *window;
     Renderer_Handle window_equip;
-    Arena* frame_arena;
+    Arena          *frame_arena;
 
     // Resources
     Renderer_Handle white_texture;
     Renderer_Handle cube_vertices;
     Renderer_Handle cube_indices;
-    Font_Tag font;
-    String fps_string;
+    Font_Tag        font;
+    String          fps_string;
 
     // 3D scene state
-    f32 rotation;
-    int last_width;
-    int last_height;
+    f32         rotation;
+    int         last_width;
+    int         last_height;
     Mat4x4<f32> cached_projection;
     Mat4x4<f32> cached_view;
 
     // FPS tracking
     static constexpr int FPS_HISTORY_SIZE = 60;
-    f32 fps_history[FPS_HISTORY_SIZE];
-    int fps_history_index;
-    int fps_history_count;
-    f32 frames;
-    struct timespec fps_start_time;
-    struct timespec last_frame_time;
-    f64 frame_time;
+    f32                  fps_history[FPS_HISTORY_SIZE];
+    int                  fps_history_index;
+    int                  fps_history_count;
+    f32                  frames;
+    struct timespec      fps_start_time;
+    struct timespec      last_frame_time;
+    f64                  frame_time;
 };
 
-App* app = nullptr;
+App *app = nullptr;
 
 // Forward declaration
 static void
-app_draw(App* app);
+app_draw(App *app);
 
 static void
-error_callback(int error, const char* description)
+error_callback(int error, const char *description)
 {
     log_error("GLFW Error {d}: {s}", error, description);
 }
 
 static void
-key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+key_callback(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
     {
@@ -71,20 +69,20 @@ key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 }
 
 static void
-frame_size_callback(GLFWwindow* window, int width, int height)
+frame_size_callback(GLFWwindow *window, int width, int height)
 {
     // Redraw when window is resized
     app_draw(app);
 }
 
 static void
-app_draw(App* app)
+app_draw(App *app)
 {
     ZoneScoped;
 
     // Begin draw frame
     draw_begin_frame(app->font);
-    Draw_Bucket* bucket = draw_bucket_make();
+    Draw_Bucket *bucket = draw_bucket_make();
     draw_push_bucket(bucket);
 
     // Get current time
@@ -178,22 +176,23 @@ app_draw(App* app)
         ZoneScopedN("UI Pass Setup");
 
         // Draw colored rectangles using draw API
-        Renderer_Rect_2D_Inst* rect1 = draw_rect({{50, 50}, {200, 150}}, {1, 0, 0, 1}, 10, 2, 0.5);
+        Renderer_Rect_2D_Inst *rect1 = draw_rect({{{50, 50}}, {{200, 150}}}, {{1, 0, 0, 1}}, 10, 2, 0.5);
         if (rect1)
         {
             // Set gradient colors
-            rect1->colors[0] = {1, 0, 0, 1};
-            rect1->colors[1] = {0, 1, 0, 1};
-            rect1->colors[2] = {0, 0, 1, 1};
-            rect1->colors[3] = {1, 1, 0, 1};
+            rect1->colors[0] = {{1, 0, 0, 1}};
+            rect1->colors[1] = {{0, 1, 0, 1}};
+            rect1->colors[2] = {{0, 0, 1, 1}};
+            rect1->colors[3] = {{1, 1, 0, 1}};
         }
 
-        draw_rect({{(f32)width - 250.0f, 50}, {(f32)width - 50.0f, 250}}, {0.5f, 0.5f, 1, 0.8f}, 20, 0, 1);
+        draw_rect({{{(f32)width - 250.0f, 50}}, {{(f32)width - 50.0f, 250}}}, {{0.5f, 0.5f, 1, 0.8f}}, 20, 0, 1);
 
         // Draw FPS text
         if (app->fps_string.size > 0)
         {
-            draw_text({10, 10}, app->fps_string, app->font, 32.0f, {1, 1, 1, 1});
+            draw_text({{10, 10}}, app->fps_string, app->font, 32.0f, {{1, 1, 1, 1}});
+            draw_text({{10, 10}}, app->fps_string, app->font, 32.0f, {{1, 1, 1, 1}});
         }
     }
 
@@ -210,7 +209,7 @@ app_draw(App* app)
         }
 
         // Begin 3D rendering
-        draw_geo3d_begin({{0, 0}, {(f32)width, (f32)height}}, app->cached_view, app->cached_projection);
+        draw_geo3d_begin({{{0, 0}}, {{(f32)width, (f32)height}}}, app->cached_view, app->cached_projection);
 
         // Draw mesh
         Mat4x4<f32> transform = mat4x4_rotate_y(app->rotation) * mat4x4_scale(1.0f, 1.0f, 1.0f);
@@ -234,10 +233,10 @@ main(void)
 {
     log_init("kanso.log");
 
-    Arena* arena = arena_alloc();
-    Arena* frame_arena = arena_alloc();
+    Arena *arena = arena_alloc();
+    Arena *frame_arena = arena_alloc();
 
-    GLFWwindow* window;
+    GLFWwindow *window;
 
     glfwSetErrorCallback(error_callback);
 
@@ -316,7 +315,7 @@ main(void)
     {
         u32 white_pixel = 0xFFFFFFFF;
         white_texture = renderer_tex_2d_alloc(Renderer_Resource_Kind_Static,
-                                              Vec2<f32>{1, 1},
+                                              Vec2<f32>{{1, 1}},
                                               Renderer_Tex_2D_Format_RGBA8,
                                               &white_pixel);
     }

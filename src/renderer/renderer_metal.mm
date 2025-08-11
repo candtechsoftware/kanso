@@ -1,6 +1,5 @@
 #include "renderer_metal.h"
-#include "../base/base.h"
-#include "../base/logger.h"
+#include "../base/base_inc.h"
 #include "renderer_metal_internal.h"
 #include <cassert>
 #include <cstring>
@@ -17,13 +16,12 @@
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
 
-#include "../base/profiler.h"
 
-Renderer_Metal_State* r_metal_state = nullptr;
+Renderer_Metal_State *r_metal_state = nullptr;
 
-extern const char* renderer_metal_rect_shader_src;
-extern const char* renderer_metal_blur_shader_src;
-extern const char* renderer_metal_mesh_shader_src;
+extern const char *renderer_metal_rect_shader_src;
+extern const char *renderer_metal_blur_shader_src;
+extern const char *renderer_metal_mesh_shader_src;
 
 MTLPixelFormat
 renderer_metal_pixel_format_from_tex_2d_format(Renderer_Tex_2D_Format fmt)
@@ -105,7 +103,7 @@ renderer_init()
         return;
     }
 
-    Arena* arena = arena_alloc();
+    Arena *arena = arena_alloc();
     r_metal_state = push_array(arena, Renderer_Metal_State, 1);
     MemoryZeroStruct(r_metal_state);
     r_metal_state->arena = arena;
@@ -138,7 +136,7 @@ renderer_init()
 
     renderer_metal_init_shaders();
 
-    MTLSamplerDescriptor* sampler_desc = [MTLSamplerDescriptor new];
+    MTLSamplerDescriptor *sampler_desc = [MTLSamplerDescriptor new];
     sampler_desc.minFilter = MTLSamplerMinMagFilterLinear;
     sampler_desc.magFilter = MTLSamplerMinMagFilterLinear;
     sampler_desc.sAddressMode = MTLSamplerAddressModeClampToEdge;
@@ -183,10 +181,10 @@ renderer_init()
 
     // Create shared rect vertex buffer
     Vec2<f32> rect_vertices[] = {
-        {-1.0f, -1.0f},
-        {1.0f, -1.0f},
-        {-1.0f, 1.0f},
-        {1.0f, 1.0f},
+        {{-1.0f, -1.0f}},
+        {{1.0f, -1.0f}},
+        {{-1.0f, 1.0f}},
+        {{1.0f, 1.0f}},
     };
     r_metal_state->rect_vertex_buffer = metal_retain([device newBufferWithBytes:rect_vertices
                                                                          length:sizeof(rect_vertices)
@@ -203,14 +201,14 @@ renderer_init()
 }
 
 Renderer_Handle
-renderer_window_equip(void* window)
+renderer_window_equip(void *window)
 {
     if (!r_metal_state || !window)
     {
         return renderer_handle_zero();
     }
 
-    NSWindow* ns_window = glfwGetCocoaWindow((GLFWwindow*)window);
+    NSWindow *ns_window = glfwGetCocoaWindow((GLFWwindow *)window);
 
     // Find free slot
     u64 slot = 0;
@@ -233,11 +231,11 @@ renderer_window_equip(void* window)
         r_metal_state->window_equip_count = slot + 1;
     }
 
-    Renderer_Metal_Window_Equip* equip = &r_metal_state->window_equips[slot];
+    Renderer_Metal_Window_Equip *equip = &r_metal_state->window_equips[slot];
     MemoryZeroStruct(equip);
 
     // Create Metal layer
-    CAMetalLayer* layer = [CAMetalLayer layer];
+    CAMetalLayer *layer = [CAMetalLayer layer];
     layer.device = metal_device(r_metal_state->device);
     layer.pixelFormat = MTLPixelFormatBGRA8Unorm;
     layer.framebufferOnly = YES;
@@ -285,12 +283,12 @@ renderer_window_equip(void* window)
     equip->layer = metal_retain(layer);
 
     NSRect frame = ns_window.contentView.frame;
-    equip->size = Vec2<f32>{(f32)frame.size.width, (f32)frame.size.height};
+    equip->size = Vec2<f32>{{(f32)frame.size.width, (f32)frame.size.height}};
     CGSize drawableSize = CGSizeMake(frame.size.width * layer.contentsScale,
                                      frame.size.height * layer.contentsScale);
     layer.drawableSize = drawableSize;
 
-    MTLTextureDescriptor* depth_desc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatDepth32Float
+    MTLTextureDescriptor *depth_desc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatDepth32Float
                                                                                           width:(NSUInteger)drawableSize.width
                                                                                          height:(NSUInteger)drawableSize.height
                                                                                       mipmapped:NO];
@@ -305,7 +303,7 @@ renderer_window_equip(void* window)
 }
 
 void
-renderer_window_unequip(void* window, Renderer_Handle window_equip)
+renderer_window_unequip(void *window, Renderer_Handle window_equip)
 {
     if (!r_metal_state || window_equip.u64s[0] == 0)
     {
@@ -318,7 +316,7 @@ renderer_window_unequip(void* window, Renderer_Handle window_equip)
         return;
     }
 
-    Renderer_Metal_Window_Equip* equip = &r_metal_state->window_equips[slot];
+    Renderer_Metal_Window_Equip *equip = &r_metal_state->window_equips[slot];
 
     if (equip->depth_texture)
     {
@@ -329,7 +327,7 @@ renderer_window_unequip(void* window, Renderer_Handle window_equip)
 }
 
 Renderer_Handle
-renderer_tex_2d_alloc(Renderer_Resource_Kind kind, Vec2<f32> size, Renderer_Tex_2D_Format format, void* data)
+renderer_tex_2d_alloc(Renderer_Resource_Kind kind, Vec2<f32> size, Renderer_Tex_2D_Format format, void *data)
 {
     ZoneScoped;
     if (!r_metal_state)
@@ -358,7 +356,7 @@ renderer_tex_2d_alloc(Renderer_Resource_Kind kind, Vec2<f32> size, Renderer_Tex_
         r_metal_state->texture_count = slot + 1;
     }
 
-    Renderer_Metal_Tex_2D* tex = &r_metal_state->textures[slot];
+    Renderer_Metal_Tex_2D *tex = &r_metal_state->textures[slot];
     MemoryZeroStruct(tex);
 
     tex->size = size;
@@ -366,7 +364,7 @@ renderer_tex_2d_alloc(Renderer_Resource_Kind kind, Vec2<f32> size, Renderer_Tex_
     tex->kind = kind;
 
     // Create texture descriptor
-    MTLTextureDescriptor* desc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:renderer_metal_pixel_format_from_tex_2d_format(format)
+    MTLTextureDescriptor *desc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:renderer_metal_pixel_format_from_tex_2d_format(format)
                                                                                     width:(NSUInteger)size.x
                                                                                    height:(NSUInteger)size.y
                                                                                 mipmapped:NO];
@@ -415,7 +413,7 @@ renderer_tex_2d_alloc(Renderer_Resource_Kind kind, Vec2<f32> size, Renderer_Tex_
     }
 
     // Create sampler
-    MTLSamplerDescriptor* sampler_desc = [MTLSamplerDescriptor new];
+    MTLSamplerDescriptor *sampler_desc = [MTLSamplerDescriptor new];
     sampler_desc.minFilter = MTLSamplerMinMagFilterLinear;
     sampler_desc.magFilter = MTLSamplerMinMagFilterLinear;
     sampler_desc.sAddressMode = MTLSamplerAddressModeClampToEdge;
@@ -442,7 +440,7 @@ renderer_tex_2d_release(Renderer_Handle texture)
         return;
     }
 
-    Renderer_Metal_Tex_2D* tex = &r_metal_state->textures[slot];
+    Renderer_Metal_Tex_2D *tex = &r_metal_state->textures[slot];
 
     if (tex->texture)
     {
@@ -478,13 +476,13 @@ renderer_size_from_tex_2d(Renderer_Handle texture)
 {
     if (!r_metal_state || texture.u64s[0] == 0)
     {
-        return Vec2<f32>{0.0f, 0.0f};
+        return Vec2<f32>{{0.0f, 0.0f}};
     }
 
     u64 slot = texture.u64s[0] - 1;
     if (slot >= r_metal_state->texture_count)
     {
-        return Vec2<f32>{0.0f, 0.0f};
+        return Vec2<f32>{{0.0f, 0.0f}};
     }
 
     return r_metal_state->textures[slot].size;
@@ -508,7 +506,7 @@ renderer_format_from_tex_2d(Renderer_Handle texture)
 }
 
 void
-renderer_fill_tex_2d_region(Renderer_Handle texture, Rng2<f32> subrect, void* data)
+renderer_fill_tex_2d_region(Renderer_Handle texture, Rng2<f32> subrect, void *data)
 {
     if (!r_metal_state || texture.u64s[0] == 0 || !data)
     {
@@ -521,14 +519,14 @@ renderer_fill_tex_2d_region(Renderer_Handle texture, Rng2<f32> subrect, void* da
         return;
     }
 
-    Renderer_Metal_Tex_2D* tex = &r_metal_state->textures[slot];
+    Renderer_Metal_Tex_2D *tex = &r_metal_state->textures[slot];
     if (!tex->texture)
     {
         return;
     }
 
     NSUInteger bytes_per_row = 0;
-    u64 width = (u64)(subrect.max.x - subrect.min.x);
+    u64        width = (u64)(subrect.max.x - subrect.min.x);
 
     switch (tex->format)
     {
@@ -563,7 +561,7 @@ renderer_fill_tex_2d_region(Renderer_Handle texture, Rng2<f32> subrect, void* da
 }
 
 Renderer_Handle
-renderer_buffer_alloc(Renderer_Resource_Kind kind, u64 size, void* data)
+renderer_buffer_alloc(Renderer_Resource_Kind kind, u64 size, void *data)
 {
     ZoneScoped;
     if (!r_metal_state)
@@ -592,7 +590,7 @@ renderer_buffer_alloc(Renderer_Resource_Kind kind, u64 size, void* data)
         r_metal_state->buffer_count = slot + 1;
     }
 
-    Renderer_Metal_Buffer* buf = &r_metal_state->buffers[slot];
+    Renderer_Metal_Buffer *buf = &r_metal_state->buffers[slot];
     MemoryZeroStruct(buf);
 
     buf->size = size;
@@ -649,7 +647,7 @@ renderer_buffer_release(Renderer_Handle buffer)
         return;
     }
 
-    Renderer_Metal_Buffer* buf = &r_metal_state->buffers[slot];
+    Renderer_Metal_Buffer *buf = &r_metal_state->buffers[slot];
 
     if (buf->buffer)
     {
@@ -674,7 +672,7 @@ renderer_end_frame()
 }
 
 void
-renderer_window_begin_frame(void* window, Renderer_Handle window_equip)
+renderer_window_begin_frame(void *window, Renderer_Handle window_equip)
 {
     ZoneScoped;
     if (!r_metal_state || window_equip.u64s[0] == 0)
@@ -688,16 +686,16 @@ renderer_window_begin_frame(void* window, Renderer_Handle window_equip)
         return;
     }
 
-    Renderer_Metal_Window_Equip* equip = &r_metal_state->window_equips[slot];
-    NSWindow* ns_window = glfwGetCocoaWindow((GLFWwindow*)window);
-    NSRect frame = ns_window.contentView.frame;
-    Vec2<f32> new_size = Vec2<f32>{(f32)frame.size.width, (f32)frame.size.height};
+    Renderer_Metal_Window_Equip *equip = &r_metal_state->window_equips[slot];
+    NSWindow                    *ns_window = glfwGetCocoaWindow((GLFWwindow *)window);
+    NSRect                       frame = ns_window.contentView.frame;
+    Vec2<f32>                    new_size = Vec2<f32>{{(f32)frame.size.width, (f32)frame.size.height}};
 
     if (new_size.x != equip->size.x || new_size.y != equip->size.y)
     {
         equip->size = new_size;
-        CAMetalLayer* layer = metal_layer(equip->layer);
-        CGFloat scale = ns_window.backingScaleFactor;
+        CAMetalLayer *layer = metal_layer(equip->layer);
+        CGFloat       scale = ns_window.backingScaleFactor;
         layer.contentsScale = scale;
         layer.drawableSize = CGSizeMake(new_size.x * scale, new_size.y * scale);
 
@@ -706,7 +704,7 @@ renderer_window_begin_frame(void* window, Renderer_Handle window_equip)
             metal_release(equip->depth_texture);
         }
 
-        MTLTextureDescriptor* depth_desc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatDepth32Float
+        MTLTextureDescriptor *depth_desc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatDepth32Float
                                                                                               width:(NSUInteger)(new_size.x * scale)
                                                                                              height:(NSUInteger)(new_size.y * scale)
                                                                                           mipmapped:NO];
@@ -717,7 +715,7 @@ renderer_window_begin_frame(void* window, Renderer_Handle window_equip)
     }
 
     // Reset buffer pool for current frame
-    Renderer_Metal_Frame_Data* frame_data = &r_metal_state->frames[r_metal_state->current_frame_index];
+    Renderer_Metal_Frame_Data *frame_data = &r_metal_state->frames[r_metal_state->current_frame_index];
     for (u32 i = 0; i < METAL_BUFFER_POOL_SIZE; i++)
     {
         frame_data->buffer_pool[i].in_use = false;
@@ -725,14 +723,14 @@ renderer_window_begin_frame(void* window, Renderer_Handle window_equip)
 }
 
 void
-renderer_window_end_frame(void* window, Renderer_Handle window_equip)
+renderer_window_end_frame(void *window, Renderer_Handle window_equip)
 {
     ZoneScoped;
     // Any per-window cleanup
 }
 
 void
-renderer_window_submit(void* window, Renderer_Handle window_equip, Renderer_Pass_List* passes)
+renderer_window_submit(void *window, Renderer_Handle window_equip, Renderer_Pass_List *passes)
 {
     ZoneScoped;
     if (!r_metal_state || window_equip.u64s[0] == 0 || !passes)
@@ -746,13 +744,13 @@ renderer_window_submit(void* window, Renderer_Handle window_equip, Renderer_Pass
         return;
     }
 
-    Renderer_Metal_Window_Equip* equip = &r_metal_state->window_equips[slot];
+    Renderer_Metal_Window_Equip *equip = &r_metal_state->window_equips[slot];
 
-    Renderer_Metal_Frame_Data* frame = &r_metal_state->frames[r_metal_state->current_frame_index];
+    Renderer_Metal_Frame_Data *frame = &r_metal_state->frames[r_metal_state->current_frame_index];
 
     dispatch_semaphore_wait((dispatch_semaphore_t)frame->semaphore, DISPATCH_TIME_FOREVER);
 
-    CAMetalLayer* layer = metal_layer(equip->layer);
+    CAMetalLayer *layer = metal_layer(equip->layer);
 
     id<MTLCommandBuffer> command_buffer = [metal_command_queue(r_metal_state->command_queue) commandBuffer];
 
@@ -790,15 +788,15 @@ renderer_window_submit(void* window, Renderer_Handle window_equip, Renderer_Pass
       dispatch_semaphore_signal((dispatch_semaphore_t)frame->semaphore);
     }];
 
-    Renderer_Pass_Params_UI* ui_params = nullptr;
-    Renderer_Pass_Params_Geo_3D* geo_params = nullptr;
-    bool has_blur = false;
+    Renderer_Pass_Params_UI     *ui_params = nullptr;
+    Renderer_Pass_Params_Geo_3D *geo_params = nullptr;
+    bool                         has_blur = false;
 
     {
         ZoneScopedN("MetalAnalyzePasses");
-        for (Renderer_Pass_Node* pass_node = passes->first; pass_node; pass_node = pass_node->next)
+        for (Renderer_Pass_Node *pass_node = passes->first; pass_node; pass_node = pass_node->next)
         {
-            Renderer_Pass* pass = &pass_node->v;
+            Renderer_Pass *pass = &pass_node->v;
             switch (pass->kind)
             {
             case Renderer_Pass_Kind_UI:
@@ -820,9 +818,9 @@ renderer_window_submit(void* window, Renderer_Handle window_equip, Renderer_Pass
     }
     else
     {
-        for (Renderer_Pass_Node* pass_node = passes->first; pass_node; pass_node = pass_node->next)
+        for (Renderer_Pass_Node *pass_node = passes->first; pass_node; pass_node = pass_node->next)
         {
-            Renderer_Pass* pass = &pass_node->v;
+            Renderer_Pass *pass = &pass_node->v;
 
             switch (pass->kind)
             {
@@ -849,15 +847,15 @@ renderer_window_submit(void* window, Renderer_Handle window_equip, Renderer_Pass
     r_metal_state->current_frame_index = (r_metal_state->current_frame_index + 1) % METAL_FRAMES_IN_FLIGHT;
 }
 
-void*
+void *
 renderer_metal_acquire_buffer_from_pool(u64 size)
 {
-    Renderer_Metal_Frame_Data* frame = &r_metal_state->frames[r_metal_state->current_frame_index];
+    Renderer_Metal_Frame_Data *frame = &r_metal_state->frames[r_metal_state->current_frame_index];
 
     size = (size + 255) & ~255;
     for (u32 i = 0; i < METAL_BUFFER_POOL_SIZE; i++)
     {
-        Renderer_Metal_Buffer_Pool_Entry* entry = &frame->buffer_pool[i];
+        Renderer_Metal_Buffer_Pool_Entry *entry = &frame->buffer_pool[i];
         if (!entry->in_use && entry->buffer && entry->size >= size && entry->size <= size * 2)
         {
             entry->in_use = true;
@@ -870,7 +868,7 @@ renderer_metal_acquire_buffer_from_pool(u64 size)
 
     for (u32 i = 0; i < METAL_BUFFER_POOL_SIZE; i++)
     {
-        Renderer_Metal_Buffer_Pool_Entry* entry = &frame->buffer_pool[i];
+        Renderer_Metal_Buffer_Pool_Entry *entry = &frame->buffer_pool[i];
         if (!entry->in_use && entry->buffer && entry->size >= size)
         {
             entry->in_use = true;
@@ -886,7 +884,7 @@ renderer_metal_acquire_buffer_from_pool(u64 size)
 
     for (u32 i = 0; i < METAL_BUFFER_POOL_SIZE; i++)
     {
-        Renderer_Metal_Buffer_Pool_Entry* entry = &frame->buffer_pool[i];
+        Renderer_Metal_Buffer_Pool_Entry *entry = &frame->buffer_pool[i];
         if (!entry->in_use)
         {
             if (!entry->buffer || entry->reuse_count < min_reuse_count)
@@ -899,7 +897,7 @@ renderer_metal_acquire_buffer_from_pool(u64 size)
 
     if (best_slot < METAL_BUFFER_POOL_SIZE)
     {
-        Renderer_Metal_Buffer_Pool_Entry* entry = &frame->buffer_pool[best_slot];
+        Renderer_Metal_Buffer_Pool_Entry *entry = &frame->buffer_pool[best_slot];
 
         if (entry->buffer && entry->size < size)
         {
@@ -940,7 +938,7 @@ renderer_metal_acquire_buffer_from_pool(u64 size)
 void
 renderer_metal_reset_frame_pools()
 {
-    Renderer_Metal_Frame_Data* frame = &r_metal_state->frames[r_metal_state->current_frame_index];
+    Renderer_Metal_Frame_Data *frame = &r_metal_state->frames[r_metal_state->current_frame_index];
 
     for (u32 i = 0; i < METAL_BUFFER_POOL_SIZE; i++)
     {

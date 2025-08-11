@@ -1,12 +1,10 @@
-#ifndef FONT_H
-#define FONT_H
+#pragma once
 
-#include "base/base.h"
-#include "base/types.h"
-#include <stb_truetype.h>
+#include "../base/base_inc.h"
+#include "../../third_party/stb/stb_truetype.h"
 
-
-struct Font {
+struct Font
+{
     stbtt_fontinfo *info;
 };
 struct Font_Handle
@@ -37,37 +35,28 @@ struct Font_Metrics
 
 struct Font_Raster_Result
 {
-    u8* atlas_data;
+    u8       *atlas_data;
     Vec2<s16> atlas_dim;
-    bool valid;
+    bool      valid;
 };
 
-
-
-// TOOD(Alex) are we going to need this or should I just pass the 
-// arena to each function that needs it? 
+// TOOD(Alex) are we going to need this or should I just pass the
+// arena to each function that needs it?
 struct Font_State
 {
-    Arena* arena;
+    Arena *arena;
 };
 
-void
-font_init(void);
-
-Font_Handle
-font_open(String path);
-
-Font_Handle
-font_open_from_data(String* data);
-
-void
-font_close(Font_Handle font);
-
-Font_Metrics
-font_metrics_from_font(Font_Handle font);
+// clang-format off
+void font_init(void);
+Font_Handle font_open(String path);
+Font_Handle font_open_from_data(String *data);
+void font_close(Font_Handle font);
+Font_Metrics font_metrics_from_font(Font_Handle font);
+// clang-format on
 
 Font_Raster_Result
-font_raster(Arena* arena, Font_Handle handle, f32 size, String string);
+font_raster(Arena *arena, Font_Handle handle, f32 size, String string);
 
 // TODO(Alex) we want to no use the stbtt types here and have this
 // be under an specific impl when we want to use other providers or
@@ -77,5 +66,3 @@ font_from_handle(Font_Handle handle);
 
 Font_Handle
 font_to_handle(Font font);
-
-#endif

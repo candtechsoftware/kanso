@@ -1,7 +1,7 @@
 #ifndef RENDERER_CORE_H
 #define RENDERER_CORE_H
 
-#include "../base/base.h"
+#include "../base/base_inc.h"
 
 enum
 {
@@ -61,11 +61,11 @@ struct Renderer_Rect_2D_Inst
     Rng2<f32> dst;
     Rng2<f32> src;
     Vec4<f32> colors[4];
-    f32 corner_radii[4];
-    f32 border_thickness;
-    f32 edge_softness;
-    f32 white_texture_override;
-    f32 _unused_[1];
+    f32       corner_radii[4];
+    f32       border_thickness;
+    f32       edge_softness;
+    f32       white_texture_override;
+    f32       _unused_[1];
 };
 
 struct Renderer_Mesh_3D_Inst
@@ -75,27 +75,27 @@ struct Renderer_Mesh_3D_Inst
 
 struct Renderer_Batch
 {
-    u8* v;
+    u8 *v;
     u64 byte_count;
     u64 byte_cap;
 };
 
 typedef List_Node<Renderer_Batch> Renderer_Batch_Node;
-typedef List<Renderer_Batch> Renderer_Batch_List;
+typedef List<Renderer_Batch>      Renderer_Batch_List;
 
 struct Renderer_Batch_Group_2D_Params
 {
-    Renderer_Handle tex;
+    Renderer_Handle             tex;
     Renderer_Tex_2D_Sample_Kind tex_sample_kind;
-    Mat3x3<f32> xform;
-    Rng2<f32> clip;
-    f32 transparency;
+    Mat3x3<f32>                 xform;
+    Rng2<f32>                   clip;
+    f32                         transparency;
 };
 
 struct Renderer_Batch_Group_2D_Node
 {
-    Renderer_Batch_Group_2D_Node* next;
-    Renderer_Batch_List batches;
+    Renderer_Batch_Group_2D_Node  *next;
+    Renderer_Batch_List            batches;
     Renderer_Batch_Group_2D_Params params;
 };
 
@@ -103,27 +103,27 @@ typedef List<Renderer_Batch_Group_2D_Node> Renderer_Batch_Group_2D_List;
 
 struct Renderer_Batch_Group_3D_Params
 {
-    Renderer_Handle mesh_vertices;
-    Renderer_Handle mesh_indices;
-    Renderer_Geo_Topology_Kind mesh_geo_topology;
-    u32 mesh_geo_vertex_flags;
-    Renderer_Handle albedo_tex;
+    Renderer_Handle             mesh_vertices;
+    Renderer_Handle             mesh_indices;
+    Renderer_Geo_Topology_Kind  mesh_geo_topology;
+    u32                         mesh_geo_vertex_flags;
+    Renderer_Handle             albedo_tex;
     Renderer_Tex_2D_Sample_Kind albedo_tex_sample_kind;
-    Mat4x4<f32> xform;
+    Mat4x4<f32>                 xform;
 };
 
 struct Renderer_Batch_Group_3D_Map_Node
 {
-    Renderer_Batch_Group_3D_Map_Node* next;
-    u64 hash;
-    Renderer_Batch_List batches;
-    Renderer_Batch_Group_3D_Params params;
+    Renderer_Batch_Group_3D_Map_Node *next;
+    u64                               hash;
+    Renderer_Batch_List               batches;
+    Renderer_Batch_Group_3D_Params    params;
 };
 
 struct Renderer_Batch_Group_3D_Map
 {
-    Renderer_Batch_Group_3D_Map_Node** slots;
-    u64 slots_count;
+    Renderer_Batch_Group_3D_Map_Node **slots;
+    u64                                slots_count;
 };
 
 struct Renderer_Pass_Params_UI
@@ -135,16 +135,16 @@ struct Renderer_Pass_Params_Blur
 {
     Rng2<f32> rect;
     Rng2<f32> clip;
-    f32 blur_size;
-    f32 corner_radii[4];
+    f32       blur_size;
+    f32       corner_radii[4];
 };
 
 struct Renderer_Pass_Params_Geo_3D
 {
-    Rng2<f32> viewport;
-    Rng2<f32> clip;
-    Mat4x4<f32> view;
-    Mat4x4<f32> projection;
+    Rng2<f32>                   viewport;
+    Rng2<f32>                   clip;
+    Mat4x4<f32>                 view;
+    Mat4x4<f32>                 projection;
     Renderer_Batch_Group_3D_Map mesh_batches;
 };
 
@@ -153,15 +153,15 @@ struct Renderer_Pass
     Renderer_Pass_Kind kind;
     union
     {
-        void* params;
-        Renderer_Pass_Params_UI* params_ui;
-        Renderer_Pass_Params_Blur* params_blur;
-        Renderer_Pass_Params_Geo_3D* params_geo_3d;
+        void                        *params;
+        Renderer_Pass_Params_UI     *params_ui;
+        Renderer_Pass_Params_Blur   *params_blur;
+        Renderer_Pass_Params_Geo_3D *params_geo_3d;
     };
 };
 
 typedef List_Node<Renderer_Pass> Renderer_Pass_Node;
-typedef List<Renderer_Pass> Renderer_Pass_List;
+typedef List<Renderer_Pass>      Renderer_Pass_List;
 
 inline Renderer_Handle
 renderer_handle_zero()
@@ -183,12 +183,12 @@ renderer_batch_list_make(u64 instance_size)
     return result;
 }
 
-inline void*
-renderer_batch_list_push_inst(Arena* arena, Renderer_Batch_List* list, u64 bytes_per_inst, u64 batch_inst_cap)
+inline void *
+renderer_batch_list_push_inst(Arena *arena, Renderer_Batch_List *list, u64 bytes_per_inst, u64 batch_inst_cap)
 {
-    void* result = 0;
+    void *result = 0;
 
-    Renderer_Batch* batch = 0;
+    Renderer_Batch *batch = 0;
     if (list->last)
     {
         batch = &list->last->v;
@@ -210,10 +210,10 @@ renderer_batch_list_push_inst(Arena* arena, Renderer_Batch_List* list, u64 bytes
     return result;
 }
 
-inline Renderer_Pass*
-renderer_pass_from_kind(Arena* arena, Renderer_Pass_List* list, Renderer_Pass_Kind kind)
+inline Renderer_Pass *
+renderer_pass_from_kind(Arena *arena, Renderer_Pass_List *list, Renderer_Pass_Kind kind)
 {
-    Renderer_Pass* pass = list_push_new(arena, list);
+    Renderer_Pass *pass = list_push_new(arena, list);
     pass->kind = kind;
 
     switch (kind)
@@ -241,11 +241,11 @@ renderer_pass_from_kind(Arena* arena, Renderer_Pass_List* list, Renderer_Pass_Ki
 void
 renderer_init();
 Renderer_Handle
-renderer_window_equip(void* window);
+renderer_window_equip(void *window);
 void
-renderer_window_unequip(void* window, Renderer_Handle window_equip);
+renderer_window_unequip(void *window, Renderer_Handle window_equip);
 Renderer_Handle
-renderer_tex_2d_alloc(Renderer_Resource_Kind kind, Vec2<f32> size, Renderer_Tex_2D_Format format, void* data);
+renderer_tex_2d_alloc(Renderer_Resource_Kind kind, Vec2<f32> size, Renderer_Tex_2D_Format format, void *data);
 void
 renderer_tex_2d_release(Renderer_Handle texture);
 Renderer_Resource_Kind
@@ -255,9 +255,9 @@ renderer_size_from_tex_2d(Renderer_Handle texture);
 Renderer_Tex_2D_Format
 renderer_format_from_tex_2d(Renderer_Handle texture);
 void
-renderer_fill_tex_2d_region(Renderer_Handle texture, Rng2<f32> subrect, void* data);
+renderer_fill_tex_2d_region(Renderer_Handle texture, Rng2<f32> subrect, void *data);
 Renderer_Handle
-renderer_buffer_alloc(Renderer_Resource_Kind kind, u64 size, void* data);
+renderer_buffer_alloc(Renderer_Resource_Kind kind, u64 size, void *data);
 void
 renderer_buffer_release(Renderer_Handle buffer);
 void
@@ -265,17 +265,17 @@ renderer_begin_frame();
 void
 renderer_end_frame();
 void
-renderer_window_begin_frame(void* window, Renderer_Handle window_equip);
+renderer_window_begin_frame(void *window, Renderer_Handle window_equip);
 void
-renderer_window_end_frame(void* window, Renderer_Handle window_equip);
+renderer_window_end_frame(void *window, Renderer_Handle window_equip);
 void
-renderer_window_submit(void* window, Renderer_Handle window_equip, Renderer_Pass_List* passes);
+renderer_window_submit(void *window, Renderer_Handle window_equip, Renderer_Pass_List *passes);
 
 // Include platform-specific renderer implementation
 #ifdef __APPLE__
-#include "renderer_metal.h"
+#    include "renderer_metal.h"
 #elif defined(__linux__)
-#include "renderer_vulkan.h"
+#    include "renderer_vulkan.h"
 #else
 #endif
 
