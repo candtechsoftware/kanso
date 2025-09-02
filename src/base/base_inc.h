@@ -10,6 +10,4 @@
 #include "arena.h"
 #include "array.h"
 #include "hash_table.h"
-#include "os.h"
-#include "os_gfx.h"
 #include "tctx.h"

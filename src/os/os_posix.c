@@ -1,9 +1,3 @@
-#include "arena.h"
-#include "os.h"
-#include "util.h"
-#include "tctx.h"
-#include "string_core.h"
-
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -11,6 +5,13 @@
 #include <dirent.h>
 #include <string.h>
 #include <errno.h>
+#include <time.h>
+#ifdef __APPLE__
+#include <mach/mach_time.h>
+#endif
+
+#include "../base/base_inc.h"
+#include "os.h"
 
 #ifndef PAGE_SIZE
 #    define PAGE_SIZE 4096
@@ -38,7 +39,6 @@ os_reserve_large(u64 size)
     }
     return result;
 #else
-    // MAP_HUGETLB not available on macOS
     return os_reserve(size);
 #endif
 }
@@ -424,7 +424,6 @@ os_create_directory_recursive(String path)
     MemoryCopy(null_term_path, path.data, path.size);
     null_term_path[path.size] = 0;
 
-    // Remove trailing slash if present
     u32 len = path.size;
     if (len > 0 && null_term_path[len - 1] == '/')
     {
@@ -432,7 +431,6 @@ os_create_directory_recursive(String path)
         len--;
     }
 
-    // Create directories recursively
     for (u32 i = 1; i < len; i++)
     {
         if (null_term_path[i] == '/')
@@ -443,7 +441,27 @@ os_create_directory_recursive(String path)
         }
     }
 
-    // Create the final directory
     int result = mkdir((const char *)null_term_path, 0755);
     return (result == 0) || (errno == EEXIST);
+}
+
+internal f64
+os_get_time(void)
+{
+#ifdef __APPLE__
+    // macOS using mach_absolute_time for high precision
+    static mach_timebase_info_data_t timebase = {0};
+    if (timebase.denom == 0) {
+        mach_timebase_info(&timebase);
+    }
+    u64 time = mach_absolute_time();
+    // Convert to nanoseconds then to seconds
+    f64 nanoseconds = (f64)time * (f64)timebase.numer / (f64)timebase.denom;
+    return nanoseconds / 1e9;
+#else
+    // Linux using clock_gettime
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (f64)ts.tv_sec + (f64)ts.tv_nsec / 1e9;
+#endif
 }

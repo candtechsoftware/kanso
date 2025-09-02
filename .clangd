@@ -1,5 +1,10 @@
 CompileFlags:
-  Add: 
+  Add:
+    - -D__APPLE__
+    - -DRENDERER_METAL=1
+    - -Isrc
+    - -Isrc/base
+    - -Isrc/os
     - -Wno-main-file-suspicious-include
     - -Wno-include-angled-in-module-purview
     - -Wno-pragma-once-outside-header
@@ -14,6 +19,7 @@ CompileFlags:
     - -Wno-unused-function
     - -Wno-unused-variable
     - -Wno-unused-parameter
+    - -Wno-undefined-internal
 
 Diagnostics:
   Suppress:

@@ -1,10 +1,6 @@
 #pragma once
 
-#include "types.h"
-#include "math_core.h"
-#include "string_core.h"
-#include "util.h"
-#include "base_core.h"
+#include "../base/base_inc.h"
 
 typedef union OS_Handle OS_Handle;
 union OS_Handle {
@@ -100,6 +96,9 @@ internal String os_read_entire_file(Arena *arena, String file_path);
 internal b32    os_write_entire_file(String file_path, String data);
 internal b32    os_file_exists(String file_path);
 internal u64    os_file_last_write_time(String file_path);
+
+// Time functions
+internal f64    os_get_time(void);
 
 internal OS_Handle os_open_file(String path, int mode);
 internal void      os_file_close(OS_Handle file);

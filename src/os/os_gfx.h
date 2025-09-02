@@ -1,8 +1,6 @@
 #pragma once
-#include "types.h"
+#include "../base/base_inc.h"
 #include "os.h"
-#include "math_core.h"
-#include "string_core.h"
 
 
 
@@ -10,6 +8,7 @@ typedef enum Side
 {
     Side_Invalid = -1,
     Side_Min,
+    Side_Mid,
     Side_Max,
     Side_COUNT
 } Side;

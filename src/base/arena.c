@@ -1,7 +1,7 @@
 #pragma once
 
 #include "arena.h"
-#include "os.h"
+#include "os/os_inc.h"
 #include "util.h"
 
 Arena *
@@ -10,7 +10,6 @@ arena_alloc_(Arena_Params *params)
     u64 reserve_size = params->reserve_size;
     u64 commit_size = params->commit_size;
 
-    // TODO(Alex): need to implement getting the large page size
     reserve_size = AlignPow2(reserve_size, os_get_sys_info().page_size);
     commit_size = AlignPow2(commit_size, os_get_sys_info().page_size);
 

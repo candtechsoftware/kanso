@@ -426,7 +426,6 @@ internal Rng2_f32
 os_client_rect_from_window(OS_Handle handle)
 {
     X11_Window_State *window_state = x11_window_state_from_handle(handle);
-    printf("Getting client rect for handle %lu, window_state: %p\n", handle.u64s[0], window_state);
     
     if (window_state)
     {
@@ -436,7 +435,6 @@ os_client_rect_from_window(OS_Handle handle)
         XGetGeometry(x11_state->display, window_state->window, &root,
                      &x, &y, &width, &height, &border_width, &depth);
         
-        printf("XGetGeometry returned: %dx%d\n", width, height);
         
         Rng2_f32 result;
         result.min = V2F32(0.0f, 0.0f);
@@ -603,7 +601,6 @@ os_event_list_from_window(OS_Handle window)
     
     X11_Window_State *win_state = &x11_state->windows[window_index];
     
-    // Process X11 events  
     XEvent event;
     while (XCheckWindowEvent(x11_state->display, win_state->window, 
                             ExposureMask | KeyPressMask | KeyReleaseMask | 
@@ -618,7 +615,6 @@ os_event_list_from_window(OS_Handle window)
                     os_event->window = window;
                     os_event->kind = OS_Event_Window_Close;
                     
-                    // Add to result list
                     if (result.last) {
                         result.last->next = os_event;
                         os_event->prev = result.last;
@@ -640,7 +636,6 @@ os_event_list_from_window(OS_Handle window)
                     os_event->key = key;
                     os_event->modifiers = os_modifiers_from_x11_state(event.xkey.state);
                     
-                    // Add to result list
                     if (result.last) {
                         result.last->next = os_event;
                         os_event->prev = result.last;
@@ -662,7 +657,6 @@ os_event_list_from_window(OS_Handle window)
                     os_event->key = key;
                     os_event->modifiers = os_modifiers_from_x11_state(event.xkey.state);
                     
-                    // Add to result list
                     if (result.last) {
                         result.last->next = os_event;
                         os_event->prev = result.last;

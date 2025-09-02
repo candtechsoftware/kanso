@@ -66,7 +66,6 @@ log_level_str(LogLevel level)
 static void
 write_header(FILE *out, LogLevel level, const char *file, u32 line)
 {
-    // Get timestamp
     time_t    t = time(NULL);
     struct tm tm = {0};
 #ifdef _WIN32
@@ -75,7 +74,6 @@ write_header(FILE *out, LogLevel level, const char *file, u32 line)
     localtime_r(&t, &tm);
 #endif
 
-    // Find just the filename, not the full path
     const char *filename = file;
     const char *p = file;
     while (*p)
@@ -87,12 +85,10 @@ write_header(FILE *out, LogLevel level, const char *file, u32 line)
         p++;
     }
 
-    // Print header
     fprintf(out, "[%04d-%02d-%02d %02d:%02d:%02d] [%s] %s:%u - ", tm.tm_year + 1900, tm.tm_mon + 1,
             tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, log_level_str(level), filename, line);
 }
 
-// Process format string and arguments
 static void
 process_format(FILE *out, const char *fmt, va_list args)
 {
@@ -122,7 +118,6 @@ process_format(FILE *out, const char *fmt, va_list args)
             }
             case 'd':
             {
-                // Handle different integer types
                 int val = va_arg(args, int);
                 fprintf(out, "%d", val);
                 break;
@@ -142,14 +137,13 @@ process_format(FILE *out, const char *fmt, va_list args)
                 break;
             }
             default:
-                // Unknown specifier, print as-is
-                fputc('{', out);
+                    fputc('{', out);
                 fputc(spec, out);
                 fputc('}', out);
                 break;
             }
 
-            p += 3; // Skip past {x}
+            p += 3;
         }
         else
         {

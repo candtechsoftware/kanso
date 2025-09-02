@@ -1,35 +1,88 @@
-// Headers 
 #include "../base/base_inc.h"
 #include "../font/font_inc.h"
 #include "../renderer/renderer_inc.h"
 #include "../draw/draw_inc.h"
+#include "../os/os_inc.h"
 
-// C files
 #include "../base/base_inc.c"
 #include "../font/font_inc.c"
+#include "../os/os_inc.c" 
 #include "../renderer/renderer_inc.c"
 #include "../draw/draw_inc.c"
-#include "draw/draw.h"
 
 #include <stdio.h>
 #include <math.h>
 
+typedef struct {
+    f32 x, y, z;
+} Point3D;
+
+typedef struct {
+    f32 x, y;
+} Point2D;
+
+Point2D project_point(Point3D p3d, f32 center_x, f32 center_y, f32 scale) {
+    f32 perspective = 1.0f / (5.0f - p3d.z);
+    Point2D p2d;
+    p2d.x = center_x + p3d.x * scale * perspective;
+    p2d.y = center_y + p3d.y * scale * perspective;
+    return p2d;
+}
+
+Point3D rotate_point(Point3D p, f32 rx, f32 ry, f32 rz) {
+    rx *= 3.14159f / 180.0f;
+    ry *= 3.14159f / 180.0f;
+    rz *= 3.14159f / 180.0f;
+    
+    f32 sx = sinf(rx), cx = cosf(rx);
+    f32 sy = sinf(ry), cy = cosf(ry);
+    f32 sz = sinf(rz), cz = cosf(rz);
+    
+    Point3D result;
+    
+    f32 y = p.y * cx - p.z * sx;
+    f32 z = p.y * sx + p.z * cx;
+    p.y = y;
+    p.z = z;
+    
+    f32 x = p.x * cy + p.z * sy;
+    z = -p.x * sy + p.z * cy;
+    p.x = x;
+    p.z = z;
+    
+    x = p.x * cz - p.y * sz;
+    y = p.x * sz + p.y * cz;
+    
+    result.x = x;
+    result.y = y;
+    result.z = z;
+    
+    return result;
+}
+
 int main() {
     printf("Initializing engine...\n");
     
-    // Initialize thread context
     TCTX tctx = {0};
     tctx_init_and_equip(&tctx);
     
-    // Initialize OS graphics
     os_gfx_init();
     printf("OS graphics initialized\n");
     
-    // Initialize renderer
     renderer_init();
     printf("Renderer initialized\n");
     
-    // Create main window
+    font_init();
+    font_cache_init();
+    
+    String font_path = str_lit("/System/Library/Fonts/Helvetica.ttc");
+    Font_Tag default_font = font_tag_from_path(font_path);
+    
+    if (font_tag_equal(default_font, font_tag_zero())) {
+        printf("Warning: Could not load font, using zero tag\n");
+        default_font = font_tag_zero();
+    }
+    
     OS_Window_Params window_params = {}; 
     window_params.size = (Vec2_s32){800, 600};
     window_params.title = str_lit("Engine Test");
@@ -41,42 +94,58 @@ int main() {
     }
     printf("Window created\n");
     
-    // Equip window with renderer  
     void *native_window = os_window_native_handle(window);
     Renderer_Handle window_equip = renderer_window_equip(native_window);
     printf("Window equipped with renderer\n");
     
-    // Create geometry buffers once (outside the loop)
-    f32 triangle_vertices[] = {
-        // Position (x, y, z)
-        -1.0f, -1.0f, 0.0f,  // Bottom left
-         1.0f, -1.0f, 0.0f,  // Bottom right
-         0.0f,  1.0f, 0.0f,  // Top center
+    Point3D cube_vertices[8] = {
+        {-1, -1, -1}, {1, -1, -1}, {1, 1, -1}, {-1, 1, -1},
+        {-1, -1, 1},  {1, -1, 1},  {1, 1, 1},  {-1, 1, 1}
     };
     
-    u32 triangle_indices[] = {
-        0, 1, 2  // One triangle
+    int edges[12][2] = {
+        {0, 1}, {1, 2}, {2, 3}, {3, 0},
+        {4, 5}, {5, 6}, {6, 7}, {7, 4},
+        {0, 4}, {1, 5}, {2, 6}, {3, 7}
     };
     
-    // Create vertex buffer
-    Renderer_Handle vertex_buffer = renderer_buffer_alloc(
-        Renderer_Resource_Kind_Static,
-        sizeof(triangle_vertices),
-        triangle_vertices
-    );
-    
-    // Create index buffer  
-    Renderer_Handle index_buffer = renderer_buffer_alloc(
-        Renderer_Resource_Kind_Static,
-        sizeof(triangle_indices),
-        triangle_indices
-    );
-    
-    // Simple render loop
     b32 running = 1;
-    f32 rotation = 0.0f;
+    f32 rotation_x = 0.0f;
+    f32 rotation_y = 0.0f;
+    f32 rotation_z = 0.0f;
+    f32 fps = 0.0f;
+    
+    b32 ui_box_dragging = 0;
+    Vec2_f32 ui_box_pos = {{10, 10}};
+    Vec2_f32 ui_box_size = {{140, 90}};
+    Vec2_f32 drag_offset = {{0, 0}};
+    Vec2_f32 mouse_pos = {{0, 0}};
+    
+    f64 current_time = os_get_time();
+    f64 last_time = current_time;
+    f64 delta_time = 0.0;
+    
+    f64 fps_update_time = current_time;
+    u64 fps_frame_count = 0;
+    
     while (running) {
-        // Process events
+        last_time = current_time;
+        current_time = os_get_time();
+        delta_time = current_time - last_time;
+        
+        fps_frame_count++;
+        
+        rotation_x += 50.0f * delta_time;
+        rotation_y += 30.0f * delta_time;
+        rotation_z += 20.0f * delta_time;
+        
+        f64 fps_delta = current_time - fps_update_time;
+        if (fps_delta >= 0.25) {
+            fps = (f32)(fps_frame_count / fps_delta);
+            fps_frame_count = 0;
+            fps_update_time = current_time;
+        }
+        
         OS_Event_List events = os_event_list_from_window(window);
         for (OS_Event *event = events.first; event; event = event->next) {
             if (event->kind == OS_Event_Window_Close) {
@@ -85,123 +154,138 @@ int main() {
             else if (event->kind == OS_Event_Press && event->key == OS_Key_Esc) {
                 running = 0;
             }
+            else if (event->kind == OS_Event_Press && event->key == OS_Key_MouseLeft) {
+                mouse_pos = event->position;
+                if (mouse_pos.x >= ui_box_pos.x && mouse_pos.x <= ui_box_pos.x + ui_box_size.x &&
+                    mouse_pos.y >= ui_box_pos.y && mouse_pos.y <= ui_box_pos.y + ui_box_size.y) {
+                    ui_box_dragging = 1;
+                    drag_offset.x = mouse_pos.x - ui_box_pos.x;
+                    drag_offset.y = mouse_pos.y - ui_box_pos.y;
+                }
+            }
+            else if (event->kind == OS_Event_Release && event->key == OS_Key_MouseLeft) {
+                ui_box_dragging = 0;
+            }
+            
+            if (event->position.x != 0 || event->position.y != 0) {
+                mouse_pos = event->position;
+            }
         }
         
-        // Clear background
+        if (ui_box_dragging) {
+            ui_box_pos.x = mouse_pos.x - drag_offset.x;
+            ui_box_pos.y = mouse_pos.y - drag_offset.y;
+            
+            if (ui_box_pos.x < 0) ui_box_pos.x = 0;
+            if (ui_box_pos.y < 0) ui_box_pos.y = 0;
+            if (ui_box_pos.x + ui_box_size.x > 800) ui_box_pos.x = 800 - ui_box_size.x;
+            if (ui_box_pos.y + ui_box_size.y > 600) ui_box_pos.y = 600 - ui_box_size.y;
+        }
+        
         renderer_window_begin_frame(native_window, window_equip);
         
-        // Create a simple UI pass with a colored rectangle
-        Arena *frame_arena = arena_alloc();
-        Renderer_Pass_List passes = {0};
+        draw_begin_frame(default_font);
         
-        Renderer_Pass *ui_pass = renderer_pass_from_kind(frame_arena, &passes, Renderer_Pass_Kind_UI);
+        Draw_Bucket *bucket = draw_bucket_make();
+        draw_push_bucket(bucket);
         
-        // Add a batch group for rendering rectangles
-        Renderer_Batch_Group_2D_Node *group_node = push_array(frame_arena, Renderer_Batch_Group_2D_Node, 1);
-        group_node->params.tex = renderer_handle_zero(); // Use white texture
-        group_node->params.tex_sample_kind = Renderer_Tex_2D_Sample_Kind_Linear;
-        group_node->params.transparency = 0.0f;
-        // Identity transform
-        group_node->params.xform.m[0][0] = 1; group_node->params.xform.m[0][1] = 0; group_node->params.xform.m[0][2] = 0;
-        group_node->params.xform.m[1][0] = 0; group_node->params.xform.m[1][1] = 1; group_node->params.xform.m[1][2] = 0;
-        group_node->params.xform.m[2][0] = 0; group_node->params.xform.m[2][1] = 0; group_node->params.xform.m[2][2] = 1;
-        group_node->params.clip = (Rng2_f32){0};
+        Vec4_f32 ui_color = ui_box_dragging ? 
+            (Vec4_f32){{1.0f, 0.4f, 0.4f, 1.0f}} :
+            (Vec4_f32){{1.0f, 0.2f, 0.2f, 1.0f}};
         
-        // Add to UI pass
-        if (ui_pass->params_ui->rects.last) {
-            ui_pass->params_ui->rects.last->next = group_node;
-            ui_pass->params_ui->rects.last = group_node;
-        } else {
-            ui_pass->params_ui->rects.first = ui_pass->params_ui->rects.last = group_node;
+        draw_rect((Rng2_f32){{{ui_box_pos.x, ui_box_pos.y}}, 
+                            {{ui_box_pos.x + ui_box_size.x, ui_box_pos.y + ui_box_size.y}}}, 
+                  ui_color, 
+                  10.0f, 2.0f, 1.0f);
+        
+        draw_text((Vec2_f32){{ui_box_pos.x + 20, ui_box_pos.y + 45}}, 
+                  str_lit("Drag me!"), default_font, 18.0f,
+                  (Vec4_f32){{1.0f, 1.0f, 1.0f, 1.0f}});
+        
+        char fps_buffer[64];
+        snprintf(fps_buffer, sizeof(fps_buffer), "FPS: %.1f", fps);
+        String fps_str = string8_from_cstr(fps_buffer);
+
+        draw_text((Vec2_f32){{350, 290}}, fps_str, default_font, 32.0f, 
+                  (Vec4_f32){{1.0f, 1.0f, 1.0f, 1.0f}});
+        
+        draw_text((Vec2_f32){{320, 320}}, str_lit("Draw API Test"), default_font, 24.0f,
+                  (Vec4_f32){{0.8f, 0.8f, 1.0f, 1.0f}});
+        
+        draw_rect((Rng2_f32){{{400, 0}}, {{800, 300}}}, 
+                  (Vec4_f32){{0.05f, 0.05f, 0.1f, 1.0f}}, 
+                  0.0f, 0.0f, 0.0f);
+        
+        f32 center_x = 600.0f;
+        f32 center_y = 150.0f;
+        f32 scale = 80.0f;
+        
+        Point2D projected[8];
+        for (int i = 0; i < 8; i++) {
+            Point3D rotated = rotate_point(cube_vertices[i], rotation_x, rotation_y, rotation_z);
+            projected[i] = project_point(rotated, center_x, center_y, scale);
         }
-        ui_pass->params_ui->rects.count++;
         
-        // Create batch with rectangle instance
-        group_node->batches = renderer_batch_list_make(sizeof(Renderer_Rect_2D_Inst));
-        Renderer_Rect_2D_Inst *rect = renderer_batch_list_push_inst(frame_arena, &group_node->batches, 
-                                                                    sizeof(Renderer_Rect_2D_Inst), 64);
-        
-        // Set up a rectangle in the top left
-        rect->dst = (Rng2_f32){{{10, 10}}, {{210, 110}}};  // 200x100 rect in top left
-        rect->src = (Rng2_f32){{{0, 0}}, {{1, 1}}};
-        rect->colors[0] = (Vec4_f32){{1.0f, 0.2f, 0.2f, 1.0f}}; // Red
-        rect->colors[1] = (Vec4_f32){{0.2f, 1.0f, 0.2f, 1.0f}}; // Green
-        rect->colors[2] = (Vec4_f32){{0.2f, 0.2f, 1.0f, 1.0f}}; // Blue  
-        rect->colors[3] = (Vec4_f32){{1.0f, 1.0f, 0.2f, 1.0f}}; // Yellow
-        rect->corner_radii[0] = rect->corner_radii[1] = rect->corner_radii[2] = rect->corner_radii[3] = 10.0f;
-        rect->border_thickness = 2.0f;
-        rect->edge_softness = 1.0f;
-        rect->white_texture_override = 1.0f; // Use solid color
-        
-        // Skip blur pass for now to focus on 3D
-        
-        // Add a 3D pass with an actual triangle
-        Renderer_Pass *geo3d_pass = renderer_pass_from_kind(frame_arena, &passes, Renderer_Pass_Kind_Geo_3D);
-        
-        // Simple orthographic projection for testing
-        Mat4_f32 *proj = &geo3d_pass->params_geo_3d->projection;
-        MemoryZeroStruct(proj);
-        proj->m[0][0] = 1.0f;
-        proj->m[1][1] = 1.0f;
-        proj->m[2][2] = 1.0f;
-        proj->m[3][3] = 1.0f;
-        
-        // Identity view matrix
-        Mat4_f32 *view = &geo3d_pass->params_geo_3d->view;
-        MemoryZeroStruct(view);
-        view->m[0][0] = 1.0f;
-        view->m[1][1] = 1.0f;
-        view->m[2][2] = 1.0f;
-        view->m[3][3] = 1.0f;
-        
-        // Use the pre-created buffers (from outside the loop)
-        
-        // Create mesh batch node
-        Renderer_Batch_Group_3D_Map_Node *mesh_map_node = push_array(frame_arena, Renderer_Batch_Group_3D_Map_Node, 1);
-        mesh_map_node->hash = 1;
-        mesh_map_node->params.mesh_vertices = vertex_buffer;
-        mesh_map_node->params.mesh_indices = index_buffer;
-        mesh_map_node->params.mesh_geo_topology = Renderer_Geo_Topology_Kind_Triangles;
-        mesh_map_node->params.mesh_geo_vertex_flags = 0;  // Just position, no texcoords or normals
-        mesh_map_node->params.albedo_tex = renderer_handle_zero();
-        mesh_map_node->params.albedo_tex_sample_kind = Renderer_Tex_2D_Sample_Kind_Linear;
-        
-        // Identity transform for the group
-        Mat4_f32 *xform = &mesh_map_node->params.xform;
-        MemoryZeroStruct(xform);
-        xform->m[0][0] = xform->m[1][1] = xform->m[2][2] = xform->m[3][3] = 1.0f;
-        
-        // Add to the 3D pass
-        if (!geo3d_pass->params_geo_3d->mesh_batches.slots) {
-            geo3d_pass->params_geo_3d->mesh_batches.slots = push_array(frame_arena, Renderer_Batch_Group_3D_Map_Node*, 64);
-            geo3d_pass->params_geo_3d->mesh_batches.slots_count = 64;
+        for (int i = 0; i < 12; i++) {
+            int v1 = edges[i][0];
+            int v2 = edges[i][1];
+            
+            Vec4_f32 edge_color = {{
+                0.5f + 0.5f * sinf((rotation_y + i * 30) * 0.017f),
+                0.5f + 0.5f * sinf((rotation_y + i * 30) * 0.017f + 2.094f),
+                0.5f + 0.5f * sinf((rotation_y + i * 30) * 0.017f + 4.189f),
+                1.0f
+            }};
+            
+            f32 dx = projected[v2].x - projected[v1].x;
+            f32 dy = projected[v2].y - projected[v1].y;
+            f32 len = sqrtf(dx*dx + dy*dy);
+            
+            if (len > 0.01f) {
+                f32 nx = -dy / len * 1.5f;
+                f32 ny = dx / len * 1.5f;
+                
+                Rng2_f32 line_rect = {
+                    {{Min(projected[v1].x, projected[v2].x) - 1, 
+                      Min(projected[v1].y, projected[v2].y) - 1}},
+                    {{Max(projected[v1].x, projected[v2].x) + 1, 
+                      Max(projected[v1].y, projected[v2].y) + 1}}
+                };
+                
+                draw_rect(line_rect, edge_color, 0.0f, 0.0f, 0.5f);
+            }
         }
-        mesh_map_node->next = geo3d_pass->params_geo_3d->mesh_batches.slots[0];
-        geo3d_pass->params_geo_3d->mesh_batches.slots[0] = mesh_map_node;
         
-        // Create batch with triangle instance
-        mesh_map_node->batches = renderer_batch_list_make(sizeof(Renderer_Mesh_3D_Inst));
-        Renderer_Mesh_3D_Inst *triangle = renderer_batch_list_push_inst(frame_arena, &mesh_map_node->batches,
-                                                                        sizeof(Renderer_Mesh_3D_Inst), 64);
+        for (int i = 0; i < 8; i++) {
+            Vec4_f32 vertex_color = {{
+                0.5f + 0.5f * sinf((rotation_y + i * 45) * 0.017f),
+                0.5f + 0.5f * sinf((rotation_y + i * 45) * 0.017f + 2.094f),
+                0.5f + 0.5f * sinf((rotation_y + i * 45) * 0.017f + 4.189f),
+                1.0f
+            }};
+            
+            draw_rect((Rng2_f32){{{projected[i].x - 3, projected[i].y - 3}}, 
+                                {{projected[i].x + 3, projected[i].y + 3}}}, 
+                      vertex_color, 2.0f, 0.0f, 1.0f);
+        }
         
-        // Simple identity transform - no rotation for now
-        Mat4_f32 *inst_xform = &triangle->xform;
-        MemoryZeroStruct(inst_xform);
-        inst_xform->m[0][0] = 0.5f;  // Scale down
-        inst_xform->m[1][1] = 0.5f;
-        inst_xform->m[2][2] = 0.5f;
-        inst_xform->m[3][3] = 1.0f;
+        draw_text((Vec2_f32){{500, 20}}, str_lit("3D Cube"), default_font, 20.0f,
+                  (Vec4_f32){{1.0f, 1.0f, 1.0f, 1.0f}});
         
-        // Submit render passes
-        renderer_window_submit(native_window, window_equip, &passes);
+        draw_rect((Rng2_f32){{{398, 0}}, {{402, 300}}}, 
+                  (Vec4_f32){{0.3f, 0.3f, 0.3f, 1.0f}}, 
+                  0.0f, 0.0f, 0.0f);
+        draw_rect((Rng2_f32){{{400, 298}}, {{800, 302}}}, 
+                  (Vec4_f32){{0.3f, 0.3f, 0.3f, 1.0f}}, 
+                  0.0f, 0.0f, 0.0f);
+        
+        draw_pop_bucket();
+        draw_submit_bucket(native_window, window_equip, bucket);
+        draw_end_frame();
         
         renderer_window_end_frame(native_window, window_equip);
-        
-        // Clean up frame arena
-        arena_release(frame_arena);
     }
     
-    // Cleanup
     renderer_window_unequip(native_window, window_equip);
     os_window_close(window);
     

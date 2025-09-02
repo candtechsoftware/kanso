@@ -1,8 +1,6 @@
-#include "arena.h"
+#include "../base/base_inc.h"
 #include "os_gfx.h"
-#include "string_core.h"
 
-// Save our macros and undefine them for system headers
 #pragma push_macro("internal")
 #pragma push_macro("global")
 #undef internal
@@ -13,7 +11,6 @@
 #include <objc/message.h>
 #include <limits.h>
 
-// Restore our macros
 #pragma pop_macro("global")
 #pragma pop_macro("internal")
 
@@ -24,7 +21,7 @@ struct MacOS_Window_State
 {
     NSWindow          *window;
     NSView            *view;
-    id                 delegate;  // Keep a reference to the delegate
+    id                 delegate;
     b32                is_focused;
     b32                is_maximized;
     b32                is_fullscreen;
@@ -77,9 +74,7 @@ internal void macos_process_events(void);
 
 - (BOOL)windowShouldClose:(NSWindow *)sender
 {
-    // Mark that we have a pending close event
     window_state->has_close_event = true;
-    // Return NO to prevent automatic closing - we'll handle it ourselves
     return NO;
 }
 
@@ -248,11 +243,10 @@ os_window_open(OS_Window_Flags flags, Vec2_s64 size, String title)
         [window_state->window setContentView:window_state->view];
         
         
-        // Create handle before setting up delegate
         OS_Handle handle = os_handle_from_u64(macos_state->window_count + 1);
         
         KansoWindowDelegate *delegate = [[KansoWindowDelegate alloc] initWithWindowState:window_state handle:handle];
-        window_state->delegate = delegate;  // Keep a reference
+        window_state->delegate = delegate;
         [window_state->window setDelegate:delegate];
         
         Scratch scratch = scratch_begin(macos_state->event_arena);
@@ -275,9 +269,9 @@ os_window_open(OS_Window_Flags flags, Vec2_s64 size, String title)
         
         [window_state->window center];
         [window_state->window makeKeyAndOrderFront:nil];
+        [window_state->window setAcceptsMouseMovedEvents:YES];
         [NSApp activateIgnoringOtherApps:YES];
         
-        // Handle already created above, just increment count
         macos_state->window_count++;
         
         return handle;
@@ -295,28 +289,23 @@ os_window_close(OS_Handle handle)
         MacOS_Window_State *window_state = macos_window_state_from_handle(handle);
         if (window_state)
         {
-            // Check if already closed
             if (!window_state->window && !window_state->view) {
                 return;
             }
             
-            // Clear delegate first to prevent callbacks
             if (window_state->window) {
                 [window_state->window setDelegate:nil];
             }
             
-            // Now we can safely close the window
             if (window_state->window) {
                 [window_state->window orderOut:nil];
                 [window_state->window close];
             }
             
-            // Clear all references - let ARC handle the deallocation
             window_state->window = nil;
             window_state->view = nil;
             window_state->delegate = nil;
             
-            // Clear the entire state
             MemoryZeroStruct(window_state);
         }
     }
@@ -515,10 +504,8 @@ os_client_rect_from_window(OS_Handle handle)
         {
             NSRect frame = [window_state->view frame];
             
-            // On macOS with Retina displays, we need to get the backing scale
             CGFloat scale = [[window_state->window screen] backingScaleFactor];
             
-            // Convert to actual pixel coordinates for OpenGL
             result.min = V2F32(0.0f, 0.0f);
             result.max = V2F32((f32)(frame.size.width * scale), (f32)(frame.size.height * scale));
             
@@ -675,10 +662,8 @@ os_event_list_from_window(OS_Handle window)
     }
     
     @autoreleasepool {
-        // Use a temporary arena for this frame's events
         Arena *frame_arena = arena_alloc();
         
-        // Check for window close event first
         if (window_state->has_close_event) {
             OS_Event *os_event = push_array(frame_arena, OS_Event, 1);
             os_event->window = window;
@@ -694,7 +679,6 @@ os_event_list_from_window(OS_Handle window)
             window_state->has_close_event = false;
         }
         
-        // Process system events
         NSEvent *event;
         while ((event = [NSApp nextEventMatchingMask:NSEventMaskAny
                                             untilDate:[NSDate distantPast]
@@ -744,6 +728,79 @@ os_event_list_from_window(OS_Handle window)
                         }
                         result.count++;
                     }
+                } break;
+                
+                case NSEventTypeLeftMouseDown: {
+                    OS_Event *os_event = push_array(frame_arena, OS_Event, 1);
+                    os_event->window = window;
+                    os_event->kind = OS_Event_Press;
+                    os_event->key = OS_Key_MouseLeft;
+                    os_event->modifiers = os_modifiers_from_macos_flags([event modifierFlags]);
+                    
+                    NSPoint mouse_loc = [event locationInWindow];
+                    NSRect frame = [[window_state->window contentView] frame];
+                    os_event->position.x = mouse_loc.x;
+                    os_event->position.y = frame.size.height - mouse_loc.y;
+                    
+                    os_event->next = NULL;
+                    os_event->prev = result.last;
+                    
+                    if (result.last) {
+                        result.last->next = os_event;
+                        result.last = os_event;
+                    } else {
+                        result.first = result.last = os_event;
+                    }
+                    result.count++;
+                } break;
+                
+                case NSEventTypeLeftMouseUp: {
+                    OS_Event *os_event = push_array(frame_arena, OS_Event, 1);
+                    os_event->window = window;
+                    os_event->kind = OS_Event_Release;
+                    os_event->key = OS_Key_MouseLeft;
+                    os_event->modifiers = os_modifiers_from_macos_flags([event modifierFlags]);
+                    
+                    NSPoint mouse_loc = [event locationInWindow];
+                    NSRect frame = [[window_state->window contentView] frame];
+                    os_event->position.x = mouse_loc.x;
+                    os_event->position.y = frame.size.height - mouse_loc.y;
+                    
+                    os_event->next = NULL;
+                    os_event->prev = result.last;
+                    
+                    if (result.last) {
+                        result.last->next = os_event;
+                        result.last = os_event;
+                    } else {
+                        result.first = result.last = os_event;
+                    }
+                    result.count++;
+                } break;
+                
+                case NSEventTypeMouseMoved:
+                case NSEventTypeLeftMouseDragged: {
+                    OS_Event *os_event = push_array(frame_arena, OS_Event, 1);
+                    os_event->window = window;
+                    os_event->kind = OS_Event_Null;
+                    os_event->key = OS_Key_Null;
+                    os_event->modifiers = os_modifiers_from_macos_flags([event modifierFlags]);
+                    
+                    NSPoint mouse_loc = [event locationInWindow];
+                    NSRect frame = [[window_state->window contentView] frame];
+                    os_event->position.x = mouse_loc.x;
+                    os_event->position.y = frame.size.height - mouse_loc.y;
+                    
+                    os_event->next = NULL;
+                    os_event->prev = result.last;
+                    
+                    if (result.last) {
+                        result.last->next = os_event;
+                        result.last = os_event;
+                    } else {
+                        result.first = result.last = os_event;
+                    }
+                    result.count++;
                 } break;
                 
                 default:

@@ -1,6 +1,7 @@
 #include "renderer_metal.h"
 #include "renderer_metal_internal.h"
 #include "../base/base_inc.h"
+#include "../os/os_inc.h"
 
 void
 renderer_metal_init_shaders()

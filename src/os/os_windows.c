@@ -68,7 +68,6 @@ os_read_entire_file(Arena *arena, String file_path)
 {
     String result = {0};
 
-    // Convert to null-terminated string for Win32 API
     u8 *null_term_path = push_array(arena, u8, file_path.size + 1);
     MemoryCopy(null_term_path, file_path.data, file_path.size);
     null_term_path[file_path.size] = 0;
@@ -83,7 +82,6 @@ os_read_entire_file(Arena *arena, String file_path)
 
     if (file == INVALID_HANDLE_VALUE)
     {
-        // Pop the temp path string
         arena_pop(arena, file_path.size + 1);
         return result;
     }
@@ -116,7 +114,6 @@ os_read_entire_file(Arena *arena, String file_path)
     }
 
     CloseHandle(file);
-    // Pop the temp path string, keep the file data
     arena_pop(arena, file_path.size + 1);
 
     result.data = data;
@@ -127,7 +124,6 @@ os_read_entire_file(Arena *arena, String file_path)
 b32
 os_write_entire_file(String file_path, String data)
 {
-    // Convert to null-terminated string for Win32 API
     u8  stack_buffer[1024];
     u8 *null_term_path;
 
@@ -137,7 +133,6 @@ os_write_entire_file(String file_path, String data)
     }
     else
     {
-        // Path too long, would need dynamic allocation
         return false;
     }
 
@@ -168,7 +163,6 @@ os_write_entire_file(String file_path, String data)
 b32
 os_file_exists(String file_path)
 {
-    // Convert to null-terminated string for Win32 API
     u8  stack_buffer[1024];
     u8 *null_term_path;
 
@@ -178,7 +172,6 @@ os_file_exists(String file_path)
     }
     else
     {
-        // Path too long
         return false;
     }
 
@@ -193,7 +186,6 @@ os_file_exists(String file_path)
 internal u64
 os_file_last_write_time(String file_path)
 {
-    // Convert to null-terminated string for Win32 API
     u8  stack_buffer[1024];
     u8 *null_term_path;
 
@@ -203,7 +195,6 @@ os_file_last_write_time(String file_path)
     }
     else
     {
-        // Path too long
         return 0;
     }
 
@@ -455,4 +446,17 @@ os_file_iter_end(OS_File_Iter *iter)
         FindClose(find_handle);
         iter->flags = (OS_File_Iter_Flags)(iter->flags | OS_File_Iter_Skip_Done);
     }
+}
+
+internal f64
+os_get_time(void)
+{
+    static LARGE_INTEGER frequency = {0};
+    if (frequency.QuadPart == 0)
+    {
+        QueryPerformanceFrequency(&frequency);
+    }
+    LARGE_INTEGER counter;
+    QueryPerformanceCounter(&counter);
+    return (f64)counter.QuadPart / (f64)frequency.QuadPart;
 }
