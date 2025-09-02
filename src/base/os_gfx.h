@@ -1,26 +1,20 @@
 #pragma once
 #include "types.h"
+#include "os.h"
 #include "math_core.h"
 #include "string_core.h"
 
 
-// Forward declarations
-typedef struct OS_Event OS_Event;
-typedef struct OS_Event_List OS_Event_List;
-typedef enum OS_Key OS_Key;
-typedef enum OS_Event_Kind OS_Event_Kind;
-typedef enum OS_Modifiers OS_Modifiers;
-typedef enum OS_Cursor_Kind OS_Cursor_Kind;
-typedef enum Side Side;
-enum Side
+
+typedef enum Side
 {
     Side_Invalid = -1,
     Side_Min,
     Side_Max,
     Side_COUNT
-};
+} Side;
 
-enum OS_Key
+typedef enum OS_Key
 {
     OS_Key_Null,
     OS_Key_Esc,
@@ -115,9 +109,9 @@ enum OS_Key
     OS_Key_MouseRight,
     OS_Key_Semicolon,
     OS_Key_COUNT,
-};
+} OS_Key;
 
-enum OS_Event_Kind
+typedef enum OS_Event_Kind
 {
     OS_Event_Null,
     OS_Event_Window_Close,
@@ -128,7 +122,7 @@ enum OS_Event_Kind
     OS_Event_Scroll,
     OS_Event_Drop_File,
     OS_Event_COUNT,
-};
+} OS_Event_Kind;
 
 typedef enum OS_Modifiers
 {
@@ -137,6 +131,8 @@ typedef enum OS_Modifiers
     OS_Modifier_Alt = (1 << 2),
 } OS_Modifiers;
 
+
+typedef struct OS_Event OS_Event;
 struct OS_Event
 {
     OS_Event     *next;
@@ -151,6 +147,7 @@ struct OS_Event
     Vec2_f32      path;
 };
 
+typedef struct OS_Event_List OS_Event_List;
 struct OS_Event_List
 {
     OS_Event *first;
@@ -164,7 +161,7 @@ struct OS_Modifiers_Key_Pair
     OS_Key       key;
 };
 
-enum OS_Cursor_Kind
+typedef enum OS_Cursor_Kind
 {
     OS_Cursor_Kind_Null,
     OS_Cursor_Kind_Hidden,
@@ -180,7 +177,7 @@ enum OS_Cursor_Kind
     OS_Cursor_Kind_Loading,
     OS_Cursor_Kind_Pan,
     OS_Cursor_Kind_COUNT
-};
+} OS_Cursor_Kind;
 
 typedef void
 OS_Repaint_Func(void);
@@ -235,6 +232,8 @@ internal void
 os_window_close(OS_Handle handle);
 internal void
 os_window_set_title(OS_Handle handle, String title);
+internal void *
+os_window_native_handle(OS_Handle handle);
 internal void
 os_window_set_icon(OS_Handle handle, Vec2_s32 size, String rgba_data);
 internal void

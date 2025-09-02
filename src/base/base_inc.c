@@ -7,6 +7,8 @@
 #endif
 #if defined(__linux__)
 #    include "os_gfx_x11.c"
+#elif defined(__APPLE__)
+#    include "os_gfx_macos.m"
 #endif
 #include "tctx.c"
 #include "util.c"

@@ -23,6 +23,11 @@ typedef union Vec2_f32
     };
 } Vec2_f32;
 
+typedef struct Vec2_s16
+{
+    s16 x, y;
+} Vec2_s16;
+
 typedef struct Vec2_s32
 {
     s32 x, y;
@@ -90,6 +95,12 @@ typedef struct Rng1_u64
         u64 v[2];
     };
 } Rng1_u64;
+
+typedef struct Rng2_s16
+{
+    Vec2_s16 min;
+    Vec2_s16 max;
+} Rng2_s16;
 
 typedef struct Rng2_f32
 {

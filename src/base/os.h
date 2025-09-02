@@ -53,8 +53,7 @@ enum OS_MemoryFlags
     OS_MemoryFlag_LargePages = (1 << 3)
 };
 
-typedef enum OS_Access_Flags OS_Access_Flags;
-enum OS_Access_Flags
+typedef enum OS_Access_Flags
 {
     OS_Access_Flag_Read = (1 << 0),
     OS_Access_Flag_Write = (1 << 1),
@@ -63,16 +62,15 @@ enum OS_Access_Flags
     OS_Access_Flag_Share_Read = (1 << 4),
     OS_Access_Flag_Share_Write = (1 << 5),
     OS_Access_Flag_Inherited = (1 << 6),
-};
+} OS_Access_Flags;
 
-typedef enum OS_File_Iter_Flags OS_File_Iter_Flags;
-enum OS_File_Iter_Flags
+typedef enum OS_File_Iter_Flags
 {
     OS_File_Iter_Skip_Folders = (1 << 0),
     OS_File_Iter_Skip_Files = (1 << 1),
     OS_File_Iter_Skip_Skip_Hidden_Files = (1 << 2),
     OS_File_Iter_Skip_Done = (1 << 3),
-};
+} OS_File_Iter_Flags;
 
 typedef struct OS_File_Iter OS_File_Iter;
 struct OS_File_Iter

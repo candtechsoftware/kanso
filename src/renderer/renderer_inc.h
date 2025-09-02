@@ -1,13 +1,10 @@
 #pragma once
 
-#include "../base/base_inc.h"
-#include "renderer.h"
+#include "renderer_core.h"
 
-#if defined(__linux__)
-#include "renderer_opengl.h"
-#elif defined(__APPLE__)
-// Future: include renderer_metal.h
-#include "renderer_opengl.h"
-#else
-#include "renderer_opengl.h"
+#if defined(USE_METAL)
+#include "renderer_metal.h"
+#include "renderer_metal_internal.h"
+#elif defined(USE_VULKAN)
+#include "renderer_vulkan.h"
 #endif
