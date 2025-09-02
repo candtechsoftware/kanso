@@ -9,6 +9,7 @@
 #include "../font/font_inc.c"
 #include "../renderer/renderer_inc.c"
 #include "../draw/draw_inc.c"
+#include "draw/draw.h"
 
 #include <stdio.h>
 #include <math.h>
@@ -29,7 +30,7 @@ int main() {
     printf("Renderer initialized\n");
     
     // Create main window
-    OS_Window_Params window_params = {0};
+    OS_Window_Params window_params = {}; 
     window_params.size = (Vec2_s32){800, 600};
     window_params.title = str_lit("Engine Test");
     

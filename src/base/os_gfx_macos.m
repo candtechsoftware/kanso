@@ -1,7 +1,6 @@
 #include "arena.h"
 #include "os_gfx.h"
 #include "string_core.h"
-#include "tctx.h"
 
 // Save our macros and undefine them for system headers
 #pragma push_macro("internal")
@@ -20,8 +19,8 @@
 
 #include "util.h"
 
-typedef struct macOS_Window_State macOS_Window_State;
-struct macOS_Window_State
+typedef struct MacOS_Window_State MacOS_Window_State;
+struct MacOS_Window_State
 {
     NSWindow          *window;
     NSView            *view;
@@ -39,7 +38,7 @@ typedef struct macOS_State macOS_State;
 struct macOS_State
 {
     NSApplication      *app;
-    macOS_Window_State *windows;
+    MacOS_Window_State *windows;
     u64                 window_count;
     u64                 window_capacity;
     NSCursor           *cursors[OS_Cursor_Kind_COUNT];
@@ -52,21 +51,21 @@ global macOS_State *macos_state = 0;
 
 internal OS_Key os_key_from_macos_keycode(u16 keycode);
 internal OS_Modifiers os_modifiers_from_macos_flags(NSEventModifierFlags flags);
-internal macOS_Window_State *macos_window_state_from_handle(OS_Handle handle);
-internal void macos_set_window_cursor(macOS_Window_State *window_state, OS_Cursor_Kind cursor);
-internal void macos_update_window_properties(macOS_Window_State *window_state);
+internal MacOS_Window_State *macos_window_state_from_handle(OS_Handle handle);
+internal void macos_set_window_cursor(MacOS_Window_State *window_state, OS_Cursor_Kind cursor);
+internal void macos_update_window_properties(MacOS_Window_State *window_state);
 internal void macos_process_events(void);
 
 @interface KansoWindowDelegate : NSObject <NSWindowDelegate>
 {
-    macOS_Window_State *window_state;
+    MacOS_Window_State *window_state;
     OS_Handle window_handle;
 }
-- (id)initWithWindowState:(macOS_Window_State *)state handle:(OS_Handle)handle;
+- (id)initWithWindowState:(MacOS_Window_State *)state handle:(OS_Handle)handle;
 @end
 
 @implementation KansoWindowDelegate
-- (id)initWithWindowState:(macOS_Window_State *)state handle:(OS_Handle)handle
+- (id)initWithWindowState:(MacOS_Window_State *)state handle:(OS_Handle)handle
 {
     self = [super init];
     if (self) {
@@ -97,8 +96,8 @@ internal void macos_process_events(void);
 - (void)windowDidResize:(NSNotification *)notification
 {
     NSRect frame = [window_state->view frame];
-    window_state->size.x = frame.size.width;
-    window_state->size.y = frame.size.height;
+    window_state->size.x = (s32) frame.size.width;
+    window_state->size.y = (s32) frame.size.height;
 }
 
 - (void)windowWillEnterFullScreen:(NSNotification *)notification
@@ -114,13 +113,13 @@ internal void macos_process_events(void);
 
 @interface KansoView : NSView
 {
-    macOS_Window_State *window_state;
+    MacOS_Window_State *window_state;
 }
-- (id)initWithFrame:(NSRect)frame windowState:(macOS_Window_State *)state;
+- (id)initWithFrame:(NSRect)frame windowState:(MacOS_Window_State *)state;
 @end
 
 @implementation KansoView
-- (id)initWithFrame:(NSRect)frame windowState:(macOS_Window_State *)state
+- (id)initWithFrame:(NSRect)frame windowState:(MacOS_Window_State *)state
 {
     self = [super initWithFrame:frame];
     if (self) {
@@ -197,7 +196,7 @@ os_gfx_init(void)
         [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
         
         macos_state->window_capacity = 16;
-        macos_state->windows = push_array(arena, macOS_Window_State, macos_state->window_capacity);
+        macos_state->windows = push_array(arena, MacOS_Window_State, macos_state->window_capacity);
         
         macos_state->cursors[OS_Cursor_Kind_Pointer] = [NSCursor arrowCursor];
         macos_state->cursors[OS_Cursor_Kind_Hand] = [NSCursor pointingHandCursor];
@@ -229,9 +228,9 @@ os_window_open(OS_Window_Flags flags, Vec2_s64 size, String title)
     }
     
     @autoreleasepool {
-        macOS_Window_State *window_state = &macos_state->windows[macos_state->window_count];
+        MacOS_Window_State *window_state = &macos_state->windows[macos_state->window_count];
         
-        NSRect frame = NSMakeRect(0, 0, size.x, size.y);
+        NSRect frame = NSMakeRect(0, 0, (CGFloat) size.x, (CGFloat) size.y);
         NSWindowStyleMask style = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable |
                                   NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskResizable;
         
@@ -256,7 +255,7 @@ os_window_open(OS_Window_Flags flags, Vec2_s64 size, String title)
         window_state->delegate = delegate;  // Keep a reference
         [window_state->window setDelegate:delegate];
         
-        Scratch scratch = tctx_scratch_begin(0, 0);
+        Scratch scratch = scratch_begin(macos_state->event_arena);
         u8 *null_term_title = push_array(scratch.arena, u8, title.size + 1);
         MemoryCopy(null_term_title, title.data, title.size);
         null_term_title[title.size] = 0;
@@ -264,14 +263,14 @@ os_window_open(OS_Window_Flags flags, Vec2_s64 size, String title)
         NSString *ns_title = [NSString stringWithUTF8String:(char *)null_term_title];
         [window_state->window setTitle:ns_title];
         
-        tctx_scratch_end(scratch);
+        scratch_end(&scratch);
         
         window_state->size = V2S32((s32)size.x, (s32)size.y);
         window_state->is_focused = false;
         window_state->is_maximized = false;
         window_state->is_fullscreen = false;
         window_state->has_close_event = false;
-        window_state->dpi_scale = [[window_state->window screen] backingScaleFactor];
+        window_state->dpi_scale = (f32) [[window_state->window screen] backingScaleFactor];
         window_state->repaint_func = 0;
         
         [window_state->window center];
@@ -293,7 +292,7 @@ os_window_close(OS_Handle handle)
     }
     
     @autoreleasepool {
-        macOS_Window_State *window_state = macos_window_state_from_handle(handle);
+        MacOS_Window_State *window_state = macos_window_state_from_handle(handle);
         if (window_state)
         {
             // Check if already closed
@@ -327,10 +326,10 @@ internal void
 os_window_set_title(OS_Handle handle, String title)
 {
     @autoreleasepool {
-        macOS_Window_State *window_state = macos_window_state_from_handle(handle);
+        MacOS_Window_State *window_state = macos_window_state_from_handle(handle);
         if (window_state && window_state->window)
         {
-            Scratch scratch = tctx_scratch_begin(0, 0);
+            Scratch scratch = scratch_begin(macos_state->event_arena); 
             u8 *null_term_title = push_array(scratch.arena, u8, title.size + 1);
             MemoryCopy(null_term_title, title.data, title.size);
             null_term_title[title.size] = 0;
@@ -338,7 +337,7 @@ os_window_set_title(OS_Handle handle, String title)
             NSString *ns_title = [NSString stringWithUTF8String:(char *)null_term_title];
             [window_state->window setTitle:ns_title];
             
-            tctx_scratch_end(scratch);
+            scratch_end(&scratch);
         }
     }
 }
@@ -347,7 +346,7 @@ internal void
 os_window_set_icon(OS_Handle handle, Vec2_s32 size, String rgba_data)
 {
     @autoreleasepool {
-        macOS_Window_State *window_state = macos_window_state_from_handle(handle);
+        MacOS_Window_State *window_state = macos_window_state_from_handle(handle);
         if (window_state && window_state->window && rgba_data.size == (u32)(size.x * size.y * 4))
         {
             NSBitmapImageRep *rep = [[NSBitmapImageRep alloc]
@@ -359,7 +358,7 @@ os_window_set_icon(OS_Handle handle, Vec2_s32 size, String rgba_data)
                                 hasAlpha:YES
                                 isPlanar:NO
                           colorSpaceName:NSCalibratedRGBColorSpace
-                             bytesPerRow:size.x * 4
+                             bytesPerRow:(NSInteger) size.x * 4
                             bitsPerPixel:32];
             
             u8 *pixels = [rep bitmapData];
@@ -376,7 +375,7 @@ os_window_set_icon(OS_Handle handle, Vec2_s32 size, String rgba_data)
 internal void
 os_window_set_repaint(OS_Handle handle, OS_Repaint_Func *repaint)
 {
-    macOS_Window_State *window_state = macos_window_state_from_handle(handle);
+    MacOS_Window_State *window_state = macos_window_state_from_handle(handle);
     if (window_state)
     {
         window_state->repaint_func = repaint;
@@ -387,7 +386,7 @@ internal b32
 os_window_is_max(OS_Handle handle)
 {
     @autoreleasepool {
-        macOS_Window_State *window_state = macos_window_state_from_handle(handle);
+        MacOS_Window_State *window_state = macos_window_state_from_handle(handle);
         if (window_state && window_state->window)
         {
             return [window_state->window isZoomed];
@@ -400,7 +399,7 @@ internal void
 os_window_to_minimize(OS_Handle handle)
 {
     @autoreleasepool {
-        macOS_Window_State *window_state = macos_window_state_from_handle(handle);
+        MacOS_Window_State *window_state = macos_window_state_from_handle(handle);
         if (window_state && window_state->window)
         {
             [window_state->window miniaturize:nil];
@@ -412,7 +411,7 @@ internal void
 os_window_to_maximize(OS_Handle handle)
 {
     @autoreleasepool {
-        macOS_Window_State *window_state = macos_window_state_from_handle(handle);
+        MacOS_Window_State *window_state = macos_window_state_from_handle(handle);
         if (window_state && window_state->window)
         {
             [window_state->window zoom:nil];
@@ -424,7 +423,7 @@ internal void
 os_window_restore(OS_Handle handle)
 {
     @autoreleasepool {
-        macOS_Window_State *window_state = macos_window_state_from_handle(handle);
+        MacOS_Window_State *window_state = macos_window_state_from_handle(handle);
         if (window_state && window_state->window)
         {
             if (window_state->is_fullscreen)
@@ -446,7 +445,7 @@ os_window_restore(OS_Handle handle)
 internal b32
 os_window_is_focused(OS_Handle handle)
 {
-    macOS_Window_State *window_state = macos_window_state_from_handle(handle);
+    MacOS_Window_State *window_state = macos_window_state_from_handle(handle);
     if (window_state)
     {
         return window_state->is_focused;
@@ -457,7 +456,7 @@ os_window_is_focused(OS_Handle handle)
 internal b32
 os_window_is_fullscreen(OS_Handle handle)
 {
-    macOS_Window_State *window_state = macos_window_state_from_handle(handle);
+    MacOS_Window_State *window_state = macos_window_state_from_handle(handle);
     if (window_state)
     {
         return window_state->is_fullscreen;
@@ -469,7 +468,7 @@ internal void
 os_window_toggle_fullscreen(OS_Handle handle)
 {
     @autoreleasepool {
-        macOS_Window_State *window_state = macos_window_state_from_handle(handle);
+        MacOS_Window_State *window_state = macos_window_state_from_handle(handle);
         if (window_state && window_state->window)
         {
             [window_state->window toggleFullScreen:nil];
@@ -480,7 +479,7 @@ os_window_toggle_fullscreen(OS_Handle handle)
 internal void
 os_window_first_paint(OS_Handle handle)
 {
-    macOS_Window_State *window_state = macos_window_state_from_handle(handle);
+    MacOS_Window_State *window_state = macos_window_state_from_handle(handle);
     if (window_state && window_state->repaint_func)
     {
         window_state->repaint_func();
@@ -492,7 +491,7 @@ os_rect_from_window(OS_Handle handle)
 {
     Rng2_f32 result = {0};
     @autoreleasepool {
-        macOS_Window_State *window_state = macos_window_state_from_handle(handle);
+        MacOS_Window_State *window_state = macos_window_state_from_handle(handle);
         if (window_state && window_state->window)
         {
             NSRect frame = [window_state->window frame];
@@ -511,7 +510,7 @@ os_client_rect_from_window(OS_Handle handle)
 {
     Rng2_f32 result = {0};
     @autoreleasepool {
-        macOS_Window_State *window_state = macos_window_state_from_handle(handle);
+        MacOS_Window_State *window_state = macos_window_state_from_handle(handle);
         if (window_state && window_state->view)
         {
             NSRect frame = [window_state->view frame];
@@ -529,7 +528,7 @@ os_client_rect_from_window(OS_Handle handle)
     return result;
 }
 
-internal macOS_Window_State *
+internal MacOS_Window_State *
 macos_window_state_from_handle(OS_Handle handle)
 {
     if (os_handle_is_zero(handle) || handle.u64s[0] > macos_state->window_count)
@@ -543,7 +542,7 @@ macos_window_state_from_handle(OS_Handle handle)
 internal void *
 os_window_native_handle(OS_Handle handle)
 {
-    macOS_Window_State *window_state = macos_window_state_from_handle(handle);
+    MacOS_Window_State *window_state = macos_window_state_from_handle(handle);
     if (!window_state)
     {
         return NULL;
@@ -552,7 +551,7 @@ os_window_native_handle(OS_Handle handle)
 }
 
 internal void
-macos_update_window_properties(macOS_Window_State *window_state)
+macos_update_window_properties(MacOS_Window_State *window_state)
 {
     @autoreleasepool {
         if (window_state && window_state->window)
@@ -670,7 +669,7 @@ os_event_list_from_window(OS_Handle window)
         return result;
     }
     
-    macOS_Window_State *window_state = macos_window_state_from_handle(window);
+    MacOS_Window_State *window_state = macos_window_state_from_handle(window);
     if (!window_state) {
         return result;
     }
