@@ -51,6 +51,7 @@ struct Renderer_Metal_Window_Equip
     void     *layer;
     void     *depth_texture;
     Vec2_f32 size;
+    f32      scale;
 };
 
 typedef struct Renderer_Metal_Pipeline Renderer_Metal_Pipeline;
@@ -141,18 +142,19 @@ Mat4x4_f32
 renderer_metal_sample_channel_map_from_tex_2d_format(Renderer_Tex_2D_Format fmt);
 
 void
-renderer_metal_render_pass_ui(Renderer_Pass_Params_UI *params, void *command_buffer, void *target_texture);
+renderer_metal_render_pass_ui(Renderer_Pass_Params_UI *params, void *command_buffer, void *target_texture, Renderer_Metal_Window_Equip *equip);
 void
 renderer_metal_render_pass_blur(Renderer_Pass_Params_Blur *params, void *command_buffer, void *target_texture);
 void
-renderer_metal_render_pass_geo_3d(Renderer_Pass_Params_Geo_3D *params, void *command_buffer, void *target_texture, void *depth_texture);
+renderer_metal_render_pass_geo_3d(Renderer_Pass_Params_Geo_3D *params, void *command_buffer, void *target_texture, void *depth_texture, Renderer_Metal_Window_Equip *equip);
 
 void
 renderer_metal_render_pass_combined(Renderer_Pass_Params_UI     *ui_params,
                                     Renderer_Pass_Params_Geo_3D *geo_params,
                                     void                        *command_buffer,
                                     void                        *target_texture,
-                                    void                        *depth_texture);
+                                    void                        *depth_texture,
+                                    Renderer_Metal_Window_Equip *equip);
 
 void *
 renderer_metal_acquire_buffer_from_pool(u64 size);

@@ -262,3 +262,5 @@ internal Rng2_f32
          os_rect_from_window(OS_Handle handle);
 internal Rng2_f32
          os_client_rect_from_window(OS_Handle handle);
+internal f32
+         os_window_get_dpi_scale(OS_Handle handle);

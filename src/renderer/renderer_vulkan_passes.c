@@ -153,7 +153,7 @@ renderer_vulkan_submit_ui_pass(VkCommandBuffer cmd, Renderer_Pass_Params_UI *par
     // Bind UI pipeline
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, g_vulkan->pipelines.ui);
 
-    // Set viewport and scissor
+    // Set viewport and scissor (using physical pixels for viewport)
     VkViewport viewport{0};
     viewport.x = 0.0f;
     viewport.y = 0.0f;
@@ -166,10 +166,11 @@ renderer_vulkan_submit_ui_pass(VkCommandBuffer cmd, Renderer_Pass_Params_UI *par
     // Update uniform buffer for UI
     struct Frame_Resources *frame = &equip->frame_resources[equip->current_frame];
 
-    // Update uniform data
+    // Update uniform data (using logical coordinates for uniforms)
+    f32 scale = equip->dpi_scale > 0 ? equip->dpi_scale : 1.0f;
     UI_Uniforms uniforms = {0};
-    uniforms.viewport_size_px.x = (f32)equip->swapchain_extent.width;
-    uniforms.viewport_size_px.y = (f32)equip->swapchain_extent.height;
+    uniforms.viewport_size_px.x = (f32)equip->swapchain_extent.width / scale;
+    uniforms.viewport_size_px.y = (f32)equip->swapchain_extent.height / scale;
     uniforms.opacity = 1.0f;
     // Identity matrix for texture sampling
     for (int i = 0; i < 4; i++)
@@ -327,22 +328,23 @@ renderer_vulkan_submit_geo_3d_pass(VkCommandBuffer cmd, Renderer_Pass_Params_Geo
     // Bind 3D pipeline
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, g_vulkan->pipelines.geo_3d);
 
-    // Set viewport based on params
+    // Set viewport based on params (converting logical to physical coordinates)
+    f32 scale = equip->dpi_scale > 0 ? equip->dpi_scale : 1.0f;
     VkViewport viewport{0};
-    viewport.x = params->viewport.min.x;
-    viewport.y = params->viewport.min.y;
-    viewport.width = params->viewport.max.x - params->viewport.min.x;
-    viewport.height = params->viewport.max.y - params->viewport.min.y;
+    viewport.x = params->viewport.min.x * scale;
+    viewport.y = params->viewport.min.y * scale;
+    viewport.width = (params->viewport.max.x - params->viewport.min.x) * scale;
+    viewport.height = (params->viewport.max.y - params->viewport.min.y) * scale;
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
     vkCmdSetViewport(cmd, 0, 1, &viewport);
 
-    // Set scissor based on clip rect
+    // Set scissor based on clip rect (converting logical to physical coordinates)
     VkRect2D scissor{0};
-    scissor.offset.x = (s32)params->clip.min.x;
-    scissor.offset.y = (s32)params->clip.min.y;
-    scissor.extent.width = (u32)(params->clip.max.x - params->clip.min.x);
-    scissor.extent.height = (u32)(params->clip.max.y - params->clip.min.y);
+    scissor.offset.x = (s32)(params->clip.min.x * scale);
+    scissor.offset.y = (s32)(params->clip.min.y * scale);
+    scissor.extent.width = (u32)((params->clip.max.x - params->clip.min.x) * scale);
+    scissor.extent.height = (u32)((params->clip.max.y - params->clip.min.y) * scale);
     vkCmdSetScissor(cmd, 0, 1, &scissor);
 
     // Update uniform buffer for 3D rendering

@@ -2,6 +2,7 @@
 #pragma once
 
 #include "types.h"
+#include "thread.h"
 #include "base_core.h"
 #include "logger.h" // Must come before util.h since ASSERT uses log_error
 #include "util.h"

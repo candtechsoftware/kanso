@@ -105,6 +105,7 @@ struct Renderer_Vulkan_Window_Equipment
     VkImageView   *swapchain_image_views;
     VkFramebuffer *framebuffers;
     u32            swapchain_image_count;
+    f32            dpi_scale;
 
     // Render pass
     VkRenderPass render_pass;

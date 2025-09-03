@@ -133,6 +133,11 @@ int main() {
         current_time = os_get_time();
         delta_time = current_time - last_time;
         
+        f32 dpi_scale = os_window_get_dpi_scale(window);
+        Rng2_f32 window_rect = os_client_rect_from_window(window);
+        f32 window_width = window_rect.max.x - window_rect.min.x;
+        f32 window_height = window_rect.max.y - window_rect.min.y;
+        
         fps_frame_count++;
         
         rotation_x += 50.0f * delta_time;
@@ -178,8 +183,8 @@ int main() {
             
             if (ui_box_pos.x < 0) ui_box_pos.x = 0;
             if (ui_box_pos.y < 0) ui_box_pos.y = 0;
-            if (ui_box_pos.x + ui_box_size.x > 800) ui_box_pos.x = 800 - ui_box_size.x;
-            if (ui_box_pos.y + ui_box_size.y > 600) ui_box_pos.y = 600 - ui_box_size.y;
+            if (ui_box_pos.x + ui_box_size.x > window_width) ui_box_pos.x = window_width - ui_box_size.x;
+            if (ui_box_pos.y + ui_box_size.y > window_height) ui_box_pos.y = window_height - ui_box_size.y;
         }
         
         renderer_window_begin_frame(native_window, window_equip);
@@ -206,18 +211,22 @@ int main() {
         snprintf(fps_buffer, sizeof(fps_buffer), "FPS: %.1f", fps);
         String fps_str = string8_from_cstr(fps_buffer);
 
-        draw_text((Vec2_f32){{350, 290}}, fps_str, default_font, 32.0f, 
+        draw_text((Vec2_f32){{window_width/2 - 50, window_height/2 - 10}}, fps_str, default_font, 32.0f, 
                   (Vec4_f32){{1.0f, 1.0f, 1.0f, 1.0f}});
         
-        draw_text((Vec2_f32){{320, 320}}, str_lit("Draw API Test"), default_font, 24.0f,
+        draw_text((Vec2_f32){{window_width/2 - 80, window_height/2 + 20}}, str_lit("Draw API Test"), default_font, 24.0f,
                   (Vec4_f32){{0.8f, 0.8f, 1.0f, 1.0f}});
         
-        draw_rect((Rng2_f32){{{400, 0}}, {{800, 300}}}, 
+        f32 viewport_x = window_width / 2.0f;
+        f32 viewport_width = window_width - viewport_x;
+        f32 viewport_height = window_height / 2.0f;
+        
+        draw_rect((Rng2_f32){{{viewport_x, 0}}, {{window_width, viewport_height}}}, 
                   (Vec4_f32){{0.05f, 0.05f, 0.1f, 1.0f}}, 
                   0.0f, 0.0f, 0.0f);
         
-        f32 center_x = 600.0f;
-        f32 center_y = 150.0f;
+        f32 center_x = viewport_x + viewport_width / 2.0f;
+        f32 center_y = viewport_height / 2.0f;
         f32 scale = 80.0f;
         
         Point2D projected[8];
@@ -269,13 +278,13 @@ int main() {
                       vertex_color, 2.0f, 0.0f, 1.0f);
         }
         
-        draw_text((Vec2_f32){{500, 20}}, str_lit("3D Cube"), default_font, 20.0f,
+        draw_text((Vec2_f32){{viewport_x + viewport_width/2 - 35, 20}}, str_lit("3D Cube"), default_font, 20.0f,
                   (Vec4_f32){{1.0f, 1.0f, 1.0f, 1.0f}});
         
-        draw_rect((Rng2_f32){{{398, 0}}, {{402, 300}}}, 
+        draw_rect((Rng2_f32){{{viewport_x - 2, 0}}, {{viewport_x + 2, viewport_height}}}, 
                   (Vec4_f32){{0.3f, 0.3f, 0.3f, 1.0f}}, 
                   0.0f, 0.0f, 0.0f);
-        draw_rect((Rng2_f32){{{400, 298}}, {{800, 302}}}, 
+        draw_rect((Rng2_f32){{{viewport_x, viewport_height - 2}}, {{window_width, viewport_height + 2}}}, 
                   (Vec4_f32){{0.3f, 0.3f, 0.3f, 1.0f}}, 
                   0.0f, 0.0f, 0.0f);
         

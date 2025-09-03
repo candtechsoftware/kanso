@@ -281,6 +281,7 @@ renderer_window_equip(void *window)
 
     NSRect frame = ns_window.contentView.frame;
     equip->size = (Vec2_f32){{(f32)frame.size.width, (f32)frame.size.height}};
+    equip->scale = layer.contentsScale;
     CGSize drawableSize = CGSizeMake(frame.size.width * layer.contentsScale,
                                      frame.size.height * layer.contentsScale);
     layer.drawableSize = drawableSize;
@@ -693,6 +694,7 @@ renderer_window_begin_frame(void *window, Renderer_Handle window_equip)
         equip->size = new_size;
         CAMetalLayer *layer = metal_layer(equip->layer);
         CGFloat       scale = ns_window.backingScaleFactor;
+        equip->scale = scale;
         layer.contentsScale = scale;
         layer.drawableSize = CGSizeMake(new_size.x * scale, new_size.y * scale);
 
@@ -811,7 +813,7 @@ renderer_window_submit(void *window, Renderer_Handle window_equip, Renderer_Pass
 
     if ((ui_params || geo_params) && !has_blur)
     {
-        renderer_metal_render_pass_combined(ui_params, geo_params, command_buffer, drawable.texture, equip->depth_texture);
+        renderer_metal_render_pass_combined(ui_params, geo_params, command_buffer, drawable.texture, equip->depth_texture, equip);
     }
     else
     {
@@ -822,7 +824,7 @@ renderer_window_submit(void *window, Renderer_Handle window_equip, Renderer_Pass
             switch (pass->kind)
             {
             case Renderer_Pass_Kind_UI:
-                renderer_metal_render_pass_ui(pass->params_ui, command_buffer, drawable.texture);
+                renderer_metal_render_pass_ui(pass->params_ui, command_buffer, drawable.texture, equip);
                 break;
 
             case Renderer_Pass_Kind_Blur:
@@ -830,7 +832,7 @@ renderer_window_submit(void *window, Renderer_Handle window_equip, Renderer_Pass
                 break;
 
             case Renderer_Pass_Kind_Geo_3D:
-                renderer_metal_render_pass_geo_3d(pass->params_geo_3d, command_buffer, drawable.texture, equip->depth_texture);
+                renderer_metal_render_pass_geo_3d(pass->params_geo_3d, command_buffer, drawable.texture, equip->depth_texture, equip);
                 break;
             }
         }

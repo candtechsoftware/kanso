@@ -445,6 +445,36 @@ os_client_rect_from_window(OS_Handle handle)
     return result;
 }
 
+internal f32
+os_window_get_dpi_scale(OS_Handle handle)
+{
+    X11_Window_State *window_state = x11_window_state_from_handle(handle);
+    if (window_state && x11_state->display)
+    {
+        int screen = DefaultScreen(x11_state->display);
+        
+        int width_px = XDisplayWidth(x11_state->display, screen);
+        int height_px = XDisplayHeight(x11_state->display, screen);
+        int width_mm = XDisplayWidthMM(x11_state->display, screen);
+        int height_mm = XDisplayHeightMM(x11_state->display, screen);
+        
+        if (width_mm > 0 && height_mm > 0)
+        {
+            f32 dpi_x = (f32)width_px * 25.4f / (f32)width_mm;
+            f32 dpi_y = (f32)height_px * 25.4f / (f32)height_mm;
+            f32 dpi = (dpi_x + dpi_y) / 2.0f;
+            
+            f32 scale = dpi / 96.0f;
+            
+            if (scale < 0.5f) scale = 0.5f;
+            if (scale > 4.0f) scale = 4.0f;
+            
+            return scale;
+        }
+    }
+    return 1.0f;
+}
+
 internal X11_Window_State *
 x11_window_state_from_handle(OS_Handle handle)
 {

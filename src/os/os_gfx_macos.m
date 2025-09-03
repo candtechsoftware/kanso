@@ -504,12 +504,25 @@ os_client_rect_from_window(OS_Handle handle)
         {
             NSRect frame = [window_state->view frame];
             
-            CGFloat scale = [[window_state->window screen] backingScaleFactor];
-            
             result.min = V2F32(0.0f, 0.0f);
-            result.max = V2F32((f32)(frame.size.width * scale), (f32)(frame.size.height * scale));
-            
-            printf("Client rect: %.0fx%.0f, scale: %.2f\n", result.max.x, result.max.y, scale);
+            result.max = V2F32((f32)frame.size.width, (f32)frame.size.height);
+        }
+    }
+    return result;
+}
+
+internal f32
+os_window_get_dpi_scale(OS_Handle handle)
+{
+    f32 result = 1.0f;
+    @autoreleasepool {
+        MacOS_Window_State *window_state = macos_window_state_from_handle(handle);
+        if (window_state && window_state->window)
+        {
+            NSScreen *screen = [window_state->window screen];
+            if (screen) {
+                result = (f32)[screen backingScaleFactor];
+            }
         }
     }
     return result;

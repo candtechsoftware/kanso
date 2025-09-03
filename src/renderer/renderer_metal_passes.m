@@ -45,7 +45,7 @@ renderer_metal_get_temp_buffer(u64 size)
 }
 
 void
-renderer_metal_render_pass_ui(Renderer_Pass_Params_UI *params, void *command_buffer, void *target_texture)
+renderer_metal_render_pass_ui(Renderer_Pass_Params_UI *params, void *command_buffer, void *target_texture, Renderer_Metal_Window_Equip *equip)
 {
     ZoneScopedN("MetalRenderPassUI");
     if (!r_metal_state || !params || !command_buffer || !target_texture)
@@ -73,7 +73,8 @@ renderer_metal_render_pass_ui(Renderer_Pass_Params_UI *params, void *command_buf
         Renderer_Batch_Group_2D_Params *group_params = &node->params;
 
         RectUniforms uniforms;
-        uniforms.viewport_size_px = (Vec2_f32){{(f32)mtl_target_texture.width, (f32)mtl_target_texture.height}};
+        f32 scale = equip ? equip->scale : 1.0f;
+        uniforms.viewport_size_px = (Vec2_f32){{(f32)mtl_target_texture.width / scale, (f32)mtl_target_texture.height / scale}};
         uniforms.opacity = 1.0f - group_params->transparency;
         uniforms.texture_sample_channel_map = mat4x4_identity();
 
@@ -261,7 +262,7 @@ renderer_metal_render_pass_blur(Renderer_Pass_Params_Blur *params, void *command
 }
 
 void
-renderer_metal_render_pass_geo_3d(Renderer_Pass_Params_Geo_3D *params, void *command_buffer, void *target_texture, void *depth_texture)
+renderer_metal_render_pass_geo_3d(Renderer_Pass_Params_Geo_3D *params, void *command_buffer, void *target_texture, void *depth_texture, Renderer_Metal_Window_Equip *equip)
 {
     ZoneScopedN("MetalRenderPassGeo3D");
     if (!r_metal_state || !params || !command_buffer || !target_texture || !depth_texture)
@@ -415,7 +416,7 @@ renderer_metal_render_pass_geo_3d(Renderer_Pass_Params_Geo_3D *params, void *com
 
 // Helper function to render UI content
 static void
-renderer_metal_render_ui_content(Renderer_Pass_Params_UI *params, id<MTLRenderCommandEncoder> encoder, id<MTLTexture> target_texture)
+renderer_metal_render_ui_content(Renderer_Pass_Params_UI *params, id<MTLRenderCommandEncoder> encoder, id<MTLTexture> target_texture, Renderer_Metal_Window_Equip *equip)
 {
     if (!params || !params->rects.first)
         return;
@@ -429,7 +430,8 @@ renderer_metal_render_ui_content(Renderer_Pass_Params_UI *params, id<MTLRenderCo
         Renderer_Batch_Group_2D_Params *group_params = &node->params;
 
         RectUniforms uniforms;
-        uniforms.viewport_size_px = (Vec2_f32){{(f32)target_texture.width, (f32)target_texture.height}};
+        f32 scale = equip ? equip->scale : 1.0f;
+        uniforms.viewport_size_px = (Vec2_f32){{(f32)target_texture.width / scale, (f32)target_texture.height / scale}};
         uniforms.opacity = 1.0f - group_params->transparency;
         uniforms.texture_sample_channel_map = mat4x4_identity();
 
@@ -627,7 +629,8 @@ renderer_metal_render_pass_combined(Renderer_Pass_Params_UI     *ui_params,
                                     Renderer_Pass_Params_Geo_3D *geo_params,
                                     void                        *command_buffer,
                                     void                        *target_texture,
-                                    void                        *depth_texture)
+                                    void                        *depth_texture,
+                                    Renderer_Metal_Window_Equip *equip)
 {
     ZoneScopedN("MetalRenderPassCombined");
     if (!r_metal_state || !command_buffer || !target_texture)
@@ -660,7 +663,7 @@ renderer_metal_render_pass_combined(Renderer_Pass_Params_UI     *ui_params,
     if (ui_params && ui_params->rects.first)
     {
         ZoneScopedN("CombinedUIRendering");
-        renderer_metal_render_ui_content(ui_params, encoder, mtl_target_texture);
+        renderer_metal_render_ui_content(ui_params, encoder, mtl_target_texture, equip);
     }
 
     // Then render 3D geometry (if provided)

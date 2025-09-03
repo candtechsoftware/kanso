@@ -1079,6 +1079,11 @@ renderer_window_equip(void *window)
     Arena                            *arena = arena_alloc();
     Renderer_Vulkan_Window_Equipment *equip = push_array(arena, Renderer_Vulkan_Window_Equipment, 1);
     *equip = {0};
+    
+    // Get DPI scale from GLFW
+    float xscale, yscale;
+    glfwGetWindowContentScale(glfw_window, &xscale, &yscale);
+    equip->dpi_scale = xscale;  // Use X scale (typically same as Y)
 
     // Initialize lists
     equip->swapchain_images = list_make<VkImage>();
