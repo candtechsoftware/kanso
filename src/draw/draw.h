@@ -4,7 +4,6 @@
 #include "../font/font_inc.h"
 #include "../renderer/renderer_inc.h"
 
-
 typedef struct Draw_Bucket Draw_Bucket;
 struct Draw_Bucket
 {
@@ -25,13 +24,13 @@ struct Draw_Bucket
 typedef struct Draw_Thread_Context Draw_Thread_Context;
 struct Draw_Thread_Context
 {
-    Arena                       *arena;
-    u64                          arena_frame_start_pos;
-    Font_Renderer_Tag                     default_font;
-    Draw_Bucket                 *current_bucket;
-    Draw_Bucket                **bucket_stack;
-    u64                          bucket_stack_count;
-    u64                          bucket_stack_cap;
+    Arena            *arena;
+    u64               arena_frame_start_pos;
+    Font_Renderer_Tag default_font;
+    Draw_Bucket      *current_bucket;
+    Draw_Bucket     **bucket_stack;
+    u64               bucket_stack_count;
+    u64               bucket_stack_cap;
 };
 
 // Global thread-local context
@@ -50,10 +49,10 @@ struct Draw_Text_Params
 {
     Font_Renderer_Tag          font;
     Font_Renderer_Raster_Flags raster_flags;
-    Vec4_f32          color;
-    f32               size;
-    f32               underline_thickness;
-    f32               strikethrough_thickness;
+    Vec4_f32                   color;
+    f32                        size;
+    f32                        underline_thickness;
+    f32                        strikethrough_thickness;
 };
 
 typedef struct Draw_Styled_String Draw_Styled_String;
@@ -67,7 +66,7 @@ typedef struct Draw_Styled_String_Node Draw_Styled_String_Node;
 struct Draw_Styled_String_Node
 {
     Draw_Styled_String_Node *next;
-    Draw_Styled_String v;
+    Draw_Styled_String       v;
 };
 
 typedef struct Draw_Styled_String_List Draw_Styled_String_List;
@@ -75,23 +74,23 @@ struct Draw_Styled_String_List
 {
     Draw_Styled_String_Node *first;
     Draw_Styled_String_Node *last;
-    u64 node_count;
+    u64                      node_count;
 };
 
 typedef struct Draw_Text_Run Draw_Text_Run;
 struct Draw_Text_Run
 {
-    Font_Renderer_Run  run;
-    Vec4_f32  color;
-    f32       underline_thickness;
-    f32       strikethrough_thickness;
+    Font_Renderer_Run run;
+    Vec4_f32          color;
+    f32               underline_thickness;
+    f32               strikethrough_thickness;
 };
 
 typedef struct Draw_Text_Run_Node Draw_Text_Run_Node;
 struct Draw_Text_Run_Node
 {
     Draw_Text_Run_Node *next;
-    Draw_Text_Run v;
+    Draw_Text_Run       v;
 };
 
 typedef struct Draw_Text_Run_List Draw_Text_Run_List;
@@ -99,7 +98,7 @@ struct Draw_Text_Run_List
 {
     Draw_Text_Run_Node *first;
     Draw_Text_Run_Node *last;
-    u64 node_count;
+    u64                 node_count;
 };
 
 // Main API functions
@@ -176,4 +175,3 @@ draw_text_run_list(Vec2_f32 p, Draw_Text_Run_List *list);
 #define Draw_XForm2DScope(v)         DEFER_LOOP(draw_push_xform2d(v), draw_pop_xform2d())
 #define Draw_ClipScope(v)            DEFER_LOOP(draw_push_clip(v), draw_pop_clip())
 #define Draw_TransparencyScope(v)    DEFER_LOOP(draw_push_transparency(v), draw_pop_transparency())
-

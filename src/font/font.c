@@ -74,8 +74,8 @@ load_file(String path)
 Font_Renderer_Handle
 font_open(String path)
 {
-    String font_file = load_file(path);
-    Font_Renderer   font = {};
+    String        font_file = load_file(path);
+    Font_Renderer font = {};
 
     // Allocate memory for stbtt_fontinfo
     font.info = push_struct(f_state->arena, stbtt_fontinfo);
@@ -146,8 +146,8 @@ font_raster(Arena *arena, Font_Renderer_Handle handle, f32 size, String string)
         }
 
         Vec2_s16 dim = {(s16)(total_width + 1), (s16)(height + 1)};
-        u64       atlas_size = dim.x * dim.y * 4;
-        u8       *atlas = push_array(arena, u8, atlas_size);
+        u64      atlas_size = dim.x * dim.y * 4;
+        u8      *atlas = push_array(arena, u8, atlas_size);
 
         // Clear the atlas to transparent black
         for (u64 i = 0; i < atlas_size; i++)

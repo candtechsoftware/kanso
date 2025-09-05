@@ -225,7 +225,7 @@ renderer_vulkan_create_pipelines(VkRenderPass render_pass)
     // Create UI Pipeline
     {
         // Shader stages
-        VkPipelineShaderStageCreateInfo shader_stages[2]  = {0};
+        VkPipelineShaderStageCreateInfo shader_stages[2] = {0};
         shader_stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
         shader_stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
         shader_stages[0].module = g_vulkan->shaders.rect_vert;
@@ -242,7 +242,7 @@ renderer_vulkan_create_pipelines(VkRenderPass render_pass)
         binding_desc.stride = sizeof(Renderer_Rect_2D_Inst);
         binding_desc.inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
 
-        VkVertexInputAttributeDescription attr_descs[8]  = {0};
+        VkVertexInputAttributeDescription attr_descs[8] = {0};
         // dst_rect
         attr_descs[0].binding = 0;
         attr_descs[0].location = 0;
@@ -370,7 +370,7 @@ renderer_vulkan_create_pipelines(VkRenderPass render_pass)
 
     // Create Blur Pipeline (simplified for now)
     {
-        VkPipelineShaderStageCreateInfo shader_stages[2]  = {0};
+        VkPipelineShaderStageCreateInfo shader_stages[2] = {0};
         shader_stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
         shader_stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
         shader_stages[0].module = g_vulkan->shaders.blur_vert;
@@ -463,7 +463,7 @@ renderer_vulkan_create_pipelines(VkRenderPass render_pass)
 
     // Create Geo 3D Pipeline
     {
-        VkPipelineShaderStageCreateInfo shader_stages[2]  = {0};
+        VkPipelineShaderStageCreateInfo shader_stages[2] = {0};
         shader_stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
         shader_stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
         shader_stages[0].module = g_vulkan->shaders.mesh_vert;
@@ -475,7 +475,7 @@ renderer_vulkan_create_pipelines(VkRenderPass render_pass)
         shader_stages[1].pName = "main";
 
         // Vertex input for 3D meshes
-        VkVertexInputBindingDescription binding_descs[2]  = {0};
+        VkVertexInputBindingDescription binding_descs[2] = {0};
         // Vertex data
         binding_descs[0].binding = 0;
         binding_descs[0].stride = sizeof(f32) * 12; // pos(3) + tex(2) + norm(3) + color(4)
@@ -486,7 +486,7 @@ renderer_vulkan_create_pipelines(VkRenderPass render_pass)
         binding_descs[1].stride = sizeof(Mat4x4_f32);
         binding_descs[1].inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
 
-        VkVertexInputAttributeDescription attr_descs[8]  = {0};
+        VkVertexInputAttributeDescription attr_descs[8] = {0};
         // Position
         attr_descs[0].binding = 0;
         attr_descs[0].location = 0;

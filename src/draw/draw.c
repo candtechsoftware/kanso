@@ -100,7 +100,7 @@ Mat3x3_f32
 draw_push_xform2d(Mat3x3_f32 v)
 {
     Draw_Bucket *bucket = draw_top_bucket();
-    Mat3x3_f32  old_val = bucket->stack_top.xform2d;
+    Mat3x3_f32   old_val = bucket->stack_top.xform2d;
     bucket->stack_top.xform2d = v;
     bucket->stack_gen += 1;
     return old_val;
@@ -110,7 +110,7 @@ Rng2_f32
 draw_push_clip(Rng2_f32 v)
 {
     Draw_Bucket *bucket = draw_top_bucket();
-    Rng2_f32    old_val = bucket->stack_top.clip;
+    Rng2_f32     old_val = bucket->stack_top.clip;
     bucket->stack_top.clip = v;
     bucket->stack_gen += 1;
     return old_val;

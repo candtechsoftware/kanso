@@ -5,11 +5,11 @@
 
 // Thread-local storage
 #ifdef _WIN32
-#define thread_static __declspec(thread) static
+#    define thread_static __declspec(thread) static
 #elif defined(__GNUC__) || defined(__clang__)
-#define thread_static _Thread_local static
+#    define thread_static _Thread_local static
 #else
-#define thread_static static
+#    define thread_static static
 #endif
 
 // Memory size units

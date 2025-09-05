@@ -12,15 +12,15 @@ struct Dynamic_Buffer
     u64            offset;
 };
 
-static Dynamic_Buffer g_instance_buffer  = {0};
+static Dynamic_Buffer g_instance_buffer = {0};
 
 // Uniform buffer structures
 typedef struct UI_Uniforms UI_Uniforms;
 struct UI_Uniforms
 {
     Vec2_f32   viewport_size_px;
-    f32         opacity;
-    f32         _pad;
+    f32        opacity;
+    f32        _pad;
     Mat4x4_f32 texture_sample_channel_map;
 };
 
@@ -60,34 +60,37 @@ renderer_window_submit(void *window, Renderer_Handle window_equip, Renderer_Pass
     render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     render_pass_info.renderPass = equip->render_pass;
     // Get the nth framebuffer from the array with bounds checking
-    if (equip->current_image_index >= equip->swapchain_image_count) {
-        printf("ERROR: current_image_index %d >= swapchain_image_count %d\n", 
+    if (equip->current_image_index >= equip->swapchain_image_count)
+    {
+        printf("ERROR: current_image_index %d >= swapchain_image_count %d\n",
                equip->current_image_index, equip->swapchain_image_count);
         return;
     }
-    if (!equip->framebuffers) {
+    if (!equip->framebuffers)
+    {
         printf("ERROR: framebuffers array is NULL!\n");
         return;
     }
-    
+
     // Validate framebuffer before use
-    if (!equip->framebuffers || equip->framebuffers[equip->current_image_index] == VK_NULL_HANDLE) {
+    if (!equip->framebuffers || equip->framebuffers[equip->current_image_index] == VK_NULL_HANDLE)
+    {
         log_error("Invalid framebuffer at index %u!", equip->current_image_index);
         return;
     }
-    
+
     render_pass_info.framebuffer = equip->framebuffers[equip->current_image_index];
     render_pass_info.renderArea.offset.x = 0;
     render_pass_info.renderArea.offset.y = 0;
     render_pass_info.renderArea.extent = equip->swapchain_extent;
-    printf("Render area: %dx%d, framebuffer[%d]: %p (count: %d)\n", 
+    printf("Render area: %dx%d, framebuffer[%d]: %p (count: %d)\n",
            equip->swapchain_extent.width, equip->swapchain_extent.height,
            equip->current_image_index,
-           (void*)(uintptr_t)equip->framebuffers[equip->current_image_index],
+           (void *)(uintptr_t)equip->framebuffers[equip->current_image_index],
            equip->swapchain_image_count);
 
     VkClearValue clear_values[2];
-    clear_values[0].color.float32[0] = 0.3f;  // Match C++ version's gray
+    clear_values[0].color.float32[0] = 0.3f; // Match C++ version's gray
     clear_values[0].color.float32[1] = 0.3f;
     clear_values[0].color.float32[2] = 0.3f;
     clear_values[0].color.float32[3] = 1.0f;
@@ -108,7 +111,7 @@ renderer_window_submit(void *window, Renderer_Handle window_equip, Renderer_Pass
 
         pass_count++;
         printf("Processing pass %d of kind %d\n", pass_count, pass->kind);
-        
+
         switch (pass->kind)
         {
         case Renderer_Pass_Kind_UI:
@@ -126,7 +129,7 @@ renderer_window_submit(void *window, Renderer_Handle window_equip, Renderer_Pass
             break;
         }
     }
-    
+
     printf("Processed %d passes total. Ending render pass.\n", pass_count);
     vkCmdEndRenderPass(cmd);
 }
@@ -196,7 +199,7 @@ renderer_vulkan_submit_ui_pass(VkCommandBuffer cmd, Renderer_Pass_Params_UI *par
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
     vkCmdSetViewport(cmd, 0, 1, &viewport);
-    
+
     // Set initial scissor to full viewport
     VkRect2D initial_scissor = {0};
     initial_scissor.offset.x = 0;
@@ -209,11 +212,11 @@ renderer_vulkan_submit_ui_pass(VkCommandBuffer cmd, Renderer_Pass_Params_UI *par
     struct Frame_Resources *frame = &equip->frame_resources[equip->current_frame];
 
     // Update uniform data (using logical coordinates for uniforms)
-    f32 scale = equip->dpi_scale > 0 ? equip->dpi_scale : 1.0f;
-    UI_Uniforms uniforms  = {0};
+    f32         scale = equip->dpi_scale > 0 ? equip->dpi_scale : 1.0f;
+    UI_Uniforms uniforms = {0};
     uniforms.viewport_size_px.x = (f32)equip->swapchain_extent.width / scale;
     uniforms.viewport_size_px.y = (f32)equip->swapchain_extent.height / scale;
-    printf("UI Uniforms: viewport_size=(%.1f, %.1f) scale=%.1f\n", 
+    printf("UI Uniforms: viewport_size=(%.1f, %.1f) scale=%.1f\n",
            uniforms.viewport_size_px.x, uniforms.viewport_size_px.y, scale);
     uniforms.opacity = 1.0f;
     // Identity matrix for texture sampling
@@ -334,7 +337,7 @@ renderer_vulkan_submit_ui_pass(VkCommandBuffer cmd, Renderer_Pass_Params_UI *par
 
             // Copy instance data to dynamic buffer
             memcpy((u8 *)g_instance_buffer.mapped + g_instance_buffer.offset, batch->v, batch->byte_count);
-            
+
             // Bind instance buffer
             VkDeviceSize offset = g_instance_buffer.offset;
             vkCmdBindVertexBuffers(cmd, 0, 1, &g_instance_buffer.buffer, &offset);
@@ -376,7 +379,7 @@ renderer_vulkan_submit_geo_3d_pass(VkCommandBuffer cmd, Renderer_Pass_Params_Geo
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, g_vulkan->pipelines.geo_3d);
 
     // Set viewport based on params (converting logical to physical coordinates)
-    f32 scale = equip->dpi_scale > 0 ? equip->dpi_scale : 1.0f;
+    f32        scale = equip->dpi_scale > 0 ? equip->dpi_scale : 1.0f;
     VkViewport viewport = {0};
     viewport.x = params->viewport.min.x * scale;
     viewport.y = params->viewport.min.y * scale;
@@ -398,7 +401,7 @@ renderer_vulkan_submit_geo_3d_pass(VkCommandBuffer cmd, Renderer_Pass_Params_Geo
     struct Frame_Resources *frame = &equip->frame_resources[equip->current_frame];
 
     // Update uniform data
-    Geo_3D_Uniforms uniforms  = {0};
+    Geo_3D_Uniforms uniforms = {0};
     uniforms.view = params->view;
     uniforms.projection = params->projection;
 
@@ -467,7 +470,7 @@ renderer_vulkan_submit_geo_3d_pass(VkCommandBuffer cmd, Renderer_Pass_Params_Geo
                 Renderer_Vulkan_Buffer *index_buffer = (Renderer_Vulkan_Buffer *)group_params->mesh_indices.u64s[0];
 
                 VkBuffer     vertex_buffers[] = {vertex_buffer->buffer};
-                VkDeviceSize offsets[]  = {0};
+                VkDeviceSize offsets[] = {0};
                 vkCmdBindVertexBuffers(cmd, 0, 1, vertex_buffers, offsets);
                 vkCmdBindIndexBuffer(cmd, index_buffer->buffer, 0, VK_INDEX_TYPE_UINT32);
 

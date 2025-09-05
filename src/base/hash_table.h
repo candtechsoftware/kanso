@@ -10,13 +10,15 @@
 typedef struct Key_Value_Pair Key_Value_Pair;
 struct Key_Value_Pair
 {
-    union {
+    union
+    {
         String key_string;
         void  *key_raw;
         u32    key_u32;
         u64    key_u64;
     };
-    union {
+    union
+    {
         String value_string;
         void  *value_raw;
         u32    value_u32;
@@ -27,8 +29,8 @@ struct Key_Value_Pair
 typedef struct Bucket_Node Bucket_Node;
 struct Bucket_Node
 {
-    Bucket_Node     *next;
-    Key_Value_Pair   v;
+    Bucket_Node   *next;
+    Key_Value_Pair v;
 };
 
 typedef struct Bucket_List Bucket_List;

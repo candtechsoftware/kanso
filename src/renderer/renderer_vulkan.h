@@ -4,8 +4,7 @@
 #include "renderer_core.h"
 #include <vulkan/vulkan.h>
 
-
-typedef struct Renderer_Vulkan_State Renderer_Vulkan_State; 
+typedef struct Renderer_Vulkan_State Renderer_Vulkan_State;
 struct Renderer_Vulkan_State
 {
     Arena *arena;
@@ -100,10 +99,10 @@ struct Renderer_Vulkan_State
 typedef struct Renderer_Vulkan_Window_Equipment Renderer_Vulkan_Window_Equipment;
 struct Renderer_Vulkan_Window_Equipment
 {
-    VkSurfaceKHR        surface;
-    VkSwapchainKHR      swapchain;
-    VkFormat            swapchain_format;
-    VkExtent2D          swapchain_extent;
+    VkSurfaceKHR   surface;
+    VkSwapchainKHR swapchain;
+    VkFormat       swapchain_format;
+    VkExtent2D     swapchain_extent;
     VkImage       *swapchain_images;
     VkImageView   *swapchain_image_views;
     VkFramebuffer *framebuffers;
@@ -127,7 +126,7 @@ struct Renderer_Vulkan_Window_Equipment
     VkFence     in_flight_fences[2];           // MAX_FRAMES_IN_FLIGHT
     u32         current_frame;
     u32         current_image_index;
-    b32         frame_begun;  // Track if frame was successfully begun
+    b32         frame_begun; // Track if frame was successfully begun
 
     // Blur framebuffers
     VkImage        blur_texture_a;
@@ -158,7 +157,7 @@ struct Renderer_Vulkan_Texture_2D
     VkImage                image;
     VkDeviceMemory         memory;
     VkImageView            view;
-    Vec2_f32              size;
+    Vec2_f32               size;
     Renderer_Tex_2D_Format format;
     Renderer_Resource_Kind kind;
 };
@@ -202,4 +201,3 @@ VkCommandBuffer
 renderer_vulkan_begin_single_time_commands();
 void
 renderer_vulkan_end_single_time_commands(VkCommandBuffer command_buffer);
-

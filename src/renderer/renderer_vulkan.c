@@ -95,7 +95,7 @@ renderer_vulkan_create_buffer(VkDeviceSize size, VkBufferUsageFlags usage,
                               VkMemoryPropertyFlags properties, VkBuffer *buffer,
                               VkDeviceMemory *buffer_memory)
 {
-    VkBufferCreateInfo buffer_info  = {0};
+    VkBufferCreateInfo buffer_info = {0};
     buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     buffer_info.size = size;
     buffer_info.usage = usage;
@@ -110,7 +110,7 @@ renderer_vulkan_create_buffer(VkDeviceSize size, VkBufferUsageFlags usage,
     VkMemoryRequirements mem_requirements;
     vkGetBufferMemoryRequirements(g_vulkan->device, *buffer, &mem_requirements);
 
-    VkMemoryAllocateInfo alloc_info  = {0};
+    VkMemoryAllocateInfo alloc_info = {0};
     alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     alloc_info.allocationSize = mem_requirements.size;
     alloc_info.memoryTypeIndex = renderer_vulkan_find_memory_type(mem_requirements.memoryTypeBits, properties);
@@ -129,7 +129,7 @@ renderer_vulkan_create_image(u32 width, u32 height, VkFormat format, VkImageTili
                              VkImageUsageFlags usage, VkMemoryPropertyFlags properties,
                              VkImage *image, VkDeviceMemory *image_memory)
 {
-    VkImageCreateInfo image_info  = {0};
+    VkImageCreateInfo image_info = {0};
     image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     image_info.imageType = VK_IMAGE_TYPE_2D;
     image_info.extent.width = width;
@@ -153,7 +153,7 @@ renderer_vulkan_create_image(u32 width, u32 height, VkFormat format, VkImageTili
     VkMemoryRequirements mem_requirements;
     vkGetImageMemoryRequirements(g_vulkan->device, *image, &mem_requirements);
 
-    VkMemoryAllocateInfo alloc_info  = {0};
+    VkMemoryAllocateInfo alloc_info = {0};
     alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     alloc_info.allocationSize = mem_requirements.size;
     alloc_info.memoryTypeIndex = renderer_vulkan_find_memory_type(mem_requirements.memoryTypeBits, properties);
@@ -170,7 +170,7 @@ renderer_vulkan_create_image(u32 width, u32 height, VkFormat format, VkImageTili
 VkImageView
 renderer_vulkan_create_image_view(VkImage image, VkFormat format, VkImageAspectFlags aspect_flags)
 {
-    VkImageViewCreateInfo view_info  = {0};
+    VkImageViewCreateInfo view_info = {0};
     view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     view_info.image = image;
     view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
@@ -194,7 +194,7 @@ renderer_vulkan_create_image_view(VkImage image, VkFormat format, VkImageAspectF
 VkCommandBuffer
 renderer_vulkan_begin_single_time_commands()
 {
-    VkCommandBufferAllocateInfo alloc_info  = {0};
+    VkCommandBufferAllocateInfo alloc_info = {0};
     alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     alloc_info.commandPool = g_vulkan->transient_command_pool;
@@ -203,7 +203,7 @@ renderer_vulkan_begin_single_time_commands()
     VkCommandBuffer command_buffer;
     vkAllocateCommandBuffers(g_vulkan->device, &alloc_info, &command_buffer);
 
-    VkCommandBufferBeginInfo begin_info  = {0};
+    VkCommandBufferBeginInfo begin_info = {0};
     begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
@@ -217,7 +217,7 @@ renderer_vulkan_end_single_time_commands(VkCommandBuffer command_buffer)
 {
     vkEndCommandBuffer(command_buffer);
 
-    VkSubmitInfo submit_info  = {0};
+    VkSubmitInfo submit_info = {0};
     submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submit_info.commandBufferCount = 1;
     submit_info.pCommandBuffers = &command_buffer;
@@ -234,7 +234,7 @@ renderer_vulkan_transition_image_layout(VkImage image, VkFormat format,
 {
     VkCommandBuffer command_buffer = renderer_vulkan_begin_single_time_commands();
 
-    VkImageMemoryBarrier barrier  = {0};
+    VkImageMemoryBarrier barrier = {0};
     barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
     barrier.oldLayout = old_layout;
     barrier.newLayout = new_layout;
@@ -288,7 +288,7 @@ renderer_vulkan_copy_buffer_to_image(VkBuffer buffer, VkImage image, u32 width, 
 {
     VkCommandBuffer command_buffer = renderer_vulkan_begin_single_time_commands();
 
-    VkBufferImageCopy region  = {0};
+    VkBufferImageCopy region = {0};
     region.bufferOffset = 0;
     region.bufferRowLength = 0;
     region.bufferImageHeight = 0;
@@ -296,8 +296,12 @@ renderer_vulkan_copy_buffer_to_image(VkBuffer buffer, VkImage image, u32 width, 
     region.imageSubresource.mipLevel = 0;
     region.imageSubresource.baseArrayLayer = 0;
     region.imageSubresource.layerCount = 1;
-    region.imageOffset.x = 0; region.imageOffset.y = 0; region.imageOffset.z = 0;
-    region.imageExtent.width = width; region.imageExtent.height = height; region.imageExtent.depth = 1;
+    region.imageOffset.x = 0;
+    region.imageOffset.y = 0;
+    region.imageOffset.z = 0;
+    region.imageExtent.width = width;
+    region.imageExtent.height = height;
+    region.imageExtent.depth = 1;
 
     vkCmdCopyBufferToImage(command_buffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
@@ -451,7 +455,7 @@ renderer_vulkan_create_shader_module(const u8 *code, u64 size)
         spirv_size = compiled_size;
     }
 
-    VkShaderModuleCreateInfo create_info  = {0};
+    VkShaderModuleCreateInfo create_info = {0};
     create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
     create_info.codeSize = spirv_size;
     create_info.pCode = spirv_code;
@@ -477,7 +481,7 @@ renderer_init()
     g_vulkan->arena = arena;
 
     // Create instance
-    VkApplicationInfo app_info  = {0};
+    VkApplicationInfo app_info = {0};
     app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     app_info.pApplicationName = "Kanso";
     app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
@@ -485,14 +489,14 @@ renderer_init()
     app_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
     app_info.apiVersion = VK_API_VERSION_1_2;
 
-    VkInstanceCreateInfo create_info  = {0};
+    VkInstanceCreateInfo create_info = {0};
     create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     create_info.pApplicationInfo = &app_info;
 
     // Get required extensions for Linux X11/Vulkan
     const char *extensions[16]; // Max 16 extensions should be plenty
-    u32 extension_count = 0;
-    
+    u32         extension_count = 0;
+
     // Add required extensions for Linux X11
     extensions[extension_count++] = VK_KHR_SURFACE_EXTENSION_NAME;
     extensions[extension_count++] = VK_KHR_XLIB_SURFACE_EXTENSION_NAME;
@@ -508,7 +512,7 @@ renderer_init()
     create_info.enabledLayerCount = validation_layer_count;
     create_info.ppEnabledLayerNames = validation_layers;
 
-    VkDebugUtilsMessengerCreateInfoEXT debug_create_info  = {0};
+    VkDebugUtilsMessengerCreateInfoEXT debug_create_info = {0};
     debug_create_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
     debug_create_info.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
                                         VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
@@ -600,17 +604,17 @@ renderer_init()
     u32                     queue_create_info_count = 0;
     float                   queue_priority = 1.0f;
 
-    VkDeviceQueueCreateInfo queue_create_info  = {0};
+    VkDeviceQueueCreateInfo queue_create_info = {0};
     queue_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
     queue_create_info.queueFamilyIndex = g_vulkan->graphics_queue_family;
     queue_create_info.queueCount = 1;
     queue_create_info.pQueuePriorities = &queue_priority;
     queue_create_infos[queue_create_info_count++] = queue_create_info;
 
-    VkPhysicalDeviceFeatures device_features  = {0};
+    VkPhysicalDeviceFeatures device_features = {0};
     device_features.samplerAnisotropy = VK_TRUE;
 
-    VkDeviceCreateInfo device_create_info  = {0};
+    VkDeviceCreateInfo device_create_info = {0};
     device_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     device_create_info.queueCreateInfoCount = queue_create_info_count;
     device_create_info.pQueueCreateInfos = queue_create_infos;
@@ -636,7 +640,7 @@ renderer_init()
     vkGetDeviceQueue(g_vulkan->device, g_vulkan->present_queue_family, 0, &g_vulkan->present_queue);
 
     // Create command pools
-    VkCommandPoolCreateInfo pool_info  = {0};
+    VkCommandPoolCreateInfo pool_info = {0};
     pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
     pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
     pool_info.queueFamilyIndex = g_vulkan->graphics_queue_family;
@@ -664,7 +668,7 @@ renderer_init()
     pool_sizes[2].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     pool_sizes[2].descriptorCount = 10000;
 
-    VkDescriptorPoolCreateInfo descriptor_pool_info  = {0};
+    VkDescriptorPoolCreateInfo descriptor_pool_info = {0};
     descriptor_pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
     descriptor_pool_info.poolSizeCount = 3;
     descriptor_pool_info.pPoolSizes = pool_sizes;
@@ -678,7 +682,7 @@ renderer_init()
     }
 
     // Create samplers
-    VkSamplerCreateInfo sampler_info  = {0};
+    VkSamplerCreateInfo sampler_info = {0};
     sampler_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
     sampler_info.magFilter = VK_FILTER_NEAREST;
     sampler_info.minFilter = VK_FILTER_NEAREST;
@@ -749,14 +753,18 @@ renderer_init()
 
         VkCommandBuffer cmd = renderer_vulkan_begin_single_time_commands();
 
-        VkBufferImageCopy region  = {0};
+        VkBufferImageCopy region = {0};
         region.bufferOffset = 0;
         region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
         region.imageSubresource.mipLevel = 0;
         region.imageSubresource.baseArrayLayer = 0;
         region.imageSubresource.layerCount = 1;
-        region.imageOffset.x = 0; region.imageOffset.y = 0; region.imageOffset.z = 0;
-        region.imageExtent.width = 1; region.imageExtent.height = 1; region.imageExtent.depth = 1;
+        region.imageOffset.x = 0;
+        region.imageOffset.y = 0;
+        region.imageOffset.z = 0;
+        region.imageExtent.width = 1;
+        region.imageExtent.height = 1;
+        region.imageExtent.depth = 1;
 
         vkCmdCopyBufferToImage(cmd, g_vulkan->staging_buffer, g_vulkan->white_texture,
                                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
@@ -967,7 +975,7 @@ renderer_vulkan_recreate_swapchain(Renderer_Vulkan_Window_Equipment *equip)
         image_count = capabilities.maxImageCount;
     }
 
-    VkSwapchainCreateInfoKHR swapchain_info  = {0};
+    VkSwapchainCreateInfoKHR swapchain_info = {0};
     swapchain_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
     swapchain_info.surface = equip->surface;
     swapchain_info.minImageCount = image_count;
@@ -1010,11 +1018,11 @@ renderer_vulkan_recreate_swapchain(Renderer_Vulkan_Window_Equipment *equip)
     // Create temp array to get images, then allocate proper arrays
     VkImage temp_images[8];
     vkGetSwapchainImagesKHR(g_vulkan->device, equip->swapchain, &image_count, temp_images);
-    equip->swapchain_image_count = image_count;  // CRITICAL: Store the image count!
+    equip->swapchain_image_count = image_count; // CRITICAL: Store the image count!
 
     equip->swapchain_images = push_array(g_vulkan->arena, VkImage, image_count);
     equip->swapchain_image_views = push_array(g_vulkan->arena, VkImageView, image_count);
-    
+
     for (u32 i = 0; i < image_count; i++)
     {
         equip->swapchain_images[i] = temp_images[i];
@@ -1041,7 +1049,7 @@ renderer_vulkan_recreate_swapchain(Renderer_Vulkan_Window_Equipment *equip)
             equip->swapchain_image_views[i],
             equip->depth_image_view};
 
-        VkFramebufferCreateInfo framebuffer_info  = {0};
+        VkFramebufferCreateInfo framebuffer_info = {0};
         framebuffer_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         framebuffer_info.renderPass = equip->render_pass;
         framebuffer_info.attachmentCount = 2;
@@ -1067,7 +1075,7 @@ renderer_window_equip(void *window)
     Arena                            *arena = arena_alloc();
     Renderer_Vulkan_Window_Equipment *equip = push_array(arena, Renderer_Vulkan_Window_Equipment, 1);
     MemoryZero(equip, sizeof(Renderer_Vulkan_Window_Equipment));
-    
+
     // Set default DPI scale for Linux
     equip->dpi_scale = 1.0f;
 
@@ -1096,8 +1104,8 @@ renderer_window_equip(void *window)
     if (x11_state && x11_state->display)
     {
         printf("Creating X11 surface with display=%p, window=0x%lx\n", x11_state->display, (Window)(uintptr_t)window);
-        
-        VkXlibSurfaceCreateInfoKHR surface_info  = {0};
+
+        VkXlibSurfaceCreateInfoKHR surface_info = {0};
         surface_info.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
         surface_info.dpy = x11_state->display;
         surface_info.window = (Window)(uintptr_t)window;
@@ -1116,7 +1124,8 @@ renderer_window_equip(void *window)
     else
     {
         printf("ERROR: x11_state is NULL or display is NULL! x11_state=%p\n", x11_state);
-        if (x11_state) printf("x11_state->display=%p\n", x11_state->display);
+        if (x11_state)
+            printf("x11_state->display=%p\n", x11_state->display);
     }
 #    endif
 #endif
@@ -1220,7 +1229,7 @@ renderer_window_equip(void *window)
         image_count = capabilities.maxImageCount;
     }
 
-    VkSwapchainCreateInfoKHR swapchain_info  = {0};
+    VkSwapchainCreateInfoKHR swapchain_info = {0};
     swapchain_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
     swapchain_info.surface = equip->surface;
     swapchain_info.minImageCount = image_count;
@@ -1266,7 +1275,7 @@ renderer_window_equip(void *window)
     // Create temp array to get images, then allocate proper arrays
     VkImage temp_images[8];
     vkGetSwapchainImagesKHR(g_vulkan->device, equip->swapchain, &image_count, temp_images);
-    equip->swapchain_image_count = image_count;  // CRITICAL: Store the image count!
+    equip->swapchain_image_count = image_count; // CRITICAL: Store the image count!
 
     equip->swapchain_images = push_array(arena, VkImage, image_count);
     for (u32 i = 0; i < image_count; i++)
@@ -1381,7 +1390,7 @@ renderer_window_equip(void *window)
     }
 
     // Allocate command buffers
-    VkCommandBufferAllocateInfo alloc_info  = {0};
+    VkCommandBufferAllocateInfo alloc_info = {0};
     alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     alloc_info.commandPool = g_vulkan->command_pool;
     alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
@@ -1427,7 +1436,7 @@ renderer_window_equip(void *window)
     for (u32 i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
         // Allocate UI global descriptor set
-        VkDescriptorSetAllocateInfo alloc_info  = {0};
+        VkDescriptorSetAllocateInfo alloc_info = {0};
         alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         alloc_info.descriptorPool = g_vulkan->descriptor_pool;
         alloc_info.descriptorSetCount = 1;
@@ -1460,7 +1469,7 @@ renderer_window_equip(void *window)
     }
 
     // Return handle
-    Renderer_Handle handle  = {0};
+    Renderer_Handle handle = {0};
     handle.u64s[0] = (u64)equip;
     return handle;
 }
@@ -1596,7 +1605,7 @@ renderer_tex_2d_alloc(Renderer_Resource_Kind kind, Vec2_f32 size, Renderer_Tex_2
         // Copy buffer to image
         VkCommandBuffer command_buffer = renderer_vulkan_begin_single_time_commands();
 
-        VkBufferImageCopy region  = {0};
+        VkBufferImageCopy region = {0};
         region.bufferOffset = g_vulkan->staging_buffer_offset;
         region.bufferRowLength = 0;
         region.bufferImageHeight = 0;
@@ -1604,8 +1613,12 @@ renderer_tex_2d_alloc(Renderer_Resource_Kind kind, Vec2_f32 size, Renderer_Tex_2
         region.imageSubresource.mipLevel = 0;
         region.imageSubresource.baseArrayLayer = 0;
         region.imageSubresource.layerCount = 1;
-        region.imageOffset.x = 0; region.imageOffset.y = 0; region.imageOffset.z = 0;
-        region.imageExtent.width = width; region.imageExtent.height = height; region.imageExtent.depth = 1;
+        region.imageOffset.x = 0;
+        region.imageOffset.y = 0;
+        region.imageOffset.z = 0;
+        region.imageExtent.width = width;
+        region.imageExtent.height = height;
+        region.imageExtent.depth = 1;
 
         vkCmdCopyBufferToImage(command_buffer, g_vulkan->staging_buffer, tex->image,
                                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
@@ -1628,7 +1641,7 @@ renderer_tex_2d_alloc(Renderer_Resource_Kind kind, Vec2_f32 size, Renderer_Tex_2
     // Create image view
     tex->view = renderer_vulkan_create_image_view(tex->image, vk_format, VK_IMAGE_ASPECT_COLOR_BIT);
 
-    Renderer_Handle handle  = {0};
+    Renderer_Handle handle = {0};
     handle.u64s[0] = (u64)tex;
     return handle;
 }
@@ -1726,7 +1739,7 @@ renderer_fill_tex_2d_region(Renderer_Handle texture, Rng2_f32 subrect, void *dat
     // Copy buffer to image region
     VkCommandBuffer command_buffer = renderer_vulkan_begin_single_time_commands();
 
-    VkBufferImageCopy region  = {0};
+    VkBufferImageCopy region = {0};
     region.bufferOffset = g_vulkan->staging_buffer_offset;
     region.bufferRowLength = 0;
     region.bufferImageHeight = 0;
@@ -1734,8 +1747,12 @@ renderer_fill_tex_2d_region(Renderer_Handle texture, Rng2_f32 subrect, void *dat
     region.imageSubresource.mipLevel = 0;
     region.imageSubresource.baseArrayLayer = 0;
     region.imageSubresource.layerCount = 1;
-    region.imageOffset.x = (s32)x; region.imageOffset.y = (s32)y; region.imageOffset.z = 0;
-    region.imageExtent.width = width; region.imageExtent.height = height; region.imageExtent.depth = 1;
+    region.imageOffset.x = (s32)x;
+    region.imageOffset.y = (s32)y;
+    region.imageOffset.z = 0;
+    region.imageExtent.width = width;
+    region.imageExtent.height = height;
+    region.imageExtent.depth = 1;
 
     vkCmdCopyBufferToImage(command_buffer, g_vulkan->staging_buffer, tex->image,
                            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
@@ -1794,7 +1811,7 @@ renderer_buffer_alloc(Renderer_Resource_Kind kind, u64 size, void *data)
 
             VkCommandBuffer command_buffer = renderer_vulkan_begin_single_time_commands();
 
-            VkBufferCopy copy_region  = {0};
+            VkBufferCopy copy_region = {0};
             copy_region.srcOffset = g_vulkan->staging_buffer_offset;
             copy_region.dstOffset = 0;
             copy_region.size = size;
@@ -1805,7 +1822,7 @@ renderer_buffer_alloc(Renderer_Resource_Kind kind, u64 size, void *data)
         }
     }
 
-    Renderer_Handle handle  = {0};
+    Renderer_Handle handle = {0};
     handle.u64s[0] = (u64)buf;
     return handle;
 }
@@ -1853,7 +1870,7 @@ renderer_window_begin_frame(void *window, Renderer_Handle window_equip)
     Renderer_Vulkan_Window_Equipment *equip = (Renderer_Vulkan_Window_Equipment *)window_equip.u64s[0];
     if (!equip)
         return;
-    
+
     // Reset frame begun flag
     equip->frame_begun = 0;
 
@@ -1886,12 +1903,12 @@ renderer_window_begin_frame(void *window, Renderer_Handle window_equip)
     VkCommandBuffer cmd = equip->command_buffers[equip->current_frame];
     vkResetCommandBuffer(cmd, 0);
 
-    VkCommandBufferBeginInfo begin_info  = {0};
+    VkCommandBufferBeginInfo begin_info = {0};
     begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
     VkResult begin_result = vkBeginCommandBuffer(cmd, &begin_info);
     printf("Command buffer begin result: %d\n", begin_result);
-    
+
     // Mark frame as successfully begun
     equip->frame_begun = 1;
 }
@@ -1911,7 +1928,7 @@ renderer_window_end_frame(void *window, Renderer_Handle window_equip)
     printf("Command buffer end result: %d\n", end_result);
 
     // Submit command buffer
-    VkSubmitInfo submit_info  = {0};
+    VkSubmitInfo submit_info = {0};
     submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
     VkSemaphore          wait_semaphores[] = {equip->image_available_semaphores[equip->current_frame]};
@@ -1927,7 +1944,8 @@ renderer_window_end_frame(void *window, Renderer_Handle window_equip)
     submit_info.pSignalSemaphores = signal_semaphores;
 
     VkResult submit_result = vkQueueSubmit(g_vulkan->graphics_queue, 1, &submit_info, equip->in_flight_fences[equip->current_frame]);
-    if (submit_result != VK_SUCCESS) {
+    if (submit_result != VK_SUCCESS)
+    {
         printf("ERROR: vkQueueSubmit failed with result: %d\n", submit_result);
     }
 

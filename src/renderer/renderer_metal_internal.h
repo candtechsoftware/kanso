@@ -10,47 +10,47 @@
 
 // Internal casting helpers
 internal id<MTLDevice>
-metal_device(void *ptr)
+         metal_device(void *ptr)
 {
     return (__bridge id<MTLDevice>)ptr;
 }
 internal id<MTLCommandQueue>
-metal_command_queue(void *ptr)
+         metal_command_queue(void *ptr)
 {
     return (__bridge id<MTLCommandQueue>)ptr;
 }
 internal id<MTLLibrary>
-metal_library(void *ptr)
+         metal_library(void *ptr)
 {
     return (__bridge id<MTLLibrary>)ptr;
 }
 internal id<MTLTexture>
-metal_texture(void *ptr)
+         metal_texture(void *ptr)
 {
     return (__bridge id<MTLTexture>)ptr;
 }
 internal id<MTLSamplerState>
-metal_sampler(void *ptr)
+         metal_sampler(void *ptr)
 {
     return (__bridge id<MTLSamplerState>)ptr;
 }
 internal id<MTLBuffer>
-metal_buffer(void *ptr)
+         metal_buffer(void *ptr)
 {
     return (__bridge id<MTLBuffer>)ptr;
 }
 internal id<MTLRenderPipelineState>
-metal_pipeline_state(void *ptr)
+         metal_pipeline_state(void *ptr)
 {
     return (__bridge id<MTLRenderPipelineState>)ptr;
 }
 internal id<MTLDepthStencilState>
-metal_depth_stencil_state(void *ptr)
+         metal_depth_stencil_state(void *ptr)
 {
     return (__bridge id<MTLDepthStencilState>)ptr;
 }
 internal id<MTLCommandBuffer>
-metal_command_buffer(void *ptr)
+         metal_command_buffer(void *ptr)
 {
     return (__bridge id<MTLCommandBuffer>)ptr;
 }

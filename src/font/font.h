@@ -40,9 +40,9 @@ struct Font_Renderer_Metrics
 typedef struct Font_Renderer_Raster_Result Font_Renderer_Raster_Result;
 struct Font_Renderer_Raster_Result
 {
-    u8       *atlas_data;
+    u8      *atlas_data;
     Vec2_s16 atlas_dim;
-    b32       valid;
+    b32      valid;
 };
 
 // TOOD(Alex) are we going to need this or should I just pass the
@@ -53,10 +53,10 @@ struct Font_Renderer_State
     Arena *arena;
 };
 
-void font_init(void);
-Font_Renderer_Handle font_open(String path);
-Font_Renderer_Handle font_open_from_data(String *data);
-void font_close(Font_Renderer_Handle font);
+void                  font_init(void);
+Font_Renderer_Handle  font_open(String path);
+Font_Renderer_Handle  font_open_from_data(String *data);
+void                  font_close(Font_Renderer_Handle font);
 Font_Renderer_Metrics font_metrics_from_font(Font_Renderer_Handle font);
 
 Font_Renderer_Raster_Result

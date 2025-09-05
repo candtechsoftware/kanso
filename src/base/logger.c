@@ -137,7 +137,7 @@ process_format(FILE *out, const char *fmt, va_list args)
                 break;
             }
             default:
-                    fputc('{', out);
+                fputc('{', out);
                 fputc(spec, out);
                 fputc('}', out);
                 break;

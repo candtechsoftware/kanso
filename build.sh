@@ -2,9 +2,90 @@
 set -eu
 cd "$(dirname "$0")"
 
+# --- Handle lint and lint-fix commands ---------------------------------------
+if [ $# -ge 1 ] && [ "$1" = "lint" ]; then
+    echo "[Linting mode - showing all warnings]"
+    echo "Checking all .c and .h files in src/ (excluding third_party and generated)..."
+    
+    # Find all C files excluding third_party and generated directories
+    files=$(find src -type f \( -name "*.c" -o -name "*.h" \) | grep -v third_party | grep -v generated | sort)
+    
+    total_warnings=0
+    for file in $files; do
+        # Compile with all warnings enabled, just to check syntax
+        output=$(clang -Wall -Wextra -Wpedantic -Wno-unused-function -Wno-unused-variable -Wno-unused-parameter \
+                 -Wformat=2 -Wconversion -Wshadow -Wcast-qual -Wwrite-strings \
+                 -fsyntax-only -fno-color-diagnostics "$file" 2>&1 || true)
+        
+        if [ -n "$output" ]; then
+            echo "=== $file ==="
+            echo "$output"
+            echo ""
+            warning_count=$(echo "$output" | grep -c "warning:" || true)
+            total_warnings=$((total_warnings + warning_count))
+        fi
+    done
+    
+    echo "============================="
+    echo "Total warnings found: $total_warnings"
+    exit 0
+fi
+
+if [ $# -ge 1 ] && [ "$1" = "lint-fix" ]; then
+    echo "[Lint-fix mode - formatting code]"
+    echo "Formatting all .c and .h files in src/ (excluding third_party and generated)..."
+    
+    # Find all C files excluding third_party and generated directories
+    files=$(find src -type f \( -name "*.c" -o -name "*.h" \) | grep -v third_party | grep -v generated | sort)
+    
+    # Check if clang-format is available
+    if ! command -v clang-format &> /dev/null; then
+        echo "Error: clang-format is not installed. Please install it first."
+        echo "  macOS: brew install clang-format"
+        echo "  Linux: sudo apt-get install clang-format"
+        exit 1
+    fi
+    
+    # Create a .clang-format file if it doesn't exist
+    if [ ! -f .clang-format ]; then
+        echo "Creating .clang-format configuration..."
+        cat > .clang-format << 'EOF'
+BasedOnStyle: LLVM
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+BreakBeforeBraces: Allman
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: false
+AlignConsecutiveDeclarations: true
+AlignConsecutiveAssignments: true
+PointerAlignment: Right
+ColumnLimit: 120
+AlignAfterOpenBracket: Align
+AlignTrailingComments: true
+SpaceBeforeParens: ControlStatements
+EOF
+    fi
+    
+    formatted_count=0
+    for file in $files; do
+        echo "Formatting: $file"
+        clang-format -i "$file"
+        formatted_count=$((formatted_count + 1))
+    done
+    
+    echo "============================="
+    echo "Formatted $formatted_count files"
+    echo "Run 'git diff' to see the changes"
+    exit 0
+fi
+
 # --- Check for required binary name argument ---------------------------------
 if [ $# -lt 1 ]; then
     echo "Usage: $0 <binary_name> [run] [debug|release] [clang|gcc]"
+    echo "       $0 lint              # Show all warnings"
+    echo "       $0 lint-fix          # Auto-format code"
     echo "Example: $0 dbui"
     echo "Example: $0 tansaku release"
     echo "Example: $0 tansaku run       # Build and run"

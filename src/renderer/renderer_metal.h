@@ -5,29 +5,29 @@
 
 // Auto-detect platform if not explicitly set
 #if !defined(USE_METAL) && !defined(USE_VULKAN)
-    #if defined(__APPLE__)
-        #define USE_METAL 1
-    #else
-        #define USE_VULKAN 1
-    #endif
+#    if defined(__APPLE__)
+#        define USE_METAL 1
+#    else
+#        define USE_VULKAN 1
+#    endif
 #endif
 
 #if defined(USE_METAL)
-#ifdef __OBJC__
+#    ifdef __OBJC__
 // Temporarily undefine our macros that conflict with system headers
-#pragma push_macro("internal")
-#pragma push_macro("global")
-#undef internal
-#undef global
+#        pragma push_macro("internal")
+#        pragma push_macro("global")
+#        undef internal
+#        undef global
 
-#    import <Metal/Metal.h>
-#    import <MetalKit/MetalKit.h>
-#    import <QuartzCore/CAMetalLayer.h>
+#        import <Metal/Metal.h>
+#        import <MetalKit/MetalKit.h>
+#        import <QuartzCore/CAMetalLayer.h>
 
 // Restore our macros
-#pragma pop_macro("global")
-#pragma pop_macro("internal")
-#endif
+#        pragma pop_macro("global")
+#        pragma pop_macro("internal")
+#    endif
 
 enum Renderer_Metal_Shader_Kind
 {
@@ -42,7 +42,7 @@ struct Renderer_Metal_Tex_2D
 {
     void                  *texture;
     void                  *sampler;
-    Vec2_f32              size;
+    Vec2_f32               size;
     Renderer_Tex_2D_Format format;
     Renderer_Resource_Kind kind;
 };
@@ -58,8 +58,8 @@ struct Renderer_Metal_Buffer
 typedef struct Renderer_Metal_Window_Equip Renderer_Metal_Window_Equip;
 struct Renderer_Metal_Window_Equip
 {
-    void     *layer;
-    void     *depth_texture;
+    void    *layer;
+    void    *depth_texture;
     Vec2_f32 size;
     f32      scale;
 };
@@ -71,10 +71,10 @@ struct Renderer_Metal_Pipeline
     void *depth_stencil_state;
 };
 
-#define METAL_FRAMES_IN_FLIGHT          2
-#define METAL_BUFFER_POOL_SIZE          16
-#define METAL_BUFFER_POOL_MIN_SIZE      (16 * 1024)
-#define METAL_BUFFER_POOL_GROWTH_FACTOR 2
+#    define METAL_FRAMES_IN_FLIGHT          2
+#    define METAL_BUFFER_POOL_SIZE          16
+#    define METAL_BUFFER_POOL_MIN_SIZE      (16 * 1024)
+#    define METAL_BUFFER_POOL_GROWTH_FACTOR 2
 
 typedef struct Renderer_Metal_Buffer_Pool_Entry Renderer_Metal_Buffer_Pool_Entry;
 struct Renderer_Metal_Buffer_Pool_Entry
@@ -118,9 +118,9 @@ struct Renderer_Metal_State
 
     void *rect_vertex_buffer;
 
-    void     *blur_temp_texture;
+    void    *blur_temp_texture;
     Vec2_f32 blur_temp_texture_size;
-    void     *blur_sampler;
+    void    *blur_sampler;
 
     void *ui_render_pass_desc;
     void *blur_render_pass_desc;
@@ -143,10 +143,10 @@ extern Renderer_Metal_State *r_metal_state;
 
 void
 renderer_metal_init_shaders();
-#ifdef __OBJC__
+#    ifdef __OBJC__
 MTLPixelFormat
 renderer_metal_pixel_format_from_tex_2d_format(Renderer_Tex_2D_Format fmt);
-#endif
+#    endif
 
 Mat4x4_f32
 renderer_metal_sample_channel_map_from_tex_2d_format(Renderer_Tex_2D_Format fmt);

@@ -129,7 +129,7 @@ typedef Mat3x3_f32     Mat3_f32;
 typedef Quaternion_f32 Quat_f32;
 
 // Generic template replacements - using f32 as default
-typedef Vec2_f32       Vec2;
+typedef Vec2_f32 Vec2;
 
 // Convenience macros for creating vectors
 #define V2F32(x, y) ((Vec2_f32){{(x), (y)}})

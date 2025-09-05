@@ -2,8 +2,6 @@
 #include "../base/base_inc.h"
 #include "os.h"
 
-
-
 typedef enum Side
 {
     Side_Invalid = -1,
@@ -130,7 +128,6 @@ typedef enum OS_Modifiers
     OS_Modifier_Alt = (1 << 2),
 } OS_Modifiers;
 
-
 typedef struct OS_Event OS_Event;
 struct OS_Event
 {
@@ -187,10 +184,11 @@ typedef enum OS_Window_Flags
 } OS_Window_Flags;
 
 typedef struct OS_Window_Params OS_Window_Params;
-struct OS_Window_Params {
+struct OS_Window_Params
+{
     OS_Window_Flags flags;
-    Vec2_s32 size;
-    String title;
+    Vec2_s32        size;
+    String          title;
 };
 
 internal String
@@ -220,7 +218,9 @@ os_default_refresh_rate(void);
 internal OS_Handle
 os_window_open(OS_Window_Flags flags, Vec2_s64 size, String title);
 
-static inline OS_Handle os_window_open_params(OS_Window_Params params) {
+static inline OS_Handle
+os_window_open_params(OS_Window_Params params)
+{
     Vec2_s64 size = {params.size.x, params.size.y};
     return os_window_open(params.flags, size, params.title);
 }
@@ -259,8 +259,8 @@ internal void
 os_window_first_paint(OS_Handle handle);
 
 internal Rng2_f32
-         os_rect_from_window(OS_Handle handle);
+os_rect_from_window(OS_Handle handle);
 internal Rng2_f32
-         os_client_rect_from_window(OS_Handle handle);
+os_client_rect_from_window(OS_Handle handle);
 internal f32
-         os_window_get_dpi_scale(OS_Handle handle);
+os_window_get_dpi_scale(OS_Handle handle);

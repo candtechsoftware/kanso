@@ -30,7 +30,6 @@ arena_alloc_(Arena_Params *params)
     return arena;
 }
 
-
 void
 arena_release(Arena *arena)
 {

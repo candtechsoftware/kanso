@@ -15,7 +15,7 @@ struct U32Array
 typedef struct U64Array U64Array;
 struct U64Array
 {
-    u64  count;  
+    u64  count;
     u64 *v;
 };
 

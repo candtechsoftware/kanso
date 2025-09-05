@@ -11,7 +11,7 @@
 #include <errno.h>
 #include <time.h>
 #if defined(__APPLE__)
-#include <mach/mach_time.h>
+#    include <mach/mach_time.h>
 #endif
 
 // Restore macros
@@ -458,7 +458,8 @@ os_get_time(void)
 #ifdef __APPLE__
     // macOS using mach_absolute_time for high precision
     static mach_timebase_info_data_t timebase = {0};
-    if (timebase.denom == 0) {
+    if (timebase.denom == 0)
+    {
         mach_timebase_info(&timebase);
     }
     u64 time = mach_absolute_time();

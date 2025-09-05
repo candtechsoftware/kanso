@@ -51,7 +51,7 @@ font_tag_zero(void)
 Font_Renderer_Handle
 font_handle_from_tag(Font_Renderer_Tag tag)
 {
-    u64              slot_idx = tag.data[1] % font_cache_state->font_hash_table_size;
+    u64                       slot_idx = tag.data[1] % font_cache_state->font_hash_table_size;
     Font_Renderer_Cache_Node *existing_node = NULL;
 
     for (Font_Renderer_Cache_Node *n = font_cache_state->font_hash_table[slot_idx].first; n != NULL; n = n->hash_next)
@@ -75,7 +75,7 @@ font_handle_from_tag(Font_Renderer_Tag tag)
 Font_Renderer_Metrics
 font_metrics_from_tag(Font_Renderer_Tag tag)
 {
-    u64              slot_idx = tag.data[1] % font_cache_state->font_hash_table_size;
+    u64                       slot_idx = tag.data[1] % font_cache_state->font_hash_table_size;
     Font_Renderer_Cache_Node *existing_node = NULL;
 
     for (Font_Renderer_Cache_Node *n = font_cache_state->font_hash_table[slot_idx].first; n != NULL; n = n->hash_next)
@@ -101,7 +101,7 @@ font_tag_from_path(String path)
 {
     // Produce tag from hash of path
     Font_Renderer_Tag result = {0};
-    u128     hash = font_cache_hash_from_string(path);
+    u128              hash = font_cache_hash_from_string(path);
     result.data[0] = hash.u64[0];
     result.data[1] = hash.u64[1] | (1ULL << 63); // Set high bit to indicate path-based tag
 
@@ -160,8 +160,8 @@ font_tag_from_data(String *data)
 {
     // Produce tag from hash of data pointer
     Font_Renderer_Tag result = {0};
-    String   ptr_str = {(u8 *)&data, sizeof(String *)};
-    u128     hash = font_cache_hash_from_string(ptr_str);
+    String            ptr_str = {(u8 *)&data, sizeof(String *)};
+    u128              hash = font_cache_hash_from_string(ptr_str);
     result.data[0] = hash.u64[0];
     result.data[1] = hash.u64[1] & ~(1ULL << 63); // Clear high bit to indicate data-based tag
 
@@ -238,16 +238,20 @@ font_vertex_from_corner(Corner corner)
     switch (corner)
     {
     case Corner_00:
-        result.x = 0; result.y = 0;
+        result.x = 0;
+        result.y = 0;
         break;
     case Corner_01:
-        result.x = 0; result.y = 1;
+        result.x = 0;
+        result.y = 1;
         break;
     case Corner_10:
-        result.x = 1; result.y = 0;
+        result.x = 1;
+        result.y = 0;
         break;
     case Corner_11:
-        result.x = 1; result.y = 1;
+        result.x = 1;
+        result.y = 1;
         break;
     default:
         break;
@@ -260,8 +264,8 @@ Rng2_s16
 font_atlas_region_alloc(Arena *arena, Font_Renderer_Atlas *atlas, Vec2_s16 needed_size)
 {
     // Find node with best-fit size
-    Vec2_s16               region_p0 = {0, 0};
-    Vec2_s16               region_sz = {0, 0};
+    Vec2_s16                         region_p0 = {0, 0};
+    Vec2_s16                         region_sz = {0, 0};
     Font_Renderer_Atlas_Region_Node *node = NULL;
 
     Vec2_s16 n_supported_size = atlas->root_dim;
@@ -385,8 +389,8 @@ font_atlas_region_release(Font_Renderer_Atlas *atlas, Rng2_s16 region)
     Vec2_s16 region_p0 = region.min;
     Vec2_s16 region_sz = {(s16)(region.max.x - region.min.x), (s16)(region.max.y - region.min.y)};
 
-    Vec2_s16               current_p0 = {0, 0};
-    Vec2_s16               current_sz = atlas->root_dim;
+    Vec2_s16                         current_p0 = {0, 0};
+    Vec2_s16                         current_sz = atlas->root_dim;
     Font_Renderer_Atlas_Region_Node *node = atlas->root;
 
     // Traverse down the tree to find the exact node
@@ -455,10 +459,13 @@ font_atlas_region_release(Font_Renderer_Atlas *atlas, Rng2_s16 region)
                     {
                         // Calculate child's actual size based on parent
                         Vec2_s16 parent_sz;
-                        if (p->parent != NULL) {
+                        if (p->parent != NULL)
+                        {
                             parent_sz.x = (s16)(current_sz.x * 2);
                             parent_sz.y = (s16)(current_sz.y * 2);
-                        } else {
+                        }
+                        else
+                        {
                             parent_sz = atlas->root_dim;
                         }
                         Vec2_s16 child_sz = {(s16)(parent_sz.x / 2), (s16)(parent_sz.y / 2)};
@@ -533,7 +540,7 @@ font_style_from_tag_size_flags(Font_Renderer_Tag tag, f32 size, Font_Renderer_Ra
     style_hash ^= (u64)flags;
 
     // Find or create style cache node
-    u64                    slot_idx = style_hash % font_cache_state->hash2style_slots_count;
+    u64                             slot_idx = style_hash % font_cache_state->hash2style_slots_count;
     Font_Renderer_Style_Cache_Slot *slot = &font_cache_state->hash2style_slots[slot_idx];
 
     Font_Renderer_Style_Cache_Node *node = NULL;
@@ -636,9 +643,9 @@ font_run_from_string(Font_Renderer_Tag tag, f32 size, f32 base_align_px, f32 tab
     }
 
     // Check run cache
-    u128                 string_hash = font_cache_hash_from_string(string);
-    u64                  string_hash_low = string_hash.u64[0];
-    u64                  run_slot_idx = string_hash_low % style_node->run_slots_count;
+    u128                          string_hash = font_cache_hash_from_string(string);
+    u64                           string_hash_low = string_hash.u64[0];
+    u64                           run_slot_idx = string_hash_low % style_node->run_slots_count;
     Font_Renderer_Run_Cache_Slot *run_slot = &style_node->run_slots[run_slot_idx];
 
     // Look for cached run
