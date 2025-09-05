@@ -2,6 +2,18 @@
 set -eu
 cd "$(dirname "$0")"
 
+# --- Check for required binary name argument ---------------------------------
+if [ $# -lt 1 ]; then
+    echo "Usage: $0 <binary_name> [run] [debug|release] [clang|gcc]"
+    echo "Example: $0 dbui"
+    echo "Example: $0 tansaku release"
+    echo "Example: $0 tansaku run       # Build and run"
+    exit 1
+fi
+
+BINARY_NAME="$1"
+shift  # Remove first argument so the rest can be processed
+
 # --- Unpack Arguments --------------------------------------------------------
 for arg in "$@"; do declare $arg='1'; done
 
@@ -81,13 +93,26 @@ if [ "$OS_NAME" = "Linux" ]; then
 fi
 
 # --- Build --------------------------------------------------------------------
-echo "Building dbui..."
-if [ "$OS_NAME" = "Darwin" ]; then
-    echo "Unity build for macOS with Metal renderer"
-    $compile_line -x objective-c -o build/dbui src/dbui/main.c $link_flags
-else
-    echo "Unity build for Linux with Vulkan renderer"
-    $compile_line -o build/dbui src/dbui/main.c src/generated/vulkan_shaders.c $link_flags
+echo "Building ${BINARY_NAME}..."
+
+# Check if source file exists
+if [ ! -f "src/${BINARY_NAME}/main.c" ]; then
+    echo "Error: Source file src/${BINARY_NAME}/main.c does not exist!"
+    exit 1
 fi
 
-echo "Build complete: build/dbui"
+if [ "$OS_NAME" = "Darwin" ]; then
+    echo "Unity build for macOS with Metal renderer"
+    $compile_line -x objective-c -o build/${BINARY_NAME} src/${BINARY_NAME}/main.c $link_flags
+else
+    echo "Unity build for Linux with Vulkan renderer"
+    $compile_line -o build/${BINARY_NAME} src/${BINARY_NAME}/main.c src/generated/vulkan_shaders.c $link_flags
+fi
+
+echo "Build complete: build/${BINARY_NAME}"
+
+# --- Run if requested --------------------------------------------------------
+if [[ "${run:-0}" == "1" ]]; then
+    echo "Running ${BINARY_NAME}..."
+    ./build/${BINARY_NAME}
+fi

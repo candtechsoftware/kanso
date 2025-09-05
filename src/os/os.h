@@ -10,6 +10,34 @@ union OS_Handle {
     void *ptr;
 };
 
+
+typedef struct Mutex Mutex;
+struct Mutex
+{
+  u64 u64s[1];
+};
+
+typedef struct RWMutex RWMutex;
+struct RWMutex
+{
+  u64 u64s[1];
+};
+
+typedef struct CondVar CondVar;
+struct CondVar
+{
+  u64 u64s[1];
+};
+
+
+typedef struct Semaphore Semaphore;
+struct Semaphore
+{
+  u64 u64s[1];
+};
+
+
+
 static inline OS_Handle os_handle_zero(void) {
     OS_Handle result = {0};
     return result;
@@ -82,6 +110,8 @@ struct OS_File_Info
     File_Properties props;
 };
 
+typedef void OS_Thread_Func(void *ptr);
+
 internal void *os_reserve(u64 size);
 internal void *os_reserve_large(u64 size);
 internal b32   os_commit(void *ptr, u64 size);
@@ -110,3 +140,49 @@ internal b32           os_file_iter_next(Arena *arena, OS_File_Iter *iter, OS_Fi
 internal void          os_file_iter_end(OS_File_Iter *iter);
 
 internal b32 os_create_directory_recursive(String path);
+
+// Shader Memeory
+internal OS_Handle os_shared_memory_alloc(u64 size, String name) ;
+internal OS_Handle os_shared_memory_open(String name) ;
+internal void      os_shared_memory_close(OS_Handle handle) ;
+internal void      *os_shared_memory_view_open(OS_Handle, Rng1_u64 range);
+internal void      os_shared_memory_view_close(OS_Handle handle, void *ptr, Rng1_u64 range);
+
+
+// Threads
+internal OS_Handle os_thread_launch(OS_Thread_Func *func, void *ptr, void *params); 
+internal b32       os_thread_join(OS_Handle handle, u64 end_t_us);
+internal void      os_thread_detatch(OS_Handle handle);
+
+// Sync Primitives
+internal Mutex os_mutex_alloc(void); 
+internal void  os_mutex_release(Mutex m); 
+internal void  os_mutex_lock(Mutex m);
+internal void  os_mutex_unlock(Mutex m);
+
+// Read/Write Mutexes 
+internal RWMutex os_rw_mutex_alloc(void);
+internal void    os_rw_mutex_release(RWMutex rwm);
+internal void    os_rw_mutex_lock_read(RWMutex rwm);
+internal void    os_rw_mutex_unlock_read(RWMutex rwm);
+internal void    os_rw_mutex_lock_write(RWMutex rwm);
+internal void    os_rw_mutex_unlock_write(RWMutex rwm);
+
+// Conditional Variables
+internal CondVar os_cond_var_alloc(void); 
+internal void    os_cond_var_release(CondVar cv); 
+
+// return false on timeout, true on signal
+internal b32     os_cond_var_wait(CondVar cv, Mutex m, u64 end_t_us); 
+internal b32     os_cond_var_wait_rw_read(CondVar cv, RWMutex m, u64 end_t_us); 
+internal b32     os_cond_var_wait_rw_write(CondVar cv, RWMutex m, u64 end_t_us); 
+internal void    os_cond_var_signal(CondVar cv); 
+internal void    os_cond_var_broadcast(CondVar cv); 
+
+// Semaphore 
+internal Semaphore os_semaphore_alloc(u32 initial_count, u32 max_count, String name);
+internal void      os_semaphore_release(u32 initial_count, u32 max_count, String name);
+
+
+
+

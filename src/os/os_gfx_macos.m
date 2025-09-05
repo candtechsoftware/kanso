@@ -752,8 +752,8 @@ os_event_list_from_window(OS_Handle window)
                     
                     NSPoint mouse_loc = [event locationInWindow];
                     NSRect frame = [[window_state->window contentView] frame];
-                    os_event->position.x = mouse_loc.x;
-                    os_event->position.y = frame.size.height - mouse_loc.y;
+                    os_event->position.x = (f32)mouse_loc.x;
+                    os_event->position.y = (f32)frame.size.height - (f32)mouse_loc.y;
                     
                     os_event->next = NULL;
                     os_event->prev = result.last;

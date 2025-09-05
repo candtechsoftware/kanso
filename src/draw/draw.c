@@ -310,7 +310,7 @@ draw_img(Rng2_f32 dst, Rng2_f32 src, Renderer_Handle texture, Vec4_f32 color, f3
     rect->corner_radii[0] = rect->corner_radii[1] = rect->corner_radii[2] = rect->corner_radii[3] = corner_radius;
     rect->border_thickness = border_thickness;
     rect->edge_softness = edge_softness;
-    rect->white_texture_override = 1;
+    rect->white_texture_override = (texture.u64s[0] == 0) ? 1 : 0;
 
     return rect;
 }

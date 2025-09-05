@@ -1,0 +1,5 @@
+-Isrc
+-Ithird_party
+-std=c11
+-Wall
+-Wextra

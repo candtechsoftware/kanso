@@ -335,26 +335,12 @@ renderer_vulkan_submit_ui_pass(VkCommandBuffer cmd, Renderer_Pass_Params_UI *par
             // Copy instance data to dynamic buffer
             memcpy((u8 *)g_instance_buffer.mapped + g_instance_buffer.offset, batch->v, batch->byte_count);
             
-            // Debug: Check if batch data looks valid
-            if (batch->byte_count > 0) {
-                Renderer_Rect_2D_Inst *first_rect = (Renderer_Rect_2D_Inst *)batch->v;
-                printf("First rect: dst=(%.1f,%.1f)-(%.1f,%.1f) src=(%.1f,%.1f)-(%.1f,%.1f)\n",
-                       first_rect->dst.min.x, first_rect->dst.min.y, 
-                       first_rect->dst.max.x, first_rect->dst.max.y,
-                       first_rect->src.min.x, first_rect->src.min.y, 
-                       first_rect->src.max.x, first_rect->src.max.y);
-                printf("  colors[0]=(%.2f,%.2f,%.2f,%.2f)\n", 
-                       first_rect->colors[0].x, first_rect->colors[0].y, 
-                       first_rect->colors[0].z, first_rect->colors[0].w);
-            }
-
             // Bind instance buffer
             VkDeviceSize offset = g_instance_buffer.offset;
             vkCmdBindVertexBuffers(cmd, 0, 1, &g_instance_buffer.buffer, &offset);
 
             // Draw instanced rectangles (4 vertices per rect, using triangle strip)
             u32 instance_count = batch->byte_count / sizeof(Renderer_Rect_2D_Inst);
-            printf("Drawing %d rectangles (%d bytes)\n", instance_count, batch->byte_count);
             vkCmdDraw(cmd, 4, instance_count, 0, 0);
 
             g_instance_buffer.offset += batch->byte_count;

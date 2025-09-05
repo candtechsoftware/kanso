@@ -127,5 +127,9 @@ fragment float4 rect_fragment_main(
     }
     
     final_color.a *= shape_coverage * uniforms.opacity;
+    
+    // Premultiply alpha for correct blending
+    final_color.rgb *= final_color.a;
+    
     return final_color;
 }

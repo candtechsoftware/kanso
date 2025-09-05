@@ -3,6 +3,15 @@
 #include "../base/base_inc.h"
 #include "renderer_core.h"
 
+// Auto-detect platform if not explicitly set
+#if !defined(USE_METAL) && !defined(USE_VULKAN)
+    #if defined(__APPLE__)
+        #define USE_METAL 1
+    #else
+        #define USE_VULKAN 1
+    #endif
+#endif
+
 #if defined(USE_METAL)
 #ifdef __OBJC__
 // Temporarily undefine our macros that conflict with system headers

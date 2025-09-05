@@ -1,3 +1,7 @@
+// Temporarily undefine macros that conflict with system headers
+#pragma push_macro("internal")
+#undef internal
+
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -9,6 +13,9 @@
 #if defined(__APPLE__)
 #include <mach/mach_time.h>
 #endif
+
+// Restore macros
+#pragma pop_macro("internal")
 
 #include "../base/base_inc.h"
 #include "os.h"
