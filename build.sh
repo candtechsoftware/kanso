@@ -61,15 +61,33 @@ fi
 if [[ "${debug:-0}" == "1" ]]; then compile_line="$debug_flags"; fi
 if [[ "${release:-0}" == "1" ]]; then compile_line="$release_flags"; fi
 
+# --- Meta Build ---------------------------------------------------------------
+mkdir -p build src/generated
+echo "Building meta tool..."
+if [ "$OS_NAME" = "Linux" ]; then
+    echo "Compiling meta tool for code generation..."
+    $compile_line -o build/meta src/meta/meta.c -lm
+    if [ $? -ne 0 ]; then
+        echo "Meta tool compilation failed!"
+        exit 1
+    fi
+    
+    echo "Running meta tool to generate shader sources..."
+    ./build/meta
+    if [ $? -ne 0 ]; then
+        echo "Meta tool execution failed!"
+        exit 1
+    fi
+fi
+
 # --- Build --------------------------------------------------------------------
-mkdir -p build
 echo "Building dbui..."
 if [ "$OS_NAME" = "Darwin" ]; then
     echo "Unity build for macOS with Metal renderer"
     $compile_line -x objective-c -o build/dbui src/dbui/main.c $link_flags
 else
     echo "Unity build for Linux with Vulkan renderer"
-    $compile_line -o build/dbui src/dbui/main.c $link_flags
+    $compile_line -o build/dbui src/dbui/main.c src/generated/vulkan_shaders.c $link_flags
 fi
 
 echo "Build complete: build/dbui"

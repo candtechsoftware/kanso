@@ -1,18 +1,17 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/Xatom.h>
+#undef Font
 #undef internal
 #include <X11/XKBlib.h>
 #define internal static
 #include <X11/keysym.h>
 #include <X11/cursorfont.h>
 #include <limits.h>
+#define X11Font Font
 
-#include "arena.h"
+#include "../base/base_inc.h"
 #include "os_gfx.h"
-#include "util.h"
-#include "string_core.h"
-#include "tctx.h"
 
 typedef struct X11_Window_State X11_Window_State;
 struct X11_Window_State
@@ -130,7 +129,7 @@ os_window_open(OS_Window_Flags flags, Vec2_s64 size, String title)
     X11_Window_State *window_state = &x11_state->windows[x11_state->window_count];
     
     XSetWindowAttributes window_attrs = {0};
-    window_attrs.background_pixel = WhitePixel(x11_state->display, x11_state->screen);
+    window_attrs.background_pixel = BlackPixel(x11_state->display, x11_state->screen);
     window_attrs.border_pixel = BlackPixel(x11_state->display, x11_state->screen);
     window_attrs.colormap = x11_state->colormap;
     window_attrs.event_mask = ExposureMask | KeyPressMask | KeyReleaseMask |
@@ -701,4 +700,16 @@ os_event_list_from_window(OS_Handle window)
     }
     
     return result;
+}
+
+internal void *
+os_window_native_handle(OS_Handle handle)
+{
+    X11_Window_State *window_state = x11_window_state_from_handle(handle);
+    if (!window_state)
+    {
+        return NULL;
+    }
+    
+    return (void *)(uintptr_t)window_state->window;
 }

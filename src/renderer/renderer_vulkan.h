@@ -4,6 +4,8 @@
 #include "renderer_core.h"
 #include <vulkan/vulkan.h>
 
+
+typedef struct Renderer_Vulkan_State Renderer_Vulkan_State; 
 struct Renderer_Vulkan_State
 {
     Arena *arena;
@@ -95,6 +97,7 @@ struct Renderer_Vulkan_State
     VkDeviceMemory white_texture_memory;
 };
 
+typedef struct Renderer_Vulkan_Window_Equipment Renderer_Vulkan_Window_Equipment;
 struct Renderer_Vulkan_Window_Equipment
 {
     VkSurfaceKHR        surface;
@@ -124,6 +127,7 @@ struct Renderer_Vulkan_Window_Equipment
     VkFence     in_flight_fences[2];           // MAX_FRAMES_IN_FLIGHT
     u32         current_frame;
     u32         current_image_index;
+    b32         frame_begun;  // Track if frame was successfully begun
 
     // Blur framebuffers
     VkImage        blur_texture_a;
@@ -145,10 +149,10 @@ struct Renderer_Vulkan_Window_Equipment
 
         // Uniform buffer slices
         u64 uniform_offset;
-    };
-    Frame_Resources frame_resources[2]; // MAX_FRAMES_IN_FLIGHT
+    } frame_resources[2]; // MAX_FRAMES_IN_FLIGHT
 };
 
+typedef struct Renderer_Vulkan_Texture_2D Renderer_Vulkan_Texture_2D;
 struct Renderer_Vulkan_Texture_2D
 {
     VkImage                image;
@@ -159,6 +163,7 @@ struct Renderer_Vulkan_Texture_2D
     Renderer_Resource_Kind kind;
 };
 
+typedef struct Renderer_Vulkan_Buffer Renderer_Vulkan_Buffer;
 struct Renderer_Vulkan_Buffer
 {
     VkBuffer               buffer;

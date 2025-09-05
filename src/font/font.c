@@ -6,13 +6,13 @@
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "../../third_party/stb/stb_truetype.h"
 
-Font_State *f_state = NULL;
+Font_Renderer_State *f_state = NULL;
 
 void
 font_init(void)
 {
     Arena *arena = arena_alloc();
-    f_state = push_array(arena, Font_State, 1);
+    f_state = push_array(arena, Font_Renderer_State, 1);
     f_state->arena = arena;
 }
 
@@ -71,11 +71,11 @@ load_file(String path)
     return result;
 }
 
-Font_Handle
+Font_Renderer_Handle
 font_open(String path)
 {
     String font_file = load_file(path);
-    Font   font = {};
+    Font_Renderer   font = {};
 
     // Allocate memory for stbtt_fontinfo
     font.info = push_struct(f_state->arena, stbtt_fontinfo);
@@ -86,19 +86,19 @@ font_open(String path)
     if (!stbtt_InitFont(font.info, (const unsigned char *)font_file.data, offset))
     {
         log_error("Error init font\n");
-        Font_Handle empty = {0};
+        Font_Renderer_Handle empty = {0};
         return empty;
     }
 
-    Font_Handle handle = font_to_handle(font);
+    Font_Renderer_Handle handle = font_to_handle(font);
     return handle;
 }
 
-Font
-font_from_handle(Font_Handle handle)
+Font_Renderer
+font_from_handle(Font_Renderer_Handle handle)
 {
-    Font  font = {};
-    Font *stored_font = (Font *)handle.data[0];
+    Font_Renderer  font = {};
+    Font_Renderer *stored_font = (Font_Renderer *)handle.data[0];
     if (stored_font)
     {
         font = *stored_font;
@@ -106,22 +106,22 @@ font_from_handle(Font_Handle handle)
     return font;
 }
 
-Font_Handle
-font_to_handle(Font font)
+Font_Renderer_Handle
+font_to_handle(Font_Renderer font)
 {
-    Font_Handle handle = {};
-    // Allocate space for the Font and store pointer in handle
-    Font *stored_font = push_struct(f_state->arena, Font);
+    Font_Renderer_Handle handle = {};
+    // Allocate space for the Font_Renderer and store pointer in handle
+    Font_Renderer *stored_font = push_struct(f_state->arena, Font_Renderer);
     *stored_font = font;
     handle.data[0] = (u64)stored_font;
     return handle;
 }
 
-Font_Raster_Result
-font_raster(Arena *arena, Font_Handle handle, f32 size, String string)
+Font_Renderer_Raster_Result
+font_raster(Arena *arena, Font_Renderer_Handle handle, f32 size, String string)
 {
-    Font_Raster_Result result = {};
-    Font               font = font_from_handle(handle);
+    Font_Renderer_Raster_Result result = {};
+    Font_Renderer               font = font_from_handle(handle);
 
     if (font.info != 0)
     {
@@ -211,7 +211,7 @@ font_raster(Arena *arena, Font_Handle handle, f32 size, String string)
         result.atlas_dim = dim;
         result.valid = true;
 
-        log_info("Font rasterized: {d}x{d} atlas for \"{s}\"\n", dim.x, dim.y, string);
+        log_info("Font_Renderer rasterized: {d}x{d} atlas for \"{s}\"\n", dim.x, dim.y, string);
 
         scratch_end(&scratch);
     }
@@ -219,11 +219,11 @@ font_raster(Arena *arena, Font_Handle handle, f32 size, String string)
     return result;
 }
 
-Font_Metrics
-font_metrics_from_font(Font_Handle handle)
+Font_Renderer_Metrics
+font_metrics_from_font(Font_Renderer_Handle handle)
 {
-    Font_Metrics metrics = {};
-    Font         font = font_from_handle(handle);
+    Font_Renderer_Metrics metrics = {};
+    Font_Renderer         font = font_from_handle(handle);
 
     if (font.info != 0)
     {
@@ -245,10 +245,10 @@ font_metrics_from_font(Font_Handle handle)
     return metrics;
 }
 
-Font_Handle
+Font_Renderer_Handle
 font_open_from_data(String *data)
 {
-    Font font = {};
+    Font_Renderer font = {};
 
     // Allocate memory for stbtt_fontinfo
     font.info = push_struct(f_state->arena, stbtt_fontinfo);
@@ -258,16 +258,16 @@ font_open_from_data(String *data)
     if (!stbtt_InitFont(font.info, (const unsigned char *)data->data, offset))
     {
         log_error("Error init font from data\n");
-        Font_Handle empty = {0};
+        Font_Renderer_Handle empty = {0};
         return empty;
     }
 
-    Font_Handle handle = font_to_handle(font);
+    Font_Renderer_Handle handle = font_to_handle(font);
     return handle;
 }
 
 void
-font_close(Font_Handle handle)
+font_close(Font_Renderer_Handle handle)
 {
     // Since we're using an arena allocator, we don't need to free individual fonts
     // The memory will be released when the arena is cleared/released

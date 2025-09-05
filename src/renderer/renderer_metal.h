@@ -3,6 +3,7 @@
 #include "../base/base_inc.h"
 #include "renderer_core.h"
 
+#if defined(USE_METAL)
 #ifdef __OBJC__
 // Temporarily undefine our macros that conflict with system headers
 #pragma push_macro("internal")
@@ -161,3 +162,4 @@ renderer_metal_acquire_buffer_from_pool(u64 size);
 
 void
 renderer_metal_reset_frame_pools();
+#endif

@@ -27,7 +27,7 @@ struct Draw_Thread_Context
 {
     Arena                       *arena;
     u64                          arena_frame_start_pos;
-    Font_Tag                     default_font;
+    Font_Renderer_Tag                     default_font;
     Draw_Bucket                 *current_bucket;
     Draw_Bucket                **bucket_stack;
     u64                          bucket_stack_count;
@@ -38,15 +38,18 @@ struct Draw_Thread_Context
 #ifdef __APPLE__
 // macOS doesn't support thread_local in all configurations
 extern Draw_Thread_Context *draw_thread_ctx;
+#elif defined(__linux__)
+// Linux with GCC/Clang - use _Thread_local for C11 compatibility
+extern _Thread_local Draw_Thread_Context *draw_thread_ctx;
 #else
-extern thread_local Draw_Thread_Context *draw_thread_ctx;
+extern _Thread_local Draw_Thread_Context *draw_thread_ctx;
 #endif
 
 typedef struct Draw_Text_Params Draw_Text_Params;
 struct Draw_Text_Params
 {
-    Font_Tag          font;
-    Font_Raster_Flags raster_flags;
+    Font_Renderer_Tag          font;
+    Font_Renderer_Raster_Flags raster_flags;
     Vec4_f32          color;
     f32               size;
     f32               underline_thickness;
@@ -78,7 +81,7 @@ struct Draw_Styled_String_List
 typedef struct Draw_Text_Run Draw_Text_Run;
 struct Draw_Text_Run
 {
-    Font_Run  run;
+    Font_Renderer_Run  run;
     Vec4_f32  color;
     f32       underline_thickness;
     f32       strikethrough_thickness;
@@ -101,7 +104,7 @@ struct Draw_Text_Run_List
 
 // Main API functions
 void
-draw_begin_frame(Font_Tag default_font);
+draw_begin_frame(Font_Renderer_Tag default_font);
 void
 draw_end_frame(void);
 void
@@ -163,7 +166,7 @@ draw_text_runs_from_styled_strings(Arena *arena, f32 tab_size_px, Draw_Styled_St
 Vec2_f32
 draw_dim_from_styled_strings(f32 tab_size_px, Draw_Styled_String_List *strs);
 void
-draw_text(Vec2_f32 p, String text, Font_Tag font, f32 size, Vec4_f32 color);
+draw_text(Vec2_f32 p, String text, Font_Renderer_Tag font, f32 size, Vec4_f32 color);
 void
 draw_text_run_list(Vec2_f32 p, Draw_Text_Run_List *list);
 

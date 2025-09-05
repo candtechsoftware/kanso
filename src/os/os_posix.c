@@ -6,7 +6,7 @@
 #include <string.h>
 #include <errno.h>
 #include <time.h>
-#ifdef __APPLE__
+#if defined(__APPLE__)
 #include <mach/mach_time.h>
 #endif
 

@@ -1,10 +1,8 @@
 #include "renderer_vulkan.h"
-#include "base/base.h"
-#include "base/logger.h"
-#include "base/profiler.h"
-#include "base/os.h"
+#include "../base/base_inc.h"
 
 // Helper to allocate from a dynamic buffer
+typedef struct Dynamic_Buffer Dynamic_Buffer;
 struct Dynamic_Buffer
 {
     VkBuffer       buffer;
@@ -14,9 +12,10 @@ struct Dynamic_Buffer
     u64            offset;
 };
 
-static Dynamic_Buffer g_instance_buffer = {0};
+static Dynamic_Buffer g_instance_buffer  = {0};
 
 // Uniform buffer structures
+typedef struct UI_Uniforms UI_Uniforms;
 struct UI_Uniforms
 {
     Vec2_f32   viewport_size_px;
@@ -25,6 +24,7 @@ struct UI_Uniforms
     Mat4x4_f32 texture_sample_channel_map;
 };
 
+typedef struct Geo_3D_Uniforms Geo_3D_Uniforms;
 struct Geo_3D_Uniforms
 {
     Mat4x4_f32 view;
@@ -47,7 +47,7 @@ renderer_window_submit(void *window, Renderer_Handle window_equip, Renderer_Pass
 {
     ZoneScoped;
     Renderer_Vulkan_Window_Equipment *equip = (Renderer_Vulkan_Window_Equipment *)window_equip.u64s[0];
-    if (!equip || !passes)
+    if (!equip || !passes || !equip->frame_begun)
         return;
 
     VkCommandBuffer cmd = equip->command_buffers[equip->current_frame];
@@ -56,35 +56,68 @@ renderer_window_submit(void *window, Renderer_Handle window_equip, Renderer_Pass
     g_instance_buffer.offset = 0;
 
     // Begin render pass
-    VkRenderPassBeginInfo render_pass_info{0};
+    VkRenderPassBeginInfo render_pass_info = {0};
     render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     render_pass_info.renderPass = equip->render_pass;
-    // Get the nth framebuffer from the array
+    // Get the nth framebuffer from the array with bounds checking
+    if (equip->current_image_index >= equip->swapchain_image_count) {
+        printf("ERROR: current_image_index %d >= swapchain_image_count %d\n", 
+               equip->current_image_index, equip->swapchain_image_count);
+        return;
+    }
+    if (!equip->framebuffers) {
+        printf("ERROR: framebuffers array is NULL!\n");
+        return;
+    }
+    
+    // Validate framebuffer before use
+    if (!equip->framebuffers || equip->framebuffers[equip->current_image_index] == VK_NULL_HANDLE) {
+        log_error("Invalid framebuffer at index %u!", equip->current_image_index);
+        return;
+    }
+    
     render_pass_info.framebuffer = equip->framebuffers[equip->current_image_index];
-    render_pass_info.renderArea.offset = {{0, 0}};
+    render_pass_info.renderArea.offset.x = 0;
+    render_pass_info.renderArea.offset.y = 0;
     render_pass_info.renderArea.extent = equip->swapchain_extent;
+    printf("Render area: %dx%d, framebuffer[%d]: %p (count: %d)\n", 
+           equip->swapchain_extent.width, equip->swapchain_extent.height,
+           equip->current_image_index,
+           (void*)(uintptr_t)equip->framebuffers[equip->current_image_index],
+           equip->swapchain_image_count);
 
     VkClearValue clear_values[2];
-    clear_values[0].color = {{{0.3f, 0.3f, 0.3f, 1.0f}}};
-    clear_values[1].depthStencil = {1.0f, 0};
+    clear_values[0].color.float32[0] = 0.3f;  // Match C++ version's gray
+    clear_values[0].color.float32[1] = 0.3f;
+    clear_values[0].color.float32[2] = 0.3f;
+    clear_values[0].color.float32[3] = 1.0f;
+    clear_values[1].depthStencil.depth = 1.0f;
+    clear_values[1].depthStencil.stencil = 0;
 
     render_pass_info.clearValueCount = 2;
     render_pass_info.pClearValues = clear_values;
 
     vkCmdBeginRenderPass(cmd, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
+    printf("Started render pass with gray clear color\n");
 
     // Submit each pass
+    int pass_count = 0;
     for (Renderer_Pass_Node *node = passes->first; node; node = node->next)
     {
         Renderer_Pass *pass = &node->v;
 
+        pass_count++;
+        printf("Processing pass %d of kind %d\n", pass_count, pass->kind);
+        
         switch (pass->kind)
         {
         case Renderer_Pass_Kind_UI:
+            printf("Submitting UI pass\n");
             renderer_vulkan_submit_ui_pass(cmd, pass->params_ui, equip);
             break;
 
         case Renderer_Pass_Kind_Blur:
+            printf("Submitting blur pass\n");
             renderer_vulkan_submit_blur_pass(cmd, pass->params_blur, equip);
             break;
 
@@ -93,7 +126,8 @@ renderer_window_submit(void *window, Renderer_Handle window_equip, Renderer_Pass
             break;
         }
     }
-
+    
+    printf("Processed %d passes total. Ending render pass.\n", pass_count);
     vkCmdEndRenderPass(cmd);
 }
 
@@ -117,7 +151,7 @@ ensure_dynamic_buffer(Dynamic_Buffer *buf, u64 required_size)
         // Create new buffer with larger size
         buf->size = new_size;
 
-        VkBufferCreateInfo buffer_info{0};
+        VkBufferCreateInfo buffer_info = {0};
         buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
         buffer_info.size = buf->size;
         buffer_info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
@@ -128,7 +162,7 @@ ensure_dynamic_buffer(Dynamic_Buffer *buf, u64 required_size)
         VkMemoryRequirements mem_requirements;
         vkGetBufferMemoryRequirements(g_vulkan->device, buf->buffer, &mem_requirements);
 
-        VkMemoryAllocateInfo alloc_info{0};
+        VkMemoryAllocateInfo alloc_info = {0};
         alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
         alloc_info.allocationSize = mem_requirements.size;
         alloc_info.memoryTypeIndex = renderer_vulkan_find_memory_type(
@@ -154,7 +188,7 @@ renderer_vulkan_submit_ui_pass(VkCommandBuffer cmd, Renderer_Pass_Params_UI *par
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, g_vulkan->pipelines.ui);
 
     // Set viewport and scissor (using physical pixels for viewport)
-    VkViewport viewport{0};
+    VkViewport viewport = {0};
     viewport.x = 0.0f;
     viewport.y = 0.0f;
     viewport.width = (f32)equip->swapchain_extent.width;
@@ -162,15 +196,25 @@ renderer_vulkan_submit_ui_pass(VkCommandBuffer cmd, Renderer_Pass_Params_UI *par
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
     vkCmdSetViewport(cmd, 0, 1, &viewport);
+    
+    // Set initial scissor to full viewport
+    VkRect2D initial_scissor = {0};
+    initial_scissor.offset.x = 0;
+    initial_scissor.offset.y = 0;
+    initial_scissor.extent.width = equip->swapchain_extent.width;
+    initial_scissor.extent.height = equip->swapchain_extent.height;
+    vkCmdSetScissor(cmd, 0, 1, &initial_scissor);
 
     // Update uniform buffer for UI
     struct Frame_Resources *frame = &equip->frame_resources[equip->current_frame];
 
     // Update uniform data (using logical coordinates for uniforms)
     f32 scale = equip->dpi_scale > 0 ? equip->dpi_scale : 1.0f;
-    UI_Uniforms uniforms = {0};
+    UI_Uniforms uniforms  = {0};
     uniforms.viewport_size_px.x = (f32)equip->swapchain_extent.width / scale;
     uniforms.viewport_size_px.y = (f32)equip->swapchain_extent.height / scale;
+    printf("UI Uniforms: viewport_size=(%.1f, %.1f) scale=%.1f\n", 
+           uniforms.viewport_size_px.x, uniforms.viewport_size_px.y, scale);
     uniforms.opacity = 1.0f;
     // Identity matrix for texture sampling
     for (int i = 0; i < 4; i++)
@@ -180,12 +224,12 @@ renderer_vulkan_submit_ui_pass(VkCommandBuffer cmd, Renderer_Pass_Params_UI *par
     memcpy((u8 *)g_vulkan->uniform_buffer.mapped + frame->uniform_offset, &uniforms, sizeof(uniforms));
 
     // Update descriptor set
-    VkDescriptorBufferInfo buffer_info{0};
+    VkDescriptorBufferInfo buffer_info = {0};
     buffer_info.buffer = g_vulkan->uniform_buffer.buffer;
     buffer_info.offset = frame->uniform_offset;
     buffer_info.range = sizeof(UI_Uniforms);
 
-    VkWriteDescriptorSet write{0};
+    VkWriteDescriptorSet write = {0};
     write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     write.dstSet = frame->ui_global_set;
     write.dstBinding = 0;
@@ -218,14 +262,17 @@ renderer_vulkan_submit_ui_pass(VkCommandBuffer cmd, Renderer_Pass_Params_UI *par
     ensure_dynamic_buffer(&g_instance_buffer, total_instance_size);
 
     // Process each batch group
+    int group_count = 0;
     for (Renderer_Batch_Group_2D_Node *group_node = params->rects.first;
          group_node;
          group_node = group_node->next)
     {
+        group_count++;
+        printf("Processing batch group %d\n", group_count);
         Renderer_Batch_Group_2D_Params *group_params = &group_node->params;
 
         // Set scissor based on clip rect
-        VkRect2D scissor{0};
+        VkRect2D scissor = {0};
         scissor.offset.x = (s32)group_params->clip.min.x;
         scissor.offset.y = (s32)group_params->clip.min.y;
         scissor.extent.width = (u32)(group_params->clip.max.x - group_params->clip.min.x);
@@ -243,7 +290,7 @@ renderer_vulkan_submit_ui_pass(VkCommandBuffer cmd, Renderer_Pass_Params_UI *par
         }
 
         // Allocate a new descriptor set for the texture
-        VkDescriptorSetAllocateInfo tex_alloc_info{0};
+        VkDescriptorSetAllocateInfo tex_alloc_info = {0};
         tex_alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         tex_alloc_info.descriptorPool = g_vulkan->descriptor_pool;
         tex_alloc_info.descriptorSetCount = 1;
@@ -252,14 +299,14 @@ renderer_vulkan_submit_ui_pass(VkCommandBuffer cmd, Renderer_Pass_Params_UI *par
         if (vkAllocateDescriptorSets(g_vulkan->device, &tex_alloc_info, &texture_set) == VK_SUCCESS)
         {
             // Update texture descriptor
-            VkDescriptorImageInfo image_info{0};
+            VkDescriptorImageInfo image_info = {0};
             image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
             image_info.imageView = tex ? tex->view : g_vulkan->white_texture_view;
             image_info.sampler = (group_params->tex_sample_kind == Renderer_Tex_2D_Sample_Kind_Linear)
                                      ? g_vulkan->sampler_linear
                                      : g_vulkan->sampler_nearest;
 
-            VkWriteDescriptorSet tex_write{0};
+            VkWriteDescriptorSet tex_write = {0};
             tex_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             tex_write.dstSet = texture_set;
             tex_write.dstBinding = 0;
@@ -287,6 +334,19 @@ renderer_vulkan_submit_ui_pass(VkCommandBuffer cmd, Renderer_Pass_Params_UI *par
 
             // Copy instance data to dynamic buffer
             memcpy((u8 *)g_instance_buffer.mapped + g_instance_buffer.offset, batch->v, batch->byte_count);
+            
+            // Debug: Check if batch data looks valid
+            if (batch->byte_count > 0) {
+                Renderer_Rect_2D_Inst *first_rect = (Renderer_Rect_2D_Inst *)batch->v;
+                printf("First rect: dst=(%.1f,%.1f)-(%.1f,%.1f) src=(%.1f,%.1f)-(%.1f,%.1f)\n",
+                       first_rect->dst.min.x, first_rect->dst.min.y, 
+                       first_rect->dst.max.x, first_rect->dst.max.y,
+                       first_rect->src.min.x, first_rect->src.min.y, 
+                       first_rect->src.max.x, first_rect->src.max.y);
+                printf("  colors[0]=(%.2f,%.2f,%.2f,%.2f)\n", 
+                       first_rect->colors[0].x, first_rect->colors[0].y, 
+                       first_rect->colors[0].z, first_rect->colors[0].w);
+            }
 
             // Bind instance buffer
             VkDeviceSize offset = g_instance_buffer.offset;
@@ -294,6 +354,7 @@ renderer_vulkan_submit_ui_pass(VkCommandBuffer cmd, Renderer_Pass_Params_UI *par
 
             // Draw instanced rectangles (4 vertices per rect, using triangle strip)
             u32 instance_count = batch->byte_count / sizeof(Renderer_Rect_2D_Inst);
+            printf("Drawing %d rectangles (%d bytes)\n", instance_count, batch->byte_count);
             vkCmdDraw(cmd, 4, instance_count, 0, 0);
 
             g_instance_buffer.offset += batch->byte_count;
@@ -330,7 +391,7 @@ renderer_vulkan_submit_geo_3d_pass(VkCommandBuffer cmd, Renderer_Pass_Params_Geo
 
     // Set viewport based on params (converting logical to physical coordinates)
     f32 scale = equip->dpi_scale > 0 ? equip->dpi_scale : 1.0f;
-    VkViewport viewport{0};
+    VkViewport viewport = {0};
     viewport.x = params->viewport.min.x * scale;
     viewport.y = params->viewport.min.y * scale;
     viewport.width = (params->viewport.max.x - params->viewport.min.x) * scale;
@@ -340,7 +401,7 @@ renderer_vulkan_submit_geo_3d_pass(VkCommandBuffer cmd, Renderer_Pass_Params_Geo
     vkCmdSetViewport(cmd, 0, 1, &viewport);
 
     // Set scissor based on clip rect (converting logical to physical coordinates)
-    VkRect2D scissor{0};
+    VkRect2D scissor = {0};
     scissor.offset.x = (s32)(params->clip.min.x * scale);
     scissor.offset.y = (s32)(params->clip.min.y * scale);
     scissor.extent.width = (u32)((params->clip.max.x - params->clip.min.x) * scale);
@@ -351,7 +412,7 @@ renderer_vulkan_submit_geo_3d_pass(VkCommandBuffer cmd, Renderer_Pass_Params_Geo
     struct Frame_Resources *frame = &equip->frame_resources[equip->current_frame];
 
     // Update uniform data
-    Geo_3D_Uniforms uniforms = {0};
+    Geo_3D_Uniforms uniforms  = {0};
     uniforms.view = params->view;
     uniforms.projection = params->projection;
 
@@ -363,12 +424,12 @@ renderer_vulkan_submit_geo_3d_pass(VkCommandBuffer cmd, Renderer_Pass_Params_Geo
     memcpy((u8 *)g_vulkan->uniform_buffer.mapped + uniform_offset, &uniforms, sizeof(uniforms));
 
     // Update the pre-allocated descriptor set
-    VkDescriptorBufferInfo buffer_info{0};
+    VkDescriptorBufferInfo buffer_info = {0};
     buffer_info.buffer = g_vulkan->uniform_buffer.buffer;
     buffer_info.offset = uniform_offset;
     buffer_info.range = sizeof(Geo_3D_Uniforms);
 
-    VkWriteDescriptorSet write{0};
+    VkWriteDescriptorSet write = {0};
     write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     write.dstSet = frame->geo_3d_global_set;
     write.dstBinding = 0;
@@ -420,7 +481,7 @@ renderer_vulkan_submit_geo_3d_pass(VkCommandBuffer cmd, Renderer_Pass_Params_Geo
                 Renderer_Vulkan_Buffer *index_buffer = (Renderer_Vulkan_Buffer *)group_params->mesh_indices.u64s[0];
 
                 VkBuffer     vertex_buffers[] = {vertex_buffer->buffer};
-                VkDeviceSize offsets[] = {0};
+                VkDeviceSize offsets[]  = {0};
                 vkCmdBindVertexBuffers(cmd, 0, 1, vertex_buffers, offsets);
                 vkCmdBindIndexBuffer(cmd, index_buffer->buffer, 0, VK_INDEX_TYPE_UINT32);
 
@@ -435,7 +496,7 @@ renderer_vulkan_submit_geo_3d_pass(VkCommandBuffer cmd, Renderer_Pass_Params_Geo
                 }
 
                 // Allocate a new descriptor set for the texture
-                VkDescriptorSetAllocateInfo tex_alloc_info{0};
+                VkDescriptorSetAllocateInfo tex_alloc_info = {0};
                 tex_alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
                 tex_alloc_info.descriptorPool = g_vulkan->descriptor_pool;
                 tex_alloc_info.descriptorSetCount = 1;
@@ -444,14 +505,14 @@ renderer_vulkan_submit_geo_3d_pass(VkCommandBuffer cmd, Renderer_Pass_Params_Geo
                 if (vkAllocateDescriptorSets(g_vulkan->device, &tex_alloc_info, &texture_set) == VK_SUCCESS)
                 {
                     // Update texture descriptor
-                    VkDescriptorImageInfo image_info{0};
+                    VkDescriptorImageInfo image_info = {0};
                     image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
                     image_info.imageView = tex ? tex->view : g_vulkan->white_texture_view;
                     image_info.sampler = (group_params->albedo_tex_sample_kind == Renderer_Tex_2D_Sample_Kind_Linear)
                                              ? g_vulkan->sampler_linear
                                              : g_vulkan->sampler_nearest;
 
-                    VkWriteDescriptorSet tex_write{0};
+                    VkWriteDescriptorSet tex_write = {0};
                     tex_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
                     tex_write.dstSet = texture_set;
                     tex_write.dstBinding = 0;

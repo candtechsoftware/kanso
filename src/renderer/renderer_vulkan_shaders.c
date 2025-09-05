@@ -1,22 +1,6 @@
 #include "renderer_vulkan.h"
-#include "base/base.h"
-#include "base/logger.h"
-#include "base/os.h"
-#include "../../../generated/generated.h"
-
-// Pre-compiled SPIR-V shader bytecode from generated.h
-extern const unsigned char renderer_vulkan_rect_vert_shader_src[];
-extern const unsigned int  renderer_vulkan_rect_vert_shader_src_size;
-extern const unsigned char renderer_vulkan_rect_frag_shader_src[];
-extern const unsigned int  renderer_vulkan_rect_frag_shader_src_size;
-extern const unsigned char renderer_vulkan_blur_vert_shader_src[];
-extern const unsigned int  renderer_vulkan_blur_vert_shader_src_size;
-extern const unsigned char renderer_vulkan_blur_frag_shader_src[];
-extern const unsigned int  renderer_vulkan_blur_frag_shader_src_size;
-extern const unsigned char renderer_vulkan_mesh_vert_shader_src[];
-extern const unsigned int  renderer_vulkan_mesh_vert_shader_src_size;
-extern const unsigned char renderer_vulkan_mesh_frag_shader_src[];
-extern const unsigned int  renderer_vulkan_mesh_frag_shader_src_size;
+#include "../base/base_inc.h"
+#include "../generated/vulkan_shaders.h"
 
 void
 renderer_vulkan_create_shaders()
@@ -63,7 +47,7 @@ renderer_vulkan_destroy_shaders()
     if (g_vulkan->shaders.mesh_frag)
         vkDestroyShaderModule(g_vulkan->device, g_vulkan->shaders.mesh_frag, NULL);
 
-    g_vulkan->shaders = {0};
+    MemoryZero(&g_vulkan->shaders, sizeof(g_vulkan->shaders));
 }
 
 void
@@ -80,7 +64,7 @@ renderer_vulkan_create_descriptor_set_layouts()
                 .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                 .pImmutableSamplers = NULL}};
 
-        VkDescriptorSetLayoutCreateInfo layout_info{0};
+        VkDescriptorSetLayoutCreateInfo layout_info = {0};
         layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         layout_info.bindingCount = 1;
         layout_info.pBindings = bindings;
@@ -99,7 +83,7 @@ renderer_vulkan_create_descriptor_set_layouts()
                 .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
                 .pImmutableSamplers = NULL}};
 
-        VkDescriptorSetLayoutCreateInfo layout_info{0};
+        VkDescriptorSetLayoutCreateInfo layout_info = {0};
         layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         layout_info.bindingCount = 1;
         layout_info.pBindings = bindings;
@@ -125,7 +109,7 @@ renderer_vulkan_create_descriptor_set_layouts()
                 .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
                 .pImmutableSamplers = NULL}};
 
-        VkDescriptorSetLayoutCreateInfo layout_info{0};
+        VkDescriptorSetLayoutCreateInfo layout_info = {0};
         layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         layout_info.bindingCount = 2;
         layout_info.pBindings = bindings;
@@ -144,7 +128,7 @@ renderer_vulkan_create_descriptor_set_layouts()
                 .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
                 .pImmutableSamplers = NULL}};
 
-        VkDescriptorSetLayoutCreateInfo layout_info{0};
+        VkDescriptorSetLayoutCreateInfo layout_info = {0};
         layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         layout_info.bindingCount = 1;
         layout_info.pBindings = bindings;
@@ -163,7 +147,7 @@ renderer_vulkan_create_descriptor_set_layouts()
                 .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
                 .pImmutableSamplers = NULL}};
 
-        VkDescriptorSetLayoutCreateInfo layout_info{0};
+        VkDescriptorSetLayoutCreateInfo layout_info = {0};
         layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         layout_info.bindingCount = 1;
         layout_info.pBindings = bindings;
@@ -181,7 +165,7 @@ renderer_vulkan_create_pipeline_layouts()
             g_vulkan->descriptor_set_layouts.ui_global,
             g_vulkan->descriptor_set_layouts.ui_texture};
 
-        VkPipelineLayoutCreateInfo pipeline_layout_info{0};
+        VkPipelineLayoutCreateInfo pipeline_layout_info = {0};
         pipeline_layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
         pipeline_layout_info.setLayoutCount = 2;
         pipeline_layout_info.pSetLayouts = layouts;
@@ -196,7 +180,7 @@ renderer_vulkan_create_pipeline_layouts()
         VkDescriptorSetLayout layouts[] = {
             g_vulkan->descriptor_set_layouts.blur_global};
 
-        VkPipelineLayoutCreateInfo pipeline_layout_info{0};
+        VkPipelineLayoutCreateInfo pipeline_layout_info = {0};
         pipeline_layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
         pipeline_layout_info.setLayoutCount = 1;
         pipeline_layout_info.pSetLayouts = layouts;
@@ -212,7 +196,7 @@ renderer_vulkan_create_pipeline_layouts()
             g_vulkan->descriptor_set_layouts.geo_3d_global,
             g_vulkan->descriptor_set_layouts.geo_3d_texture};
 
-        VkPipelineLayoutCreateInfo pipeline_layout_info{0};
+        VkPipelineLayoutCreateInfo pipeline_layout_info = {0};
         pipeline_layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
         pipeline_layout_info.setLayoutCount = 2;
         pipeline_layout_info.pSetLayouts = layouts;
@@ -233,7 +217,7 @@ renderer_vulkan_create_pipelines(VkRenderPass render_pass)
         VK_DYNAMIC_STATE_VIEWPORT,
         VK_DYNAMIC_STATE_SCISSOR};
 
-    VkPipelineDynamicStateCreateInfo dynamic_state{0};
+    VkPipelineDynamicStateCreateInfo dynamic_state = {0};
     dynamic_state.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
     dynamic_state.dynamicStateCount = 2;
     dynamic_state.pDynamicStates = dynamic_states;
@@ -241,7 +225,7 @@ renderer_vulkan_create_pipelines(VkRenderPass render_pass)
     // Create UI Pipeline
     {
         // Shader stages
-        VkPipelineShaderStageCreateInfo shader_stages[2] = {0};
+        VkPipelineShaderStageCreateInfo shader_stages[2]  = {0};
         shader_stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
         shader_stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
         shader_stages[0].module = g_vulkan->shaders.rect_vert;
@@ -253,12 +237,12 @@ renderer_vulkan_create_pipelines(VkRenderPass render_pass)
         shader_stages[1].pName = "main";
 
         // Vertex input - instanced rendering
-        VkVertexInputBindingDescription binding_desc{0};
+        VkVertexInputBindingDescription binding_desc = {0};
         binding_desc.binding = 0;
         binding_desc.stride = sizeof(Renderer_Rect_2D_Inst);
         binding_desc.inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
 
-        VkVertexInputAttributeDescription attr_descs[8] = {0};
+        VkVertexInputAttributeDescription attr_descs[8]  = {0};
         // dst_rect
         attr_descs[0].binding = 0;
         attr_descs[0].location = 0;
@@ -292,7 +276,7 @@ renderer_vulkan_create_pipelines(VkRenderPass render_pass)
         attr_descs[7].format = VK_FORMAT_R32G32B32A32_SFLOAT;
         attr_descs[7].offset = offsetof(Renderer_Rect_2D_Inst, border_thickness);
 
-        VkPipelineVertexInputStateCreateInfo vertex_input{0};
+        VkPipelineVertexInputStateCreateInfo vertex_input = {0};
         vertex_input.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
         vertex_input.vertexBindingDescriptionCount = 1;
         vertex_input.pVertexBindingDescriptions = &binding_desc;
@@ -300,16 +284,16 @@ renderer_vulkan_create_pipelines(VkRenderPass render_pass)
         vertex_input.pVertexAttributeDescriptions = attr_descs;
 
         // Input assembly
-        VkPipelineInputAssemblyStateCreateInfo input_assembly{0};
+        VkPipelineInputAssemblyStateCreateInfo input_assembly = {0};
         input_assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
         input_assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
         input_assembly.primitiveRestartEnable = VK_FALSE;
 
         // Viewport state
-        VkViewport viewport{0};
-        VkRect2D   scissor{0};
+        VkViewport viewport = {0};
+        VkRect2D   scissor = {0};
 
-        VkPipelineViewportStateCreateInfo viewport_state{0};
+        VkPipelineViewportStateCreateInfo viewport_state = {0};
         viewport_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
         viewport_state.viewportCount = 1;
         viewport_state.pViewports = &viewport;
@@ -317,7 +301,7 @@ renderer_vulkan_create_pipelines(VkRenderPass render_pass)
         viewport_state.pScissors = &scissor;
 
         // Rasterizer
-        VkPipelineRasterizationStateCreateInfo rasterizer{0};
+        VkPipelineRasterizationStateCreateInfo rasterizer = {0};
         rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
         rasterizer.depthClampEnable = VK_FALSE;
         rasterizer.rasterizerDiscardEnable = VK_FALSE;
@@ -328,13 +312,13 @@ renderer_vulkan_create_pipelines(VkRenderPass render_pass)
         rasterizer.depthBiasEnable = VK_FALSE;
 
         // Multisampling
-        VkPipelineMultisampleStateCreateInfo multisampling{0};
+        VkPipelineMultisampleStateCreateInfo multisampling = {0};
         multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
         multisampling.sampleShadingEnable = VK_FALSE;
         multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 
         // Depth stencil
-        VkPipelineDepthStencilStateCreateInfo depth_stencil{0};
+        VkPipelineDepthStencilStateCreateInfo depth_stencil = {0};
         depth_stencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
         depth_stencil.depthTestEnable = VK_FALSE;
         depth_stencil.depthWriteEnable = VK_FALSE;
@@ -343,7 +327,7 @@ renderer_vulkan_create_pipelines(VkRenderPass render_pass)
         depth_stencil.stencilTestEnable = VK_FALSE;
 
         // Color blending - premultiplied alpha
-        VkPipelineColorBlendAttachmentState color_blend_attachment{0};
+        VkPipelineColorBlendAttachmentState color_blend_attachment = {0};
         color_blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
                                                 VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
         color_blend_attachment.blendEnable = VK_TRUE;
@@ -354,14 +338,14 @@ renderer_vulkan_create_pipelines(VkRenderPass render_pass)
         color_blend_attachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
         color_blend_attachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
-        VkPipelineColorBlendStateCreateInfo color_blending{0};
+        VkPipelineColorBlendStateCreateInfo color_blending = {0};
         color_blending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
         color_blending.logicOpEnable = VK_FALSE;
         color_blending.attachmentCount = 1;
         color_blending.pAttachments = &color_blend_attachment;
 
         // Create pipeline
-        VkGraphicsPipelineCreateInfo pipeline_info{0};
+        VkGraphicsPipelineCreateInfo pipeline_info = {0};
         pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
         pipeline_info.stageCount = 2;
         pipeline_info.pStages = shader_stages;
@@ -386,7 +370,7 @@ renderer_vulkan_create_pipelines(VkRenderPass render_pass)
 
     // Create Blur Pipeline (simplified for now)
     {
-        VkPipelineShaderStageCreateInfo shader_stages[2] = {0};
+        VkPipelineShaderStageCreateInfo shader_stages[2]  = {0};
         shader_stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
         shader_stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
         shader_stages[0].module = g_vulkan->shaders.blur_vert;
@@ -398,27 +382,27 @@ renderer_vulkan_create_pipelines(VkRenderPass render_pass)
         shader_stages[1].pName = "main";
 
         // No vertex input for fullscreen triangle
-        VkPipelineVertexInputStateCreateInfo vertex_input{0};
+        VkPipelineVertexInputStateCreateInfo vertex_input = {0};
         vertex_input.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
         // Input assembly
-        VkPipelineInputAssemblyStateCreateInfo input_assembly{0};
+        VkPipelineInputAssemblyStateCreateInfo input_assembly = {0};
         input_assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
         input_assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
         input_assembly.primitiveRestartEnable = VK_FALSE;
 
         // Reuse other states from UI pipeline
-        VkViewport viewport{0};
-        VkRect2D   scissor{0};
+        VkViewport viewport = {0};
+        VkRect2D   scissor = {0};
 
-        VkPipelineViewportStateCreateInfo viewport_state{0};
+        VkPipelineViewportStateCreateInfo viewport_state = {0};
         viewport_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
         viewport_state.viewportCount = 1;
         viewport_state.pViewports = &viewport;
         viewport_state.scissorCount = 1;
         viewport_state.pScissors = &scissor;
 
-        VkPipelineRasterizationStateCreateInfo rasterizer{0};
+        VkPipelineRasterizationStateCreateInfo rasterizer = {0};
         rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
         rasterizer.depthClampEnable = VK_FALSE;
         rasterizer.rasterizerDiscardEnable = VK_FALSE;
@@ -428,29 +412,29 @@ renderer_vulkan_create_pipelines(VkRenderPass render_pass)
         rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
         rasterizer.depthBiasEnable = VK_FALSE;
 
-        VkPipelineMultisampleStateCreateInfo multisampling{0};
+        VkPipelineMultisampleStateCreateInfo multisampling = {0};
         multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
         multisampling.sampleShadingEnable = VK_FALSE;
         multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 
-        VkPipelineDepthStencilStateCreateInfo depth_stencil{0};
+        VkPipelineDepthStencilStateCreateInfo depth_stencil = {0};
         depth_stencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
         depth_stencil.depthTestEnable = VK_FALSE;
         depth_stencil.depthWriteEnable = VK_FALSE;
 
         // No blending for blur (renders to offscreen target)
-        VkPipelineColorBlendAttachmentState color_blend_attachment{0};
+        VkPipelineColorBlendAttachmentState color_blend_attachment = {0};
         color_blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
                                                 VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
         color_blend_attachment.blendEnable = VK_FALSE;
 
-        VkPipelineColorBlendStateCreateInfo color_blending{0};
+        VkPipelineColorBlendStateCreateInfo color_blending = {0};
         color_blending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
         color_blending.logicOpEnable = VK_FALSE;
         color_blending.attachmentCount = 1;
         color_blending.pAttachments = &color_blend_attachment;
 
-        VkGraphicsPipelineCreateInfo pipeline_info{0};
+        VkGraphicsPipelineCreateInfo pipeline_info = {0};
         pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
         pipeline_info.stageCount = 2;
         pipeline_info.pStages = shader_stages;
@@ -479,7 +463,7 @@ renderer_vulkan_create_pipelines(VkRenderPass render_pass)
 
     // Create Geo 3D Pipeline
     {
-        VkPipelineShaderStageCreateInfo shader_stages[2] = {0};
+        VkPipelineShaderStageCreateInfo shader_stages[2]  = {0};
         shader_stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
         shader_stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
         shader_stages[0].module = g_vulkan->shaders.mesh_vert;
@@ -491,7 +475,7 @@ renderer_vulkan_create_pipelines(VkRenderPass render_pass)
         shader_stages[1].pName = "main";
 
         // Vertex input for 3D meshes
-        VkVertexInputBindingDescription binding_descs[2] = {0};
+        VkVertexInputBindingDescription binding_descs[2]  = {0};
         // Vertex data
         binding_descs[0].binding = 0;
         binding_descs[0].stride = sizeof(f32) * 12; // pos(3) + tex(2) + norm(3) + color(4)
@@ -502,7 +486,7 @@ renderer_vulkan_create_pipelines(VkRenderPass render_pass)
         binding_descs[1].stride = sizeof(Mat4x4_f32);
         binding_descs[1].inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
 
-        VkVertexInputAttributeDescription attr_descs[8] = {0};
+        VkVertexInputAttributeDescription attr_descs[8]  = {0};
         // Position
         attr_descs[0].binding = 0;
         attr_descs[0].location = 0;
@@ -536,7 +520,7 @@ renderer_vulkan_create_pipelines(VkRenderPass render_pass)
             attr_descs[4 + i].offset = sizeof(Vec4_f32) * i;
         }
 
-        VkPipelineVertexInputStateCreateInfo vertex_input{0};
+        VkPipelineVertexInputStateCreateInfo vertex_input = {0};
         vertex_input.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
         vertex_input.vertexBindingDescriptionCount = 2;
         vertex_input.pVertexBindingDescriptions = binding_descs;
@@ -544,16 +528,16 @@ renderer_vulkan_create_pipelines(VkRenderPass render_pass)
         vertex_input.pVertexAttributeDescriptions = attr_descs;
 
         // Input assembly
-        VkPipelineInputAssemblyStateCreateInfo input_assembly{0};
+        VkPipelineInputAssemblyStateCreateInfo input_assembly = {0};
         input_assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
         input_assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
         input_assembly.primitiveRestartEnable = VK_FALSE;
 
         // Viewport state
-        VkViewport viewport{0};
-        VkRect2D   scissor{0};
+        VkViewport viewport = {0};
+        VkRect2D   scissor = {0};
 
-        VkPipelineViewportStateCreateInfo viewport_state{0};
+        VkPipelineViewportStateCreateInfo viewport_state = {0};
         viewport_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
         viewport_state.viewportCount = 1;
         viewport_state.pViewports = &viewport;
@@ -561,7 +545,7 @@ renderer_vulkan_create_pipelines(VkRenderPass render_pass)
         viewport_state.pScissors = &scissor;
 
         // Rasterizer with back-face culling
-        VkPipelineRasterizationStateCreateInfo rasterizer{0};
+        VkPipelineRasterizationStateCreateInfo rasterizer = {0};
         rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
         rasterizer.depthClampEnable = VK_FALSE;
         rasterizer.rasterizerDiscardEnable = VK_FALSE;
@@ -575,13 +559,13 @@ renderer_vulkan_create_pipelines(VkRenderPass render_pass)
         rasterizer.depthBiasSlopeFactor = 0.0f;
 
         // Multisampling
-        VkPipelineMultisampleStateCreateInfo multisampling{0};
+        VkPipelineMultisampleStateCreateInfo multisampling = {0};
         multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
         multisampling.sampleShadingEnable = VK_FALSE;
         multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 
         // Depth testing enabled
-        VkPipelineDepthStencilStateCreateInfo depth_stencil{0};
+        VkPipelineDepthStencilStateCreateInfo depth_stencil = {0};
         depth_stencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
         depth_stencil.depthTestEnable = VK_TRUE;
         depth_stencil.depthWriteEnable = VK_TRUE;
@@ -590,7 +574,7 @@ renderer_vulkan_create_pipelines(VkRenderPass render_pass)
         depth_stencil.stencilTestEnable = VK_FALSE;
 
         // Alpha blending - standard alpha blending (not premultiplied)
-        VkPipelineColorBlendAttachmentState color_blend_attachment{0};
+        VkPipelineColorBlendAttachmentState color_blend_attachment = {0};
         color_blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
                                                 VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
         color_blend_attachment.blendEnable = VK_TRUE;
@@ -601,14 +585,14 @@ renderer_vulkan_create_pipelines(VkRenderPass render_pass)
         color_blend_attachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
         color_blend_attachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
-        VkPipelineColorBlendStateCreateInfo color_blending{0};
+        VkPipelineColorBlendStateCreateInfo color_blending = {0};
         color_blending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
         color_blending.logicOpEnable = VK_FALSE;
         color_blending.attachmentCount = 1;
         color_blending.pAttachments = &color_blend_attachment;
 
         // Create pipeline
-        VkGraphicsPipelineCreateInfo pipeline_info{0};
+        VkGraphicsPipelineCreateInfo pipeline_info = {0};
         pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
         pipeline_info.stageCount = 2;
         pipeline_info.pStages = shader_stages;

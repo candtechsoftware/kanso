@@ -5,12 +5,12 @@
 // macOS doesn't support thread_local in all configurations
 Draw_Thread_Context *draw_thread_ctx = NULL;
 #else
-thread_local Draw_Thread_Context *draw_thread_ctx = NULL;
+_Thread_local Draw_Thread_Context *draw_thread_ctx = NULL;
 #endif
 
 // Frame management
 void
-draw_begin_frame(Font_Tag default_font)
+draw_begin_frame(Font_Renderer_Tag default_font)
 {
     if (!draw_thread_ctx)
     {
@@ -310,7 +310,7 @@ draw_img(Rng2_f32 dst, Rng2_f32 src, Renderer_Handle texture, Vec4_f32 color, f3
     rect->corner_radii[0] = rect->corner_radii[1] = rect->corner_radii[2] = rect->corner_radii[3] = corner_radius;
     rect->border_thickness = border_thickness;
     rect->edge_softness = edge_softness;
-    rect->white_texture_override = 0;
+    rect->white_texture_override = 1;
 
     return rect;
 }
@@ -429,20 +429,20 @@ draw_dim_from_styled_strings(f32 tab_size_px, Draw_Styled_String_List *strs)
 }
 
 void
-draw_text(Vec2_f32 p, String text, Font_Tag font, f32 size, Vec4_f32 color)
+draw_text(Vec2_f32 p, String text, Font_Renderer_Tag font, f32 size, Vec4_f32 color)
 {
     Draw_Bucket *bucket = draw_top_bucket();
     if (!bucket)
         return;
 
     // Rasterize text
-    Font_Run run = font_run_from_string(font, size, 0, size * 4, Font_Raster_Flag_Smooth, text);
+    Font_Renderer_Run run = font_run_from_string(font, size, 0, size * 4, Font_Renderer_Raster_Flag_Smooth, text);
 
     // Draw each piece
     f32 x_offset = 0;
     for (u64 i = 0; i < run.piece_count; i++)
     {
-        Font_Piece *piece = &run.pieces[i];
+        Font_Renderer_Piece *piece = &run.pieces[i];
 
         // Calculate destination rectangle
         f32 width = piece->subrect.max.x - piece->subrect.min.x;
@@ -475,7 +475,7 @@ draw_text_run_list(Vec2_f32 p, Draw_Text_Run_List *list)
         // Draw each piece in the run
         for (u64 i = 0; i < run->run.piece_count; i++)
         {
-            Font_Piece *piece = &run->run.pieces[i];
+            Font_Renderer_Piece *piece = &run->run.pieces[i];
 
             // Calculate destination rectangle
             f32 width = piece->subrect.max.x - piece->subrect.min.x;

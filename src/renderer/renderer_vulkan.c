@@ -1,7 +1,9 @@
 #include "renderer_vulkan.h"
 #include "../base/base_inc.h"
+#include "../os/os_inc.h"
 
 #include <vulkan/vulkan.h>
+#include <vulkan/vulkan_xlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <time.h>
@@ -15,6 +17,9 @@
 
 // Global Vulkan state pointer
 Renderer_Vulkan_State *g_vulkan = NULL;
+
+// Forward declare X11 state for surface creation
+extern X11_State *x11_state;
 
 // Constants
 static const int MAX_FRAMES_IN_FLIGHT = 2;
@@ -90,7 +95,7 @@ renderer_vulkan_create_buffer(VkDeviceSize size, VkBufferUsageFlags usage,
                               VkMemoryPropertyFlags properties, VkBuffer *buffer,
                               VkDeviceMemory *buffer_memory)
 {
-    VkBufferCreateInfo buffer_info = {0};
+    VkBufferCreateInfo buffer_info  = {0};
     buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     buffer_info.size = size;
     buffer_info.usage = usage;
@@ -103,9 +108,9 @@ renderer_vulkan_create_buffer(VkDeviceSize size, VkBufferUsageFlags usage,
     }
 
     VkMemoryRequirements mem_requirements;
-    vkGetBufferMemoryRequirements(g_vulkan->device, buffer, &mem_requirements);
+    vkGetBufferMemoryRequirements(g_vulkan->device, *buffer, &mem_requirements);
 
-    VkMemoryAllocateInfo alloc_info = {0};
+    VkMemoryAllocateInfo alloc_info  = {0};
     alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     alloc_info.allocationSize = mem_requirements.size;
     alloc_info.memoryTypeIndex = renderer_vulkan_find_memory_type(mem_requirements.memoryTypeBits, properties);
@@ -124,7 +129,7 @@ renderer_vulkan_create_image(u32 width, u32 height, VkFormat format, VkImageTili
                              VkImageUsageFlags usage, VkMemoryPropertyFlags properties,
                              VkImage *image, VkDeviceMemory *image_memory)
 {
-    VkImageCreateInfo image_info = {0};
+    VkImageCreateInfo image_info  = {0};
     image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     image_info.imageType = VK_IMAGE_TYPE_2D;
     image_info.extent.width = width;
@@ -146,26 +151,26 @@ renderer_vulkan_create_image(u32 width, u32 height, VkFormat format, VkImageTili
     }
 
     VkMemoryRequirements mem_requirements;
-    vkGetImageMemoryRequirements(g_vulkan->device, image, &mem_requirements);
+    vkGetImageMemoryRequirements(g_vulkan->device, *image, &mem_requirements);
 
-    VkMemoryAllocateInfo alloc_info{0};
+    VkMemoryAllocateInfo alloc_info  = {0};
     alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     alloc_info.allocationSize = mem_requirements.size;
     alloc_info.memoryTypeIndex = renderer_vulkan_find_memory_type(mem_requirements.memoryTypeBits, properties);
 
-    if (vkAllocateMemory(g_vulkan->device, &alloc_info, NULL, &image_memory) != VK_SUCCESS)
+    if (vkAllocateMemory(g_vulkan->device, &alloc_info, NULL, image_memory) != VK_SUCCESS)
     {
         log_error("Failed to allocate image memory!");
         return;
     }
 
-    vkBindImageMemory(g_vulkan->device, image, image_memory, 0);
+    vkBindImageMemory(g_vulkan->device, *image, *image_memory, 0);
 }
 
 VkImageView
 renderer_vulkan_create_image_view(VkImage image, VkFormat format, VkImageAspectFlags aspect_flags)
 {
-    VkImageViewCreateInfo view_info{0};
+    VkImageViewCreateInfo view_info  = {0};
     view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     view_info.image = image;
     view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
@@ -189,7 +194,7 @@ renderer_vulkan_create_image_view(VkImage image, VkFormat format, VkImageAspectF
 VkCommandBuffer
 renderer_vulkan_begin_single_time_commands()
 {
-    VkCommandBufferAllocateInfo alloc_info{0};
+    VkCommandBufferAllocateInfo alloc_info  = {0};
     alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     alloc_info.commandPool = g_vulkan->transient_command_pool;
@@ -198,7 +203,7 @@ renderer_vulkan_begin_single_time_commands()
     VkCommandBuffer command_buffer;
     vkAllocateCommandBuffers(g_vulkan->device, &alloc_info, &command_buffer);
 
-    VkCommandBufferBeginInfo begin_info{0};
+    VkCommandBufferBeginInfo begin_info  = {0};
     begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
@@ -212,7 +217,7 @@ renderer_vulkan_end_single_time_commands(VkCommandBuffer command_buffer)
 {
     vkEndCommandBuffer(command_buffer);
 
-    VkSubmitInfo submit_info{0};
+    VkSubmitInfo submit_info  = {0};
     submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submit_info.commandBufferCount = 1;
     submit_info.pCommandBuffers = &command_buffer;
@@ -229,7 +234,7 @@ renderer_vulkan_transition_image_layout(VkImage image, VkFormat format,
 {
     VkCommandBuffer command_buffer = renderer_vulkan_begin_single_time_commands();
 
-    VkImageMemoryBarrier barrier{0};
+    VkImageMemoryBarrier barrier  = {0};
     barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
     barrier.oldLayout = old_layout;
     barrier.newLayout = new_layout;
@@ -283,7 +288,7 @@ renderer_vulkan_copy_buffer_to_image(VkBuffer buffer, VkImage image, u32 width, 
 {
     VkCommandBuffer command_buffer = renderer_vulkan_begin_single_time_commands();
 
-    VkBufferImageCopy region{0};
+    VkBufferImageCopy region  = {0};
     region.bufferOffset = 0;
     region.bufferRowLength = 0;
     region.bufferImageHeight = 0;
@@ -291,8 +296,8 @@ renderer_vulkan_copy_buffer_to_image(VkBuffer buffer, VkImage image, u32 width, 
     region.imageSubresource.mipLevel = 0;
     region.imageSubresource.baseArrayLayer = 0;
     region.imageSubresource.layerCount = 1;
-    region.imageOffset = {0, 0, 0};
-    region.imageExtent = {width, height, 1};
+    region.imageOffset.x = 0; region.imageOffset.y = 0; region.imageOffset.z = 0;
+    region.imageExtent.width = width; region.imageExtent.height = height; region.imageExtent.depth = 1;
 
     vkCmdCopyBufferToImage(command_buffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
@@ -446,7 +451,7 @@ renderer_vulkan_create_shader_module(const u8 *code, u64 size)
         spirv_size = compiled_size;
     }
 
-    VkShaderModuleCreateInfo create_info{0};
+    VkShaderModuleCreateInfo create_info  = {0};
     create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
     create_info.codeSize = spirv_size;
     create_info.pCode = spirv_code;
@@ -472,7 +477,7 @@ renderer_init()
     g_vulkan->arena = arena;
 
     // Create instance
-    VkApplicationInfo app_info{0};
+    VkApplicationInfo app_info  = {0};
     app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     app_info.pApplicationName = "Kanso";
     app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
@@ -480,32 +485,30 @@ renderer_init()
     app_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
     app_info.apiVersion = VK_API_VERSION_1_2;
 
-    VkInstanceCreateInfo create_info{0};
+    VkInstanceCreateInfo create_info  = {0};
     create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     create_info.pApplicationInfo = &app_info;
 
-    // Get required extensions
-    u32          glfw_extension_count = 0;
-    const char **glfw_extensions = glfwGetRequiredInstanceExtensions(&glfw_extension_count);
-
-    Array<const char *, 16> extensions = {0}; // Max 16 extensions should be plenty
-    for (u32 i = 0; i < glfw_extension_count; i++)
-    {
-        array_push(&extensions, glfw_extensions[i]);
-    }
+    // Get required extensions for Linux X11/Vulkan
+    const char *extensions[16]; // Max 16 extensions should be plenty
+    u32 extension_count = 0;
+    
+    // Add required extensions for Linux X11
+    extensions[extension_count++] = VK_KHR_SURFACE_EXTENSION_NAME;
+    extensions[extension_count++] = VK_KHR_XLIB_SURFACE_EXTENSION_NAME;
 
 #ifdef RENDERER_VULKAN_VALIDATION_LAYERS
-    array_push(&extensions, VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+    extensions[extension_count++] = VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
 #endif
 
-    create_info.enabledExtensionCount = extensions.size;
-    create_info.ppEnabledExtensionNames = extensions.data;
+    create_info.enabledExtensionCount = extension_count;
+    create_info.ppEnabledExtensionNames = extensions;
 
 #ifdef RENDERER_VULKAN_VALIDATION_LAYERS
     create_info.enabledLayerCount = validation_layer_count;
     create_info.ppEnabledLayerNames = validation_layers;
 
-    VkDebugUtilsMessengerCreateInfoEXT debug_create_info{0};
+    VkDebugUtilsMessengerCreateInfoEXT debug_create_info  = {0};
     debug_create_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
     debug_create_info.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
                                         VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
@@ -546,14 +549,13 @@ renderer_init()
         return;
     }
 
-    Array<VkPhysicalDevice, 8> devices = {0}; // Max 8 GPUs should be plenty
-    devices.size = device_count;
-    vkEnumeratePhysicalDevices(g_vulkan->instance, &device_count, devices.data);
+    VkPhysicalDevice devices[8]; // Max 8 GPUs should be plenty
+    vkEnumeratePhysicalDevices(g_vulkan->instance, &device_count, devices);
 
     // Pick first suitable device (can be improved)
-    for (u32 i = 0; i < devices.size; i++)
+    for (u32 i = 0; i < device_count; i++)
     {
-        VkPhysicalDevice           device = devices.data[i];
+        VkPhysicalDevice           device = devices[i];
         VkPhysicalDeviceProperties device_properties;
         vkGetPhysicalDeviceProperties(device, &device_properties);
 
@@ -568,7 +570,7 @@ renderer_init()
     // If no discrete GPU found, use the first one
     if (g_vulkan->physical_device == VK_NULL_HANDLE)
     {
-        g_vulkan->physical_device = devices.data[0];
+        g_vulkan->physical_device = devices[0];
     }
 
     // Get memory properties
@@ -578,14 +580,13 @@ renderer_init()
     u32 queue_family_count = 0;
     vkGetPhysicalDeviceQueueFamilyProperties(g_vulkan->physical_device, &queue_family_count, NULL);
 
-    Array<VkQueueFamilyProperties, 8> queue_families = {0}; // Max 8 queue families
-    queue_families.size = queue_family_count;
-    vkGetPhysicalDeviceQueueFamilyProperties(g_vulkan->physical_device, &queue_family_count, queue_families.data);
+    VkQueueFamilyProperties queue_families[8]; // Max 8 queue families
+    vkGetPhysicalDeviceQueueFamilyProperties(g_vulkan->physical_device, &queue_family_count, queue_families);
 
     // Find graphics queue family
     for (u32 i = 0; i < queue_family_count; i++)
     {
-        if (queue_families.data[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
+        if (queue_families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
         {
             g_vulkan->graphics_queue_family = i;
             g_vulkan->present_queue_family = i; // Will be updated when creating surface
@@ -595,23 +596,24 @@ renderer_init()
 
     // Create logical device
     // Note: We'll handle separate present queue later when we have a surface
-    Array<VkDeviceQueueCreateInfo, 2> queue_create_infos = {0}; // Max 2 queue families (graphics + present)
-    float                             queue_priority = 1.0f;
+    VkDeviceQueueCreateInfo queue_create_infos[2]; // Max 2 queue families (graphics + present)
+    u32                     queue_create_info_count = 0;
+    float                   queue_priority = 1.0f;
 
-    VkDeviceQueueCreateInfo queue_create_info{0};
+    VkDeviceQueueCreateInfo queue_create_info  = {0};
     queue_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
     queue_create_info.queueFamilyIndex = g_vulkan->graphics_queue_family;
     queue_create_info.queueCount = 1;
     queue_create_info.pQueuePriorities = &queue_priority;
-    array_push(&queue_create_infos, queue_create_info);
+    queue_create_infos[queue_create_info_count++] = queue_create_info;
 
-    VkPhysicalDeviceFeatures device_features{0};
+    VkPhysicalDeviceFeatures device_features  = {0};
     device_features.samplerAnisotropy = VK_TRUE;
 
-    VkDeviceCreateInfo device_create_info{0};
+    VkDeviceCreateInfo device_create_info  = {0};
     device_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-    device_create_info.queueCreateInfoCount = queue_create_infos.size;
-    device_create_info.pQueueCreateInfos = queue_create_infos.data;
+    device_create_info.queueCreateInfoCount = queue_create_info_count;
+    device_create_info.pQueueCreateInfos = queue_create_infos;
     device_create_info.pEnabledFeatures = &device_features;
     device_create_info.enabledExtensionCount = device_extension_count;
     device_create_info.ppEnabledExtensionNames = device_extensions;
@@ -634,7 +636,7 @@ renderer_init()
     vkGetDeviceQueue(g_vulkan->device, g_vulkan->present_queue_family, 0, &g_vulkan->present_queue);
 
     // Create command pools
-    VkCommandPoolCreateInfo pool_info{0};
+    VkCommandPoolCreateInfo pool_info  = {0};
     pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
     pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
     pool_info.queueFamilyIndex = g_vulkan->graphics_queue_family;
@@ -654,19 +656,18 @@ renderer_init()
     }
 
     // Create descriptor pool
-    Array<VkDescriptorPoolSize, 3> pool_sizes = {0};
-    pool_sizes.data[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    pool_sizes.data[0].descriptorCount = 10000;
-    pool_sizes.data[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    pool_sizes.data[1].descriptorCount = 10000;
-    pool_sizes.data[2].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    pool_sizes.data[2].descriptorCount = 10000;
-    pool_sizes.size = 3;
+    VkDescriptorPoolSize pool_sizes[3];
+    pool_sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    pool_sizes[0].descriptorCount = 10000;
+    pool_sizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    pool_sizes[1].descriptorCount = 10000;
+    pool_sizes[2].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    pool_sizes[2].descriptorCount = 10000;
 
-    VkDescriptorPoolCreateInfo descriptor_pool_info{0};
+    VkDescriptorPoolCreateInfo descriptor_pool_info  = {0};
     descriptor_pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    descriptor_pool_info.poolSizeCount = pool_sizes.size;
-    descriptor_pool_info.pPoolSizes = pool_sizes.data;
+    descriptor_pool_info.poolSizeCount = 3;
+    descriptor_pool_info.pPoolSizes = pool_sizes;
     descriptor_pool_info.maxSets = 30000;
     descriptor_pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
 
@@ -677,7 +678,7 @@ renderer_init()
     }
 
     // Create samplers
-    VkSamplerCreateInfo sampler_info{0};
+    VkSamplerCreateInfo sampler_info  = {0};
     sampler_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
     sampler_info.magFilter = VK_FILTER_NEAREST;
     sampler_info.minFilter = VK_FILTER_NEAREST;
@@ -712,8 +713,8 @@ renderer_init()
     renderer_vulkan_create_buffer(STAGING_BUFFER_SIZE,
                                   VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                                   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                                  g_vulkan->staging_buffer,
-                                  g_vulkan->staging_buffer_memory);
+                                  &g_vulkan->staging_buffer,
+                                  &g_vulkan->staging_buffer_memory);
 
     vkMapMemory(g_vulkan->device, g_vulkan->staging_buffer_memory, 0, STAGING_BUFFER_SIZE, 0, &g_vulkan->staging_buffer_mapped);
     g_vulkan->staging_buffer_size = STAGING_BUFFER_SIZE;
@@ -724,8 +725,8 @@ renderer_init()
     renderer_vulkan_create_buffer(g_vulkan->uniform_buffer.size,
                                   VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
                                   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                                  g_vulkan->uniform_buffer.buffer,
-                                  g_vulkan->uniform_buffer.memory);
+                                  &g_vulkan->uniform_buffer.buffer,
+                                  &g_vulkan->uniform_buffer.memory);
 
     vkMapMemory(g_vulkan->device, g_vulkan->uniform_buffer.memory, 0, g_vulkan->uniform_buffer.size, 0, &g_vulkan->uniform_buffer.mapped);
     g_vulkan->uniform_buffer.offset = 0;
@@ -735,7 +736,7 @@ renderer_init()
         renderer_vulkan_create_image(1, 1, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
                                      VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
                                      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                                     g_vulkan->white_texture, g_vulkan->white_texture_memory);
+                                     &g_vulkan->white_texture, &g_vulkan->white_texture_memory);
 
         // Transition to transfer destination
         renderer_vulkan_transition_image_layout(g_vulkan->white_texture, VK_FORMAT_R8G8B8A8_UNORM,
@@ -748,14 +749,14 @@ renderer_init()
 
         VkCommandBuffer cmd = renderer_vulkan_begin_single_time_commands();
 
-        VkBufferImageCopy region{0};
+        VkBufferImageCopy region  = {0};
         region.bufferOffset = 0;
         region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
         region.imageSubresource.mipLevel = 0;
         region.imageSubresource.baseArrayLayer = 0;
         region.imageSubresource.layerCount = 1;
-        region.imageOffset = {0, 0, 0};
-        region.imageExtent = {1, 1, 1};
+        region.imageOffset.x = 0; region.imageOffset.y = 0; region.imageOffset.z = 0;
+        region.imageExtent.width = 1; region.imageExtent.height = 1; region.imageExtent.depth = 1;
 
         vkCmdCopyBufferToImage(cmd, g_vulkan->staging_buffer, g_vulkan->white_texture,
                                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
@@ -898,23 +899,20 @@ renderer_shutdown()
 void
 renderer_vulkan_recreate_swapchain(Renderer_Vulkan_Window_Equipment *equip)
 {
+    printf("RECREATING SWAPCHAIN - old extent: %dx%d\n", equip->swapchain_extent.width, equip->swapchain_extent.height);
     // Get current window size
     // Note: we don't have the window pointer here, so we'll handle differently
 
     vkDeviceWaitIdle(g_vulkan->device);
 
     // Cleanup old swapchain resources
-    for (List_Node<VkFramebuffer> *node = equip->framebuffers.first; node; node = node->next)
+    for (u32 i = 0; i < equip->swapchain_image_count; i++)
     {
-        vkDestroyFramebuffer(g_vulkan->device, node->v, NULL);
+        if (equip->framebuffers)
+            vkDestroyFramebuffer(g_vulkan->device, equip->framebuffers[i], NULL);
+        if (equip->swapchain_image_views)
+            vkDestroyImageView(g_vulkan->device, equip->swapchain_image_views[i], NULL);
     }
-    equip->framebuffers = list_make<VkFramebuffer>();
-
-    for (List_Node<VkImageView> *node = equip->swapchain_image_views.first; node; node = node->next)
-    {
-        vkDestroyImageView(g_vulkan->device, node->v, NULL);
-    }
-    equip->swapchain_image_views = list_make<VkImageView>();
 
     // Cleanup depth resources
     vkDestroyImageView(g_vulkan->device, equip->depth_image_view, NULL);
@@ -932,10 +930,10 @@ renderer_vulkan_recreate_swapchain(Renderer_Vulkan_Window_Equipment *equip)
     VkExtent2D extent = capabilities.currentExtent;
     if (capabilities.currentExtent.width == UINT32_MAX)
     {
-        // Can't determine size without window handle
-        // For now, use capabilities min extent
-        extent = capabilities.minImageExtent;
+        // Use current swapchain extent as fallback if we can't get window size
+        extent = equip->swapchain_extent;
     }
+    printf("New swapchain extent: %dx%d (current: %dx%d)\n", extent.width, extent.height, capabilities.currentExtent.width, capabilities.currentExtent.height);
 
     // Skip if minimized
     if (extent.width == 0 || extent.height == 0)
@@ -948,14 +946,13 @@ renderer_vulkan_recreate_swapchain(Renderer_Vulkan_Window_Equipment *equip)
     // Get formats and present modes
     u32 format_count;
     vkGetPhysicalDeviceSurfaceFormatsKHR(g_vulkan->physical_device, equip->surface, &format_count, NULL);
-    Array<VkSurfaceFormatKHR, 32> formats = {0};
-    formats.size = format_count;
-    vkGetPhysicalDeviceSurfaceFormatsKHR(g_vulkan->physical_device, equip->surface, &format_count, formats.data);
+    VkSurfaceFormatKHR formats[32];
+    vkGetPhysicalDeviceSurfaceFormatsKHR(g_vulkan->physical_device, equip->surface, &format_count, formats);
 
-    VkSurfaceFormatKHR surface_format = formats.data[0];
-    for (u32 i = 0; i < formats.size; i++)
+    VkSurfaceFormatKHR surface_format = formats[0];
+    for (u32 i = 0; i < format_count; i++)
     {
-        VkSurfaceFormatKHR &format = formats.data[i];
+        VkSurfaceFormatKHR format = formats[i];
         if (format.format == VK_FORMAT_B8G8R8A8_UNORM && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
         {
             surface_format = format;
@@ -970,7 +967,7 @@ renderer_vulkan_recreate_swapchain(Renderer_Vulkan_Window_Equipment *equip)
         image_count = capabilities.maxImageCount;
     }
 
-    VkSwapchainCreateInfoKHR swapchain_info{0};
+    VkSwapchainCreateInfoKHR swapchain_info  = {0};
     swapchain_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
     swapchain_info.surface = equip->surface;
     swapchain_info.minImageCount = image_count;
@@ -1010,23 +1007,19 @@ renderer_vulkan_recreate_swapchain(Renderer_Vulkan_Window_Equipment *equip)
     // Get new swap chain images
     vkGetSwapchainImagesKHR(g_vulkan->device, equip->swapchain, &image_count, NULL);
 
-    // Create temp array to get images, then add to list
-    Array<VkImage, 8> temp_images = {0};
-    temp_images.size = image_count;
-    vkGetSwapchainImagesKHR(g_vulkan->device, equip->swapchain, &image_count, temp_images.data);
+    // Create temp array to get images, then allocate proper arrays
+    VkImage temp_images[8];
+    vkGetSwapchainImagesKHR(g_vulkan->device, equip->swapchain, &image_count, temp_images);
+    equip->swapchain_image_count = image_count;  // CRITICAL: Store the image count!
 
-    equip->swapchain_images = list_make<VkImage>();
+    equip->swapchain_images = push_array(g_vulkan->arena, VkImage, image_count);
+    equip->swapchain_image_views = push_array(g_vulkan->arena, VkImageView, image_count);
+    
     for (u32 i = 0; i < image_count; i++)
     {
-        list_push(g_vulkan->arena, &equip->swapchain_images, temp_images.data[i]);
-    }
-
-    // Recreate image views
-    for (List_Node<VkImage> *node = equip->swapchain_images.first; node; node = node->next)
-    {
-        VkImageView image_view = renderer_vulkan_create_image_view(
-            node->v, equip->swapchain_format, VK_IMAGE_ASPECT_COLOR_BIT);
-        list_push(g_vulkan->arena, &equip->swapchain_image_views, image_view);
+        equip->swapchain_images[i] = temp_images[i];
+        equip->swapchain_image_views[i] = renderer_vulkan_create_image_view(
+            equip->swapchain_images[i], equip->swapchain_format, VK_IMAGE_ASPECT_COLOR_BIT);
     }
 
     // Recreate depth resources
@@ -1034,21 +1027,21 @@ renderer_vulkan_recreate_swapchain(Renderer_Vulkan_Window_Equipment *equip)
                                  VK_FORMAT_D32_SFLOAT, VK_IMAGE_TILING_OPTIMAL,
                                  VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
                                  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                                 equip->depth_image, equip->depth_image_memory);
+                                 &equip->depth_image, &equip->depth_image_memory);
 
     equip->depth_image_view = renderer_vulkan_create_image_view(equip->depth_image,
                                                                 VK_FORMAT_D32_SFLOAT,
                                                                 VK_IMAGE_ASPECT_DEPTH_BIT);
 
     // Recreate framebuffers
-    equip->framebuffers = list_make<VkFramebuffer>();
-    for (List_Node<VkImageView> *node = equip->swapchain_image_views.first; node; node = node->next)
+    equip->framebuffers = push_array_zero(g_vulkan->arena, VkFramebuffer, image_count);
+    for (u32 i = 0; i < image_count; i++)
     {
         VkImageView attachments[] = {
-            node->v,
+            equip->swapchain_image_views[i],
             equip->depth_image_view};
 
-        VkFramebufferCreateInfo framebuffer_info{0};
+        VkFramebufferCreateInfo framebuffer_info  = {0};
         framebuffer_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         framebuffer_info.renderPass = equip->render_pass;
         framebuffer_info.attachmentCount = 2;
@@ -1057,14 +1050,11 @@ renderer_vulkan_recreate_swapchain(Renderer_Vulkan_Window_Equipment *equip)
         framebuffer_info.height = extent.height;
         framebuffer_info.layers = 1;
 
-        VkFramebuffer framebuffer;
-        if (vkCreateFramebuffer(g_vulkan->device, &framebuffer_info, NULL, &framebuffer) != VK_SUCCESS)
+        if (vkCreateFramebuffer(g_vulkan->device, &framebuffer_info, NULL, &equip->framebuffers[i]) != VK_SUCCESS)
         {
             log_error("Failed to recreate framebuffer!");
-        }
-        else
-        {
-            list_push(g_vulkan->arena, &equip->framebuffers, framebuffer);
+            // Critical failure - cannot continue without valid framebuffers
+            return;
         }
     }
 }
@@ -1074,21 +1064,12 @@ Renderer_Handle
 renderer_window_equip(void *window)
 {
     ZoneScoped;
-    GLFWwindow *glfw_window = (GLFWwindow *)window;
-
     Arena                            *arena = arena_alloc();
     Renderer_Vulkan_Window_Equipment *equip = push_array(arena, Renderer_Vulkan_Window_Equipment, 1);
-    *equip = {0};
+    MemoryZero(equip, sizeof(Renderer_Vulkan_Window_Equipment));
     
-    // Get DPI scale from GLFW
-    float xscale, yscale;
-    glfwGetWindowContentScale(glfw_window, &xscale, &yscale);
-    equip->dpi_scale = xscale;  // Use X scale (typically same as Y)
-
-    // Initialize lists
-    equip->swapchain_images = list_make<VkImage>();
-    equip->swapchain_image_views = list_make<VkImageView>();
-    equip->framebuffers = list_make<VkFramebuffer>();
+    // Set default DPI scale for Linux
+    equip->dpi_scale = 1.0f;
 
     // Create surface based on platform
     VkResult result = VK_ERROR_INITIALIZATION_FAILED;
@@ -1099,7 +1080,7 @@ renderer_window_equip(void *window)
     struct wl_display *wayland_display = glfwGetWaylandDisplay();
     if (wayland_display != NULL)
     {
-        VkWaylandSurfaceCreateInfoKHR surface_info{0};
+        VkWaylandSurfaceCreateInfoKHR surface_info = {0};
         surface_info.sType = VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR;
         surface_info.display = wayland_display;
         surface_info.surface = glfwGetWaylandWindow(glfw_window);
@@ -1111,29 +1092,36 @@ renderer_window_equip(void *window)
         }
     }
 #    else
-    // X11 surface creation
-    Display *x11_display = glfwGetX11Display();
-    if (x11_display != NULL)
+    // X11 surface creation - use the display from the X11 state
+    if (x11_state && x11_state->display)
     {
-        VkXlibSurfaceCreateInfoKHR surface_info{0};
+        printf("Creating X11 surface with display=%p, window=0x%lx\n", x11_state->display, (Window)(uintptr_t)window);
+        
+        VkXlibSurfaceCreateInfoKHR surface_info  = {0};
         surface_info.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
-        surface_info.dpy = x11_display;
-        surface_info.window = glfwGetX11Window(glfw_window);
+        surface_info.dpy = x11_state->display;
+        surface_info.window = (Window)(uintptr_t)window;
 
         PFN_vkCreateXlibSurfaceKHR func = (PFN_vkCreateXlibSurfaceKHR)vkGetInstanceProcAddr(g_vulkan->instance, "vkCreateXlibSurfaceKHR");
         if (func != NULL)
         {
             result = func(g_vulkan->instance, &surface_info, NULL, &equip->surface);
+            printf("X11 surface creation result: %d\n", result);
         }
+        else
+        {
+            printf("ERROR: vkCreateXlibSurfaceKHR function not found!\n");
+        }
+    }
+    else
+    {
+        printf("ERROR: x11_state is NULL or display is NULL! x11_state=%p\n", x11_state);
+        if (x11_state) printf("x11_state->display=%p\n", x11_state->display);
     }
 #    endif
 #endif
 
-    if (result != VK_SUCCESS)
-    {
-        // Fallback to GLFW's built-in surface creation
-        result = glfwCreateWindowSurface(g_vulkan->instance, glfw_window, NULL, &equip->surface);
-    }
+    // Don't close the X11 display - it's managed by the X11 state
 
     if (result != VK_SUCCESS)
     {
@@ -1171,21 +1159,19 @@ renderer_window_equip(void *window)
 
     u32 format_count;
     vkGetPhysicalDeviceSurfaceFormatsKHR(g_vulkan->physical_device, equip->surface, &format_count, NULL);
-    Array<VkSurfaceFormatKHR, 32> formats = {0};
-    formats.size = format_count;
-    vkGetPhysicalDeviceSurfaceFormatsKHR(g_vulkan->physical_device, equip->surface, &format_count, formats.data);
+    VkSurfaceFormatKHR formats[32];
+    vkGetPhysicalDeviceSurfaceFormatsKHR(g_vulkan->physical_device, equip->surface, &format_count, formats);
 
     u32 present_mode_count;
     vkGetPhysicalDeviceSurfacePresentModesKHR(g_vulkan->physical_device, equip->surface, &present_mode_count, NULL);
-    Array<VkPresentModeKHR, 8> present_modes = {0};
-    present_modes.size = present_mode_count;
-    vkGetPhysicalDeviceSurfacePresentModesKHR(g_vulkan->physical_device, equip->surface, &present_mode_count, present_modes.data);
+    VkPresentModeKHR present_modes[8];
+    vkGetPhysicalDeviceSurfacePresentModesKHR(g_vulkan->physical_device, equip->surface, &present_mode_count, present_modes);
 
     // Choose swap surface format
-    VkSurfaceFormatKHR surface_format = formats.data[0];
-    for (u32 i = 0; i < formats.size; i++)
+    VkSurfaceFormatKHR surface_format = formats[0];
+    for (u32 i = 0; i < format_count; i++)
     {
-        VkSurfaceFormatKHR &format = formats.data[i];
+        VkSurfaceFormatKHR format = formats[i];
         if (format.format == VK_FORMAT_B8G8R8A8_UNORM && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
         {
             surface_format = format;
@@ -1196,9 +1182,9 @@ renderer_window_equip(void *window)
     // Choose present mode - prefer immediate mode for no vsync
     VkPresentModeKHR present_mode = VK_PRESENT_MODE_IMMEDIATE_KHR;
     bool             found_immediate = false;
-    for (u32 i = 0; i < present_modes.size; i++)
+    for (u32 i = 0; i < present_mode_count; i++)
     {
-        if (present_modes.data[i] == VK_PRESENT_MODE_IMMEDIATE_KHR)
+        if (present_modes[i] == VK_PRESENT_MODE_IMMEDIATE_KHR)
         {
             found_immediate = true;
             break;
@@ -1215,11 +1201,11 @@ renderer_window_equip(void *window)
     VkExtent2D extent = capabilities.currentExtent;
     if (capabilities.currentExtent.width == UINT32_MAX)
     {
-        int width, height;
-        glfwGetFramebufferSize(glfw_window, &width, &height);
+        // For now, use default size - in real implementation this would come from OS window
+        int width = 800, height = 600;
 
-        u32 w = static_cast<u32>(width);
-        u32 h = static_cast<u32>(height);
+        u32 w = (u32)width;
+        u32 h = (u32)height;
 
         extent.width = (w < capabilities.minImageExtent.width) ? capabilities.minImageExtent.width : (w > capabilities.maxImageExtent.width) ? capabilities.maxImageExtent.width
                                                                                                                                              : w;
@@ -1234,7 +1220,7 @@ renderer_window_equip(void *window)
         image_count = capabilities.maxImageCount;
     }
 
-    VkSwapchainCreateInfoKHR swapchain_info{0};
+    VkSwapchainCreateInfoKHR swapchain_info  = {0};
     swapchain_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
     swapchain_info.surface = equip->surface;
     swapchain_info.minImageCount = image_count;
@@ -1277,28 +1263,29 @@ renderer_window_equip(void *window)
     // Get swap chain images
     vkGetSwapchainImagesKHR(g_vulkan->device, equip->swapchain, &image_count, NULL);
 
-    // Create temp array to get images, then add to list
-    Array<VkImage, 8> temp_images = {0};
-    temp_images.size = image_count;
-    vkGetSwapchainImagesKHR(g_vulkan->device, equip->swapchain, &image_count, temp_images.data);
+    // Create temp array to get images, then allocate proper arrays
+    VkImage temp_images[8];
+    vkGetSwapchainImagesKHR(g_vulkan->device, equip->swapchain, &image_count, temp_images);
+    equip->swapchain_image_count = image_count;  // CRITICAL: Store the image count!
 
+    equip->swapchain_images = push_array(arena, VkImage, image_count);
     for (u32 i = 0; i < image_count; i++)
     {
-        list_push(arena, &equip->swapchain_images, temp_images.data[i]);
+        equip->swapchain_images[i] = temp_images[i];
     }
 
     // Create image views
-    for (List_Node<VkImage> *node = equip->swapchain_images.first; node; node = node->next)
+    equip->swapchain_image_views = push_array(arena, VkImageView, image_count);
+    for (u32 i = 0; i < image_count; i++)
     {
-        VkImageView image_view = renderer_vulkan_create_image_view(
-            node->v,
+        equip->swapchain_image_views[i] = renderer_vulkan_create_image_view(
+            equip->swapchain_images[i],
             equip->swapchain_format,
             VK_IMAGE_ASPECT_COLOR_BIT);
-        list_push(arena, &equip->swapchain_image_views, image_view);
     }
 
     // Create render pass
-    VkAttachmentDescription color_attachment{0};
+    VkAttachmentDescription color_attachment = {0};
     color_attachment.format = equip->swapchain_format;
     color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
     color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
@@ -1308,7 +1295,7 @@ renderer_window_equip(void *window)
     color_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     color_attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
-    VkAttachmentDescription depth_attachment{0};
+    VkAttachmentDescription depth_attachment = {0};
     depth_attachment.format = VK_FORMAT_D32_SFLOAT;
     depth_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
     depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
@@ -1318,21 +1305,21 @@ renderer_window_equip(void *window)
     depth_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     depth_attachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-    VkAttachmentReference color_attachment_ref{0};
+    VkAttachmentReference color_attachment_ref = {0};
     color_attachment_ref.attachment = 0;
     color_attachment_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-    VkAttachmentReference depth_attachment_ref{0};
+    VkAttachmentReference depth_attachment_ref = {0};
     depth_attachment_ref.attachment = 1;
     depth_attachment_ref.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-    VkSubpassDescription subpass{0};
+    VkSubpassDescription subpass = {0};
     subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
     subpass.colorAttachmentCount = 1;
     subpass.pColorAttachments = &color_attachment_ref;
     subpass.pDepthStencilAttachment = &depth_attachment_ref;
 
-    VkSubpassDependency dependency{0};
+    VkSubpassDependency dependency = {0};
     dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
     dependency.dstSubpass = 0;
     dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
@@ -1342,7 +1329,7 @@ renderer_window_equip(void *window)
 
     VkAttachmentDescription attachments[] = {color_attachment, depth_attachment};
 
-    VkRenderPassCreateInfo render_pass_info{0};
+    VkRenderPassCreateInfo render_pass_info = {0};
     render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
     render_pass_info.attachmentCount = 2;
     render_pass_info.pAttachments = attachments;
@@ -1363,20 +1350,21 @@ renderer_window_equip(void *window)
                                  VK_FORMAT_D32_SFLOAT, VK_IMAGE_TILING_OPTIMAL,
                                  VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
                                  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                                 equip->depth_image, equip->depth_image_memory);
+                                 &equip->depth_image, &equip->depth_image_memory);
 
     equip->depth_image_view = renderer_vulkan_create_image_view(equip->depth_image,
                                                                 VK_FORMAT_D32_SFLOAT,
                                                                 VK_IMAGE_ASPECT_DEPTH_BIT);
 
     // Create framebuffers
-    for (List_Node<VkImageView> *node = equip->swapchain_image_views.first; node; node = node->next)
+    equip->framebuffers = push_array_zero(arena, VkFramebuffer, image_count);
+    for (u32 i = 0; i < image_count; i++)
     {
         VkImageView attachments[] = {
-            node->v,
+            equip->swapchain_image_views[i],
             equip->depth_image_view};
 
-        VkFramebufferCreateInfo framebuffer_info{0};
+        VkFramebufferCreateInfo framebuffer_info = {0};
         framebuffer_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         framebuffer_info.renderPass = equip->render_pass;
         framebuffer_info.attachmentCount = 2;
@@ -1385,18 +1373,15 @@ renderer_window_equip(void *window)
         framebuffer_info.height = equip->swapchain_extent.height;
         framebuffer_info.layers = 1;
 
-        VkFramebuffer framebuffer;
-        if (vkCreateFramebuffer(g_vulkan->device, &framebuffer_info, NULL, &framebuffer) != VK_SUCCESS)
+        if (vkCreateFramebuffer(g_vulkan->device, &framebuffer_info, NULL, &equip->framebuffers[i]) != VK_SUCCESS)
         {
             log_error("Failed to create framebuffer!");
             return renderer_handle_zero();
         }
-
-        list_push(arena, &equip->framebuffers, framebuffer);
     }
 
     // Allocate command buffers
-    VkCommandBufferAllocateInfo alloc_info{0};
+    VkCommandBufferAllocateInfo alloc_info  = {0};
     alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     alloc_info.commandPool = g_vulkan->command_pool;
     alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
@@ -1410,10 +1395,10 @@ renderer_window_equip(void *window)
 
     // Create synchronization objects (arrays are already sized)
 
-    VkSemaphoreCreateInfo semaphore_info{0};
+    VkSemaphoreCreateInfo semaphore_info = {0};
     semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-    VkFenceCreateInfo fence_info{0};
+    VkFenceCreateInfo fence_info = {0};
     fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
@@ -1442,7 +1427,7 @@ renderer_window_equip(void *window)
     for (u32 i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
         // Allocate UI global descriptor set
-        VkDescriptorSetAllocateInfo alloc_info{0};
+        VkDescriptorSetAllocateInfo alloc_info  = {0};
         alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         alloc_info.descriptorPool = g_vulkan->descriptor_pool;
         alloc_info.descriptorSetCount = 1;
@@ -1475,7 +1460,7 @@ renderer_window_equip(void *window)
     }
 
     // Return handle
-    Renderer_Handle handle = {0};
+    Renderer_Handle handle  = {0};
     handle.u64s[0] = (u64)equip;
     return handle;
 }
@@ -1517,9 +1502,10 @@ renderer_window_unequip(void *window, Renderer_Handle window_equip)
     }
 
     // Cleanup framebuffers
-    for (List_Node<VkFramebuffer> *node = equip->framebuffers.first; node; node = node->next)
+    for (u32 i = 0; i < equip->swapchain_image_count; i++)
     {
-        vkDestroyFramebuffer(g_vulkan->device, node->v, NULL);
+        if (equip->framebuffers)
+            vkDestroyFramebuffer(g_vulkan->device, equip->framebuffers[i], NULL);
     }
 
     // Cleanup depth resources
@@ -1531,9 +1517,10 @@ renderer_window_unequip(void *window, Renderer_Handle window_equip)
     vkDestroyRenderPass(g_vulkan->device, equip->render_pass, NULL);
 
     // Cleanup image views
-    for (List_Node<VkImageView> *node = equip->swapchain_image_views.first; node; node = node->next)
+    for (u32 i = 0; i < equip->swapchain_image_count; i++)
     {
-        vkDestroyImageView(g_vulkan->device, node->v, NULL);
+        if (equip->swapchain_image_views)
+            vkDestroyImageView(g_vulkan->device, equip->swapchain_image_views[i], NULL);
     }
 
     // Cleanup swap chain
@@ -1547,12 +1534,12 @@ renderer_window_unequip(void *window, Renderer_Handle window_equip)
 
 // Texture management
 Renderer_Handle
-renderer_tex_2d_alloc(Renderer_Resource_Kind kind, Vec2<f32> size, Renderer_Tex_2D_Format format, void *data)
+renderer_tex_2d_alloc(Renderer_Resource_Kind kind, Vec2_f32 size, Renderer_Tex_2D_Format format, void *data)
 {
     ZoneScoped;
     Arena                      *arena = arena_alloc();
     Renderer_Vulkan_Texture_2D *tex = push_array(arena, Renderer_Vulkan_Texture_2D, 1);
-    *tex = {0};
+    MemoryZero(tex, sizeof(Renderer_Vulkan_Texture_2D));
 
     tex->size = size;
     tex->format = format;
@@ -1593,7 +1580,7 @@ renderer_tex_2d_alloc(Renderer_Resource_Kind kind, Vec2<f32> size, Renderer_Tex_
     renderer_vulkan_create_image(width, height, vk_format, VK_IMAGE_TILING_OPTIMAL,
                                  VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
                                  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                                 tex->image, tex->memory);
+                                 &tex->image, &tex->memory);
 
     // Transition image layout and copy data if provided
     if (data)
@@ -1609,7 +1596,7 @@ renderer_tex_2d_alloc(Renderer_Resource_Kind kind, Vec2<f32> size, Renderer_Tex_
         // Copy buffer to image
         VkCommandBuffer command_buffer = renderer_vulkan_begin_single_time_commands();
 
-        VkBufferImageCopy region{0};
+        VkBufferImageCopy region  = {0};
         region.bufferOffset = g_vulkan->staging_buffer_offset;
         region.bufferRowLength = 0;
         region.bufferImageHeight = 0;
@@ -1617,8 +1604,8 @@ renderer_tex_2d_alloc(Renderer_Resource_Kind kind, Vec2<f32> size, Renderer_Tex_
         region.imageSubresource.mipLevel = 0;
         region.imageSubresource.baseArrayLayer = 0;
         region.imageSubresource.layerCount = 1;
-        region.imageOffset = {0, 0, 0};
-        region.imageExtent = {width, height, 1};
+        region.imageOffset.x = 0; region.imageOffset.y = 0; region.imageOffset.z = 0;
+        region.imageExtent.width = width; region.imageExtent.height = height; region.imageExtent.depth = 1;
 
         vkCmdCopyBufferToImage(command_buffer, g_vulkan->staging_buffer, tex->image,
                                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
@@ -1641,7 +1628,7 @@ renderer_tex_2d_alloc(Renderer_Resource_Kind kind, Vec2<f32> size, Renderer_Tex_
     // Create image view
     tex->view = renderer_vulkan_create_image_view(tex->image, vk_format, VK_IMAGE_ASPECT_COLOR_BIT);
 
-    Renderer_Handle handle = {0};
+    Renderer_Handle handle  = {0};
     handle.u64s[0] = (u64)tex;
     return handle;
 }
@@ -1673,11 +1660,11 @@ renderer_kind_from_tex_2d(Renderer_Handle texture)
     return tex ? tex->kind : Renderer_Resource_Kind_Static;
 }
 
-Vec2<f32>
+Vec2_f32
 renderer_size_from_tex_2d(Renderer_Handle texture)
 {
     Renderer_Vulkan_Texture_2D *tex = (Renderer_Vulkan_Texture_2D *)texture.u64s[0];
-    return tex ? tex->size : Vec2<f32>{{0, 0}};
+    return tex ? tex->size : (Vec2_f32){{0, 0}};
 }
 
 Renderer_Tex_2D_Format
@@ -1688,7 +1675,7 @@ renderer_format_from_tex_2d(Renderer_Handle texture)
 }
 
 void
-renderer_fill_tex_2d_region(Renderer_Handle texture, Rng2<f32> subrect, void *data)
+renderer_fill_tex_2d_region(Renderer_Handle texture, Rng2_f32 subrect, void *data)
 {
     ZoneScoped;
     Renderer_Vulkan_Texture_2D *tex = (Renderer_Vulkan_Texture_2D *)texture.u64s[0];
@@ -1739,7 +1726,7 @@ renderer_fill_tex_2d_region(Renderer_Handle texture, Rng2<f32> subrect, void *da
     // Copy buffer to image region
     VkCommandBuffer command_buffer = renderer_vulkan_begin_single_time_commands();
 
-    VkBufferImageCopy region{0};
+    VkBufferImageCopy region  = {0};
     region.bufferOffset = g_vulkan->staging_buffer_offset;
     region.bufferRowLength = 0;
     region.bufferImageHeight = 0;
@@ -1747,8 +1734,8 @@ renderer_fill_tex_2d_region(Renderer_Handle texture, Rng2<f32> subrect, void *da
     region.imageSubresource.mipLevel = 0;
     region.imageSubresource.baseArrayLayer = 0;
     region.imageSubresource.layerCount = 1;
-    region.imageOffset = {(s32)x, (s32)y, 0};
-    region.imageExtent = {width, height, 1};
+    region.imageOffset.x = (s32)x; region.imageOffset.y = (s32)y; region.imageOffset.z = 0;
+    region.imageExtent.width = width; region.imageExtent.height = height; region.imageExtent.depth = 1;
 
     vkCmdCopyBufferToImage(command_buffer, g_vulkan->staging_buffer, tex->image,
                            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
@@ -1768,7 +1755,7 @@ renderer_buffer_alloc(Renderer_Resource_Kind kind, u64 size, void *data)
     ZoneScoped;
     Arena                  *arena = arena_alloc();
     Renderer_Vulkan_Buffer *buf = push_array(arena, Renderer_Vulkan_Buffer, 1);
-    *buf = {0};
+    MemoryZero(buf, sizeof(Renderer_Vulkan_Buffer));
 
     buf->size = size;
     buf->kind = kind;
@@ -1787,7 +1774,7 @@ renderer_buffer_alloc(Renderer_Resource_Kind kind, u64 size, void *data)
         properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
     }
 
-    renderer_vulkan_create_buffer(size, usage, properties, buf->buffer, buf->memory);
+    renderer_vulkan_create_buffer(size, usage, properties, &buf->buffer, &buf->memory);
 
     if (kind == Renderer_Resource_Kind_Dynamic)
     {
@@ -1807,7 +1794,7 @@ renderer_buffer_alloc(Renderer_Resource_Kind kind, u64 size, void *data)
 
             VkCommandBuffer command_buffer = renderer_vulkan_begin_single_time_commands();
 
-            VkBufferCopy copy_region{0};
+            VkBufferCopy copy_region  = {0};
             copy_region.srcOffset = g_vulkan->staging_buffer_offset;
             copy_region.dstOffset = 0;
             copy_region.size = size;
@@ -1818,7 +1805,7 @@ renderer_buffer_alloc(Renderer_Resource_Kind kind, u64 size, void *data)
         }
     }
 
-    Renderer_Handle handle = {0};
+    Renderer_Handle handle  = {0};
     handle.u64s[0] = (u64)buf;
     return handle;
 }
@@ -1866,6 +1853,9 @@ renderer_window_begin_frame(void *window, Renderer_Handle window_equip)
     Renderer_Vulkan_Window_Equipment *equip = (Renderer_Vulkan_Window_Equipment *)window_equip.u64s[0];
     if (!equip)
         return;
+    
+    // Reset frame begun flag
+    equip->frame_begun = 0;
 
     // Wait for previous frame
     vkWaitForFences(g_vulkan->device, 1, &equip->in_flight_fences[equip->current_frame], VK_TRUE, UINT64_MAX);
@@ -1874,12 +1864,15 @@ renderer_window_begin_frame(void *window, Renderer_Handle window_equip)
     VkResult result = vkAcquireNextImageKHR(g_vulkan->device, equip->swapchain, UINT64_MAX,
                                             equip->image_available_semaphores[equip->current_frame],
                                             VK_NULL_HANDLE, &equip->current_image_index);
+    printf("Acquire image result: %d, image index: %d\n", result, equip->current_image_index);
 
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
     {
+        printf("Swapchain out of date on acquire, recreating...\n");
         // Recreate swapchain
         void renderer_vulkan_recreate_swapchain(Renderer_Vulkan_Window_Equipment * equip);
         renderer_vulkan_recreate_swapchain(equip);
+        printf("Swapchain recreated, returning early\n");
         return;
     }
 
@@ -1893,10 +1886,14 @@ renderer_window_begin_frame(void *window, Renderer_Handle window_equip)
     VkCommandBuffer cmd = equip->command_buffers[equip->current_frame];
     vkResetCommandBuffer(cmd, 0);
 
-    VkCommandBufferBeginInfo begin_info{0};
+    VkCommandBufferBeginInfo begin_info  = {0};
     begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
-    vkBeginCommandBuffer(cmd, &begin_info);
+    VkResult begin_result = vkBeginCommandBuffer(cmd, &begin_info);
+    printf("Command buffer begin result: %d\n", begin_result);
+    
+    // Mark frame as successfully begun
+    equip->frame_begun = 1;
 }
 
 void
@@ -1904,16 +1901,17 @@ renderer_window_end_frame(void *window, Renderer_Handle window_equip)
 {
     ZoneScoped;
     Renderer_Vulkan_Window_Equipment *equip = (Renderer_Vulkan_Window_Equipment *)window_equip.u64s[0];
-    if (!equip)
+    if (!equip || !equip->frame_begun)
         return;
 
     VkCommandBuffer cmd = equip->command_buffers[equip->current_frame];
 
     // End command buffer
-    vkEndCommandBuffer(cmd);
+    VkResult end_result = vkEndCommandBuffer(cmd);
+    printf("Command buffer end result: %d\n", end_result);
 
     // Submit command buffer
-    VkSubmitInfo submit_info{0};
+    VkSubmitInfo submit_info  = {0};
     submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
     VkSemaphore          wait_semaphores[] = {equip->image_available_semaphores[equip->current_frame]};
@@ -1928,10 +1926,13 @@ renderer_window_end_frame(void *window, Renderer_Handle window_equip)
     submit_info.signalSemaphoreCount = 1;
     submit_info.pSignalSemaphores = signal_semaphores;
 
-    vkQueueSubmit(g_vulkan->graphics_queue, 1, &submit_info, equip->in_flight_fences[equip->current_frame]);
+    VkResult submit_result = vkQueueSubmit(g_vulkan->graphics_queue, 1, &submit_info, equip->in_flight_fences[equip->current_frame]);
+    if (submit_result != VK_SUCCESS) {
+        printf("ERROR: vkQueueSubmit failed with result: %d\n", submit_result);
+    }
 
     // Present
-    VkPresentInfoKHR present_info{0};
+    VkPresentInfoKHR present_info = {0};
     present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
     present_info.waitSemaphoreCount = 1;
     present_info.pWaitSemaphores = signal_semaphores;
@@ -1944,11 +1945,16 @@ renderer_window_end_frame(void *window, Renderer_Handle window_equip)
     present_info.pImageIndices = image_indices;
 
     VkResult result = vkQueuePresentKHR(g_vulkan->present_queue, &present_info);
+    printf("Present result: %d (image index: %d)\n", result, equip->current_image_index);
 
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
     {
-        // Recreate swapchain
+        printf("Recreating swapchain due to present result: %d\n", result);
         renderer_vulkan_recreate_swapchain(equip);
+    }
+    else if (result != VK_SUCCESS)
+    {
+        printf("ERROR: Present failed with result: %d\n", result);
     }
 
     // Update frame index

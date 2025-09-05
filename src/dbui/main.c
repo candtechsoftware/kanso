@@ -75,8 +75,12 @@ int main() {
     font_init();
     font_cache_init();
     
+#ifdef __APPLE__
     String font_path = str_lit("/System/Library/Fonts/Helvetica.ttc");
-    Font_Tag default_font = font_tag_from_path(font_path);
+#else
+    String font_path = str_lit("assets/fonts/LiberationMono-Regular.ttf");
+#endif
+    Font_Renderer_Tag default_font = font_tag_from_path(font_path);
     
     if (font_tag_equal(default_font, font_tag_zero())) {
         printf("Warning: Could not load font, using zero tag\n");
@@ -95,7 +99,18 @@ int main() {
     printf("Window created\n");
     
     void *native_window = os_window_native_handle(window);
+    printf("Native window handle: %p\n", native_window);
+    
+    if (native_window == NULL) {
+        printf("ERROR: Native window handle is NULL!\n");
+        return 1;
+    }
+    
     Renderer_Handle window_equip = renderer_window_equip(native_window);
+    if (renderer_handle_match(window_equip, renderer_handle_zero())) {
+        printf("ERROR: Failed to equip renderer with window!\n");
+        return 1;
+    }
     printf("Window equipped with renderer\n");
     
     Point3D cube_vertices[8] = {
@@ -126,7 +141,7 @@ int main() {
     f64 delta_time = 0.0;
     
     f64 fps_update_time = current_time;
-    u64 fps_frame_count = 0;
+    f64 fps_frame_count = 0;
     
     while (running) {
         last_time = current_time;
@@ -140,9 +155,9 @@ int main() {
         
         fps_frame_count++;
         
-        rotation_x += 50.0f * delta_time;
-        rotation_y += 30.0f * delta_time;
-        rotation_z += 20.0f * delta_time;
+        rotation_x += 50.0f * (f32)delta_time;
+        rotation_y += 30.0f * (f32)delta_time;
+        rotation_z += 20.0f * (f32)delta_time; 
         
         f64 fps_delta = current_time - fps_update_time;
         if (fps_delta >= 0.25) {
@@ -157,6 +172,7 @@ int main() {
                 running = 0;
             }
             else if (event->kind == OS_Event_Press && event->key == OS_Key_Esc) {
+                printf("Escape key pressed - exiting\n");
                 running = 0;
             }
             else if (event->kind == OS_Event_Press && event->key == OS_Key_MouseLeft) {
@@ -240,9 +256,9 @@ int main() {
             int v2 = edges[i][1];
             
             Vec4_f32 edge_color = {{
-                0.5f + 0.5f * sinf((rotation_y + i * 30) * 0.017f),
-                0.5f + 0.5f * sinf((rotation_y + i * 30) * 0.017f + 2.094f),
-                0.5f + 0.5f * sinf((rotation_y + i * 30) * 0.017f + 4.189f),
+                0.5f + 0.5f * sinf((rotation_y +(f32)i * 30) * 0.017f),
+                0.5f + 0.5f * sinf((rotation_y +(f32)i * 30) * 0.017f + 2.094f),
+                0.5f + 0.5f * sinf((rotation_y +(f32)i * 30) * 0.017f + 4.189f),
                 1.0f
             }};
             
@@ -267,9 +283,9 @@ int main() {
         
         for (int i = 0; i < 8; i++) {
             Vec4_f32 vertex_color = {{
-                0.5f + 0.5f * sinf((rotation_y + i * 45) * 0.017f),
-                0.5f + 0.5f * sinf((rotation_y + i * 45) * 0.017f + 2.094f),
-                0.5f + 0.5f * sinf((rotation_y + i * 45) * 0.017f + 4.189f),
+                0.5f + 0.5f * sinf((rotation_y + (f32)i * 45) * 0.017f),
+                0.5f + 0.5f * sinf((rotation_y + (f32)i * 45) * 0.017f + 2.094f),
+                0.5f + 0.5f * sinf((rotation_y + (f32)i * 45) * 0.017f + 4.189f),
                 1.0f
             }};
             
@@ -287,7 +303,6 @@ int main() {
         draw_rect((Rng2_f32){{{viewport_x, viewport_height - 2}}, {{window_width, viewport_height + 2}}}, 
                   (Vec4_f32){{0.3f, 0.3f, 0.3f, 1.0f}}, 
                   0.0f, 0.0f, 0.0f);
-        
         draw_pop_bucket();
         draw_submit_bucket(native_window, window_equip, bucket);
         draw_end_frame();
