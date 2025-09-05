@@ -13,8 +13,10 @@
 #    include "renderer_vulkan_shaders.c"
 #endif
 
-#ifdef USE_METAL
-#    include "renderer_metal.m"
-#    include "renderer_metal_passes.m"
-#    include "renderer_metal_shaders.m"
+#if defined(USE_METAL)
+#    ifdef __OBJC__
+#        include "renderer_metal.m"
+#        include "renderer_metal_passes.m"
+#        include "renderer_metal_shaders.m"
+#    endif
 #endif

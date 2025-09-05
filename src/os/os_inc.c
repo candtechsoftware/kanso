@@ -1,4 +1,5 @@
-#include <stdio.h>
+#include "os.h"
+#include "os_gfx.h"
 
 #if defined(_WIN32) || defined(_WIN64)
 #    include "os_windows.c"
@@ -8,8 +9,11 @@
 #if defined(__linux__)
 #    include "os_gfx_x11.c"
 #elif defined(__APPLE__)
-#    include "os_gfx_macos.m"
+#    ifdef __OBJC__
+#        include "os_gfx_macos.m"
+#    endif
 #endif
+
 #include "../../third_party/xxhash/xxhash.c"
 
 internal b32
@@ -261,11 +265,11 @@ os_key_from_codepoint(u32 codepoint, OS_Modifiers *modifiers)
 
     if (codepoint >= 'a' && codepoint <= 'z')
     {
-        result = OS_Key_A + (codepoint - 'a');
+        result =(OS_Key)(OS_Key_A + (codepoint - 'a'));
     }
     else if (codepoint >= 'A' && codepoint <= 'Z')
     {
-        result = OS_Key_A + (codepoint - 'A');
+        result = (OS_Key)(OS_Key_A + (codepoint - 'A'));
         if (modifiers)
             *modifiers |= OS_Modifier_Shift;
     }
@@ -327,19 +331,11 @@ os_cursor_kind_from_resize_sides(Side x, Side y)
 {
     OS_Cursor_Kind result = OS_Cursor_Kind_Pointer;
 
-    if (x == Side_Min && y == Side_Min)
+    if ((x == Side_Min && y == Side_Min) || (x == Side_Max && y == Side_Max))
     {
         result = OS_Cursor_Kind_NorthWestSouthEast;
     }
-    else if (x == Side_Max && y == Side_Max)
-    {
-        result = OS_Cursor_Kind_NorthWestSouthEast;
-    }
-    else if (x == Side_Min && y == Side_Max)
-    {
-        result = OS_Cursor_Kind_NorthEastSouthWest;
-    }
-    else if (x == Side_Max && y == Side_Min)
+    else if ((x == Side_Min && y == Side_Max) || (x == Side_Max && y == Side_Min))
     {
         result = OS_Cursor_Kind_NorthEastSouthWest;
     }

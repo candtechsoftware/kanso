@@ -11,7 +11,7 @@ typedef enum Side
     Side_COUNT
 } Side;
 
-typedef enum OS_Key
+typedef enum OS_Key 
 {
     OS_Key_Null,
     OS_Key_Esc,
