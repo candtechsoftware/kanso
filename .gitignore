@@ -28,3 +28,7 @@ compile_commands.json
 kanso.log 
 src/generated.h
 
+# Profiling output
+profile_*.json
+profile_trace.json
+
