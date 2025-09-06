@@ -34,3 +34,7 @@ _log_impl(LogLevel level, const char *file, u32 line, const char *fmt, ...);
 #define log_info(fmt, ...)  _log_impl(LOG_LEVEL_INFO, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
 #define log_warn(fmt, ...)  _log_impl(LOG_LEVEL_WARN, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
 #define log_error(fmt, ...) _log_impl(LOG_LEVEL_ERROR, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
+
+// Simple print without timestamp or level
+void log_print(const char *fmt, ...);
+#define print(fmt, ...) log_print(fmt, ##__VA_ARGS__)

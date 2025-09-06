@@ -173,3 +173,16 @@ _log_impl(LogLevel level, const char *file, u32 line, const char *fmt, ...)
     fputc('\n', out);
     fflush(out);
 }
+
+void
+log_print(const char *fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    
+    // Process our custom format specifiers and print to stdout
+    process_format(stdout, fmt, args);
+    
+    va_end(args);
+    fflush(stdout);
+}

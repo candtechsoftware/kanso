@@ -2,20 +2,6 @@
 
 #include "types.h"
 
-// Tracy profiler integration
-#ifdef TRACY_ENABLE
-#    include <tracy/Tracy.hpp>
-#else
-// Empty macros when Tracy is disabled
-#    define ZoneScoped
-#    define ZoneScopedN(name)
-#    define ZoneScopedC(color)
-#    define ZoneScopedNC(name, color)
-#    define FrameMark
-#    define TracyFrameMark
-#    define TracyFrameMarkStart(name)
-#    define TracyFrameMarkEnd(name)
-#endif
 
 typedef u64 Dense_Time;
 

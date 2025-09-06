@@ -10,6 +10,7 @@
 #include <string.h>
 #include <errno.h>
 #include <time.h>
+#include <stdio.h>
 #if defined(__APPLE__)
 #    include <mach/mach_time.h>
 #endif
@@ -190,7 +191,8 @@ os_file_exists(String file_path)
         return false;
     }
 
-    return S_ISREG(file_stat.st_mode);
+    // Return true for both regular files and directories
+    return S_ISREG(file_stat.st_mode) || S_ISDIR(file_stat.st_mode);
 }
 
 internal u64
@@ -544,4 +546,79 @@ os_file_map_view_string(String file_path, u64 *out_ptr)
     }
 
     return result;
+}
+
+internal File_Properties
+os_file_properties_from_path(String file_path)
+{
+    File_Properties props = {0};
+    
+    // Convert String to null-terminated path
+    char path_buf[4096];
+    u32 copy_size = Min(file_path.size, sizeof(path_buf)-1);
+    MemoryCopy(path_buf, file_path.data, copy_size);
+    path_buf[copy_size] = 0;
+    
+    struct stat st;
+    if (stat(path_buf, &st) == 0) {
+        props.size = st.st_size;
+        props.modified = st.st_mtime;
+        props.created = st.st_ctime;
+        
+        if (S_ISDIR(st.st_mode)) {
+            props.flags |= File_Property_Is_Folder;
+        }
+    }
+    
+    return props;
+}
+
+internal File_Info_List *
+os_file_info_list_from_dir(Arena *arena, String dir_path)
+{
+    File_Info_List *list = push_array(arena, File_Info_List, 1);
+    *list = (File_Info_List){0};
+    
+    // Convert String to null-terminated path
+    char path_buf[4096];
+    u32 copy_size = Min(dir_path.size, sizeof(path_buf)-1);
+    MemoryCopy(path_buf, dir_path.data, copy_size);
+    path_buf[copy_size] = 0;
+    
+    DIR *dir = opendir(path_buf);
+    if (!dir) {
+        return list;  // Return empty list
+    }
+    
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != NULL) {
+        // Skip . and ..
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+            continue;
+        }
+        
+        File_Info_Node *node = push_array(arena, File_Info_Node, 1);
+        node->info.name = string_copy(arena, string_from_cstr(entry->d_name));
+        
+        // Get file properties
+        char full_path[4096];
+        snprintf(full_path, sizeof(full_path), "%s/%s", path_buf, entry->d_name);
+        struct stat st;
+        if (stat(full_path, &st) == 0) {
+            node->info.props.size = st.st_size;
+            node->info.props.modified = st.st_mtime;
+            node->info.props.created = st.st_ctime;
+            
+            if (S_ISDIR(st.st_mode)) {
+                node->info.props.flags |= File_Property_Is_Folder;
+            }
+        }
+        
+        // Add to list
+        SLLQueuePush(list->first, list->last, node);
+        list->count++;
+    }
+    
+    closedir(dir);
+    return list;
 }

@@ -83,11 +83,13 @@ fi
 
 # --- Check for required binary name argument ---------------------------------
 if [ $# -lt 1 ]; then
-    echo "Usage: $0 <binary_name> [run] [debug|release] [clang|gcc]"
+    echo "Usage: $0 <binary_name> [run] [debug|release] [profile] [clang|gcc]"
     echo "       $0 lint              # Show all warnings"
     echo "       $0 lint-fix          # Auto-format code"
     echo "Example: $0 dbui"
     echo "Example: $0 tansaku release"
+    echo "Example: $0 tansaku profile     # Build with profiling"
+    echo "Example: $0 tansaku release profile  # Release with profiling"
     echo "Example: $0 tansaku run       # Build and run"
     exit 1
 fi
@@ -117,6 +119,7 @@ fi
 
 if [[ "${debug:-0}" == "1" ]]; then echo "[debug mode]"; fi
 if [[ "${release:-0}" == "1" ]]; then echo "[release mode]"; fi
+if [[ "${profile:-0}" == "1" ]]; then echo "[profile mode enabled]"; fi
 if [[ "${clang:-0}" == "1" ]]; then echo "[clang compile]"; fi
 if [[ "${gcc:-0}" == "1" ]]; then echo "[gcc compile]"; fi
 
@@ -131,20 +134,27 @@ echo "[Detected OS: $OS_NAME]"
 # --- Compile/Link Line Definitions -------------------------------------------
 common="-Isrc/ -g -DBUILD_GIT_HASH=\"$git_hash\" -DBUILD_GIT_HASH_FULL=\"$git_hash_full\" -Wall -Wno-unused-function -Wno-unused-variable -D_GNU_SOURCE -DGL_SILENCE_DEPRECATION"
 
+# Add profiling flags if requested
+profile_flags=""
+if [[ "${profile:-0}" == "1" ]]; then
+    profile_flags="-DENABLE_PROFILE=1"
+    echo "[Profiling enabled]"
+fi
+
 if [ "$OS_NAME" = "Darwin" ]; then
     # macOS specific settings
     echo "[Building for macOS with Metal renderer]"
     link_flags="-framework Cocoa -framework Metal -framework MetalKit -framework QuartzCore -framework IOKit -framework CoreVideo -ldl -lm"
     objc_flags="-x objective-c"
-    debug_flags="$compiler -O0 -DBUILD_DEBUG=1 -DUSE_METAL=1 ${common}"
-    release_flags="$compiler -O3 -DBUILD_DEBUG=0 -DUSE_METAL=1 ${common}"
+    debug_flags="$compiler -O0 -DBUILD_DEBUG=1 -DUSE_METAL=1 ${common} ${profile_flags}"
+    release_flags="$compiler -O3 -DBUILD_DEBUG=0 -DUSE_METAL=1 ${common} ${profile_flags}"
 elif [ "$OS_NAME" = "Linux" ]; then
     # Linux specific settings
     echo "[Building for Linux with Vulkan renderer]"
     common="$common -D_POSIX_C_SOURCE=200809L"
     link_flags="-lvulkan -lX11 -ldl -lm"
-    debug_flags="$compiler -O0 -DBUILD_DEBUG=1 -DUSE_VULKAN=1 ${common}"
-    release_flags="$compiler -O3 -DBUILD_DEBUG=0 -DUSE_VULKAN=1 ${common}"
+    debug_flags="$compiler -O0 -DBUILD_DEBUG=1 -DUSE_VULKAN=1 ${common} ${profile_flags}"
+    release_flags="$compiler -O3 -DBUILD_DEBUG=0 -DUSE_VULKAN=1 ${common} ${profile_flags}"
 else
     echo "Unsupported OS: $OS_NAME"
     exit 1
