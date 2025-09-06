@@ -7,13 +7,137 @@
 internal void
 print_help(String bin_name)
 {
-    log_info("Usage: {s} [options] [files...]\n", bin_name);
-    log_info("Options:\n");
+    log_info("Usage: {s} [search_pattern] [path] [options]\n", bin_name);
+    log_info("\nExamples:\n");
+    log_info("  {s} \"TODO\" /path/to/dir           Search for 'TODO' in all files\n", bin_name);
+    log_info("  {s} \"*.c\" /path/to/dir --files     Search for .c files by name\n", bin_name);
+    log_info("  {s} main src/                      Search for 'main' in src/ files\n", bin_name);
+    log_info("\nOptions:\n");
     log_info("  -h, --help          Show this help message\n");
     log_info("  -v, --verbose       Enable verbose output\n");
-    log_info("  -o, --output=FILE   Specify output file\n");
-    log_info("  -s, --search=TERM   Search for term in files\n");
+    log_info("  --files             Search only file names (not contents)\n");
     log_info("  --mmap              Use memory mapping for file access\n");
+    log_info("  -r, --recursive     Search directories recursively (default)\n");
+}
+
+internal b32
+string_contains(String haystack, String needle)
+{
+    if (needle.size == 0 || needle.size > haystack.size)
+        return 0;
+
+    for (u32 i = 0; i <= haystack.size - needle.size; i++)
+    {
+        if (MemoryCompare(haystack.data + i, needle.data, needle.size) == 0)
+        {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+internal b32
+pattern_match_simple(String filename, String pattern)
+{
+    // Simple pattern matching with * wildcard
+    if (pattern.size == 0)
+        return 1;
+
+    // Check for wildcard patterns
+    b32 starts_with_star = (pattern.data[0] == '*');
+    b32 ends_with_star = (pattern.data[pattern.size - 1] == '*');
+
+    if (starts_with_star && ends_with_star && pattern.size > 2)
+    {
+        // *pattern* - contains
+        String search = str(pattern.data + 1, pattern.size - 2);
+        return string_contains(filename, search);
+    }
+    else if (starts_with_star && pattern.size > 1)
+    {
+        // *pattern - ends with
+        String suffix = str(pattern.data + 1, pattern.size - 1);
+        if (filename.size >= suffix.size)
+        {
+            return str_match(str(filename.data + filename.size - suffix.size, suffix.size), suffix);
+        }
+    }
+    else if (ends_with_star && pattern.size > 1)
+    {
+        // pattern* - starts with
+        String prefix = str(pattern.data, pattern.size - 1);
+        if (filename.size >= prefix.size)
+        {
+            return str_match(str(filename.data, prefix.size), prefix);
+        }
+    }
+    else
+    {
+        // No wildcards - exact match or contains
+        return string_contains(filename, pattern);
+    }
+
+    return 0;
+}
+
+internal void
+search_directory(Arena *arena, String dir_path, String search_pattern, b32 search_files_only,
+                 b32 use_mmap, b32 verbose, b32 recursive)
+{
+    File_Info_List *file_list = os_file_info_list_from_dir(arena, dir_path);
+
+    if (!file_list)
+    {
+        log_error("Failed to read directory: {s}\n", dir_path);
+        return;
+    }
+
+    for (File_Info_Node *node = file_list->first; node; node = node->next)
+    {
+        File_Info *info = &node->info;
+
+        // Build full path
+        String full_path = str(info->name.data, info->name.size);
+        if (dir_path.size > 0 && dir_path.data[dir_path.size - 1] != '/')
+        {
+            Scratch scratch = scratch_begin(arena);
+            full_path = string_copy(scratch.arena, str_lit(""));
+            String parts[] = {dir_path, str_lit("/"), info->name};
+            for (int i = 0; i < 3; i++)
+            {
+                u8 *new_data = push_array(scratch.arena, u8, full_path.size + parts[i].size);
+                MemoryCopy(new_data, full_path.data, full_path.size);
+                MemoryCopy(new_data + full_path.size, parts[i].data, parts[i].size);
+                full_path.data = new_data;
+                full_path.size += parts[i].size;
+            }
+        }
+
+        if (info->props.flags & File_Property_Is_Folder)
+        {
+            if (recursive)
+            {
+                search_directory(arena, full_path, search_pattern, search_files_only,
+                                 use_mmap, verbose, recursive);
+            }
+        }
+        else
+        {
+            if (search_files_only)
+            {
+                // Search only filenames
+                if (pattern_match_simple(info->name, search_pattern))
+                {
+                    log_info("{s}\n", full_path);
+                }
+            }
+            else
+            {
+                // Search file contents
+                process_file(arena, full_path, search_pattern, use_mmap, verbose);
+            }
+        }
+    }
 }
 
 internal void
@@ -97,73 +221,98 @@ run_tansaku(Cmd_Line *cmd_line)
 {
     // Check for help flag
     if (cmd_line_has_flag(cmd_line, str_lit("help")) ||
-        cmd_line_has_flag(cmd_line, str_lit("h")))
+        cmd_line_has_flag(cmd_line, str_lit("h")) ||
+        cmd_line->inputs.node_count == 0)
     {
         print_help(cmd_line->bin_name);
         return 0;
     }
 
-    // Check for verbose flag
+    // Parse positional arguments: [search_pattern] [path]
+    String search_pattern = {0};
+    String search_path = str_lit("."); // Default to current directory
+
+    if (cmd_line->inputs.node_count >= 1)
+    {
+        search_pattern = cmd_line->inputs.first->string;
+    }
+
+    if (cmd_line->inputs.node_count >= 2)
+    {
+        search_path = cmd_line->inputs.first->next->string;
+    }
+
+    // Check flags
     b32 verbose = cmd_line_has_flag(cmd_line, str_lit("verbose")) ||
                   cmd_line_has_flag(cmd_line, str_lit("v"));
 
-    if (verbose)
-    {
-        log_info("Verbose mode enabled\n");
+    b32 search_files_only = cmd_line_has_flag(cmd_line, str_lit("files"));
 
-        // Print all options
-        for (Cmd_Line_Option *opt = cmd_line->options.first; opt; opt = opt->next)
-        {
-            log_info("Option: {s} = {s}\n", opt->string, opt->value_string);
-        }
+    b32 recursive = !cmd_line_has_flag(cmd_line, str_lit("no-recursive"));
+    if (cmd_line_has_flag(cmd_line, str_lit("recursive")) ||
+        cmd_line_has_flag(cmd_line, str_lit("r")))
+    {
+        recursive = 1;
     }
 
-    // Check for output file
-    if (cmd_line_has_flag(cmd_line, str_lit("output")) ||
-        cmd_line_has_flag(cmd_line, str_lit("o")))
-    {
-        String output = cmd_line_string(cmd_line, str_lit("output"));
-        if (output.size == 0)
-        {
-            output = cmd_line_string(cmd_line, str_lit("o"));
-        }
-        log_info("Output file: {s}\n", output);
-    }
-
-    // Check for search term
-    String search_term = {0};
-    if (cmd_line_has_flag(cmd_line, str_lit("search")) ||
-        cmd_line_has_flag(cmd_line, str_lit("s")))
-    {
-        search_term = cmd_line_string(cmd_line, str_lit("search"));
-        if (search_term.size == 0)
-        {
-            search_term = cmd_line_string(cmd_line, str_lit("s"));
-        }
-        if (search_term.size > 0)
-        {
-            log_info("Searching for: {s}\n", search_term);
-        }
-    }
-
-    // Check if we should use memory mapping
     b32 use_mmap = cmd_line_has_flag(cmd_line, str_lit("mmap"));
 
-    // Process input files
-    if (cmd_line->inputs.node_count > 0)
+    if (verbose)
     {
-        log_info("Processing {d} input files:\n", cmd_line->inputs.node_count);
+        log_info("Search pattern: {s}\n", search_pattern);
+        log_info("Search path: {s}\n", search_path);
+        log_info("Mode: {s}\n", search_files_only ? str_lit("filenames only") : str_lit("file contents"));
+        log_info("Recursive: {s}\n", recursive ? str_lit("yes") : str_lit("no"));
+        log_info("Memory mapping: {s}\n\n", use_mmap ? str_lit("enabled") : str_lit("disabled"));
+    }
+
+    // Check if search_path is a directory or file
+    if (os_file_exists(search_path))
+    {
+        File_Properties props = os_file_properties_from_path(search_path);
 
         Arena *temp_arena = arena_alloc();
-        for (String_Node *node = cmd_line->inputs.first; node; node = node->next)
+
+        if (props.flags & File_Property_Is_Folder)
         {
-            process_file(temp_arena, node->string, search_term, use_mmap, verbose);
+            // It's a directory - search it
+            search_directory(temp_arena, search_path, search_pattern, search_files_only,
+                             use_mmap, verbose, recursive);
         }
+        else
+        {
+            // It's a single file
+            if (search_files_only)
+            {
+                // Extract just the filename from the path
+                String filename = search_path;
+                for (s32 i = search_path.size - 1; i >= 0; i--)
+                {
+                    if (search_path.data[i] == '/' || search_path.data[i] == '\\')
+                    {
+                        filename = str(search_path.data + i + 1, search_path.size - i - 1);
+                        break;
+                    }
+                }
+
+                if (pattern_match_simple(filename, search_pattern))
+                {
+                    log_info("{s}\n", search_path);
+                }
+            }
+            else
+            {
+                // Search file contents
+                process_file(temp_arena, search_path, search_pattern, use_mmap, verbose);
+            }
+        }
+
         arena_release(temp_arena);
     }
     else
     {
-        log_info("No input files specified. Use --help for usage.\n");
+        log_error("Path does not exist: {s}\n", search_path);
+        return 1;
     }
 
     return 0;

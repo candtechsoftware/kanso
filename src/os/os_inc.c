@@ -265,7 +265,7 @@ os_key_from_codepoint(u32 codepoint, OS_Modifiers *modifiers)
 
     if (codepoint >= 'a' && codepoint <= 'z')
     {
-        result =(OS_Key)(OS_Key_A + (codepoint - 'a'));
+        result = (OS_Key)(OS_Key_A + (codepoint - 'a'));
     }
     else if (codepoint >= 'A' && codepoint <= 'Z')
     {

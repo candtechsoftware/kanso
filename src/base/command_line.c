@@ -49,17 +49,17 @@ cmd_line_intsert_opt(Arena *arena, Cmd_Line *cmd_line, String string, String_Lis
     }
     else
     {
-        var = push_array(arena, Cmd_Line_Option, 1); 
+        var = push_array(arena, Cmd_Line_Option, 1);
         var->hash_next = *slot;
-        var->hash = u64_hash_from_str(string); 
+        var->hash = u64_hash_from_str(string);
         var->string = string_copy(arena, string);
-        var->value_strings = values; 
-        String_Join join = {0}; 
-        join.pre = str_lit(""); 
-        join.sep = str_lit(","); 
-        join.post = str_lit(""); 
+        var->value_strings = values;
+        String_Join join = {0};
+        join.pre = str_lit("");
+        join.sep = str_lit(",");
+        join.post = str_lit("");
         var->value_string = str_list_join(arena, &var->value_strings, &join);
-        *slot = var; 
+        *slot = var;
         cmd_line_push_opt(&cmd_line->options, var);
     }
 
@@ -69,23 +69,24 @@ internal Cmd_Line
 cmd_line_from_string_list(Arena *arena, String_List args)
 {
     Cmd_Line parsed = {0};
-    
+
     // First argument is the binary name
-    if (args.first) {
+    if (args.first)
+    {
         parsed.bin_name = args.first->string;
     }
-    
+
     parsed.option_table_size = 64;
-    parsed.option_table = push_array(arena, Cmd_Line_Option*, parsed.option_table_size);
-    
+    parsed.option_table = push_array(arena, Cmd_Line_Option *, parsed.option_table_size);
+
     // Parse options and inputs
-    b32 after_passthrough = 0;  // After "--", everything is input
-    
+    b32 after_passthrough = 0; // After "--", everything is input
+
     for (String_Node *node = args.first ? args.first->next : 0; node; node = node->next)
     {
-        b32 is_option = 0;
+        b32    is_option = 0;
         String option_name = node->string;
-        
+
         if (!after_passthrough)
         {
             // Check for "--" passthrough marker
@@ -95,8 +96,8 @@ cmd_line_from_string_list(Arena *arena, String_List args)
                 continue;
             }
             // Check for long option "--xxx"
-            else if (node->string.size >= 2 && 
-                     node->string.data[0] == '-' && 
+            else if (node->string.size >= 2 &&
+                     node->string.data[0] == '-' &&
                      node->string.data[1] == '-')
             {
                 is_option = 1;
@@ -111,19 +112,20 @@ cmd_line_from_string_list(Arena *arena, String_List args)
                 option_name.size -= 1;
             }
         }
-        
+
         if (is_option && option_name.size > 0)
         {
             // Check for value with = or :
             String_List values = {0};
-            b32 has_inline_value = 0;
-            
+            b32         has_inline_value = 0;
+
             for (u32 i = 0; i < option_name.size; i++)
             {
                 if (option_name.data[i] == '=' || option_name.data[i] == ':')
                 {
                     String value = str(option_name.data + i + 1, option_name.size - i - 1);
-                    if (value.size > 0) {
+                    if (value.size > 0)
+                    {
                         string_list_push(arena, &values, value);
                     }
                     option_name.size = i;
@@ -131,17 +133,17 @@ cmd_line_from_string_list(Arena *arena, String_List args)
                     break;
                 }
             }
-            
+
             // Collect following arguments as values if they don't start with -
-            if (!has_inline_value && node->next && 
-                node->next->string.size > 0 && 
+            if (!has_inline_value && node->next &&
+                node->next->string.size > 0 &&
                 node->next->string.data[0] != '-')
             {
                 String_Node *val_node = node->next;
                 string_list_push(arena, &values, val_node->string);
                 node = val_node; // Skip the value in next iteration
             }
-            
+
             // Insert the option
             cmd_line_intsert_opt(arena, &parsed, option_name, values);
         }
@@ -151,7 +153,7 @@ cmd_line_from_string_list(Arena *arena, String_List args)
             string_list_push(arena, &parsed.inputs, node->string);
         }
     }
-    
+
     return parsed;
 }
 
@@ -159,16 +161,17 @@ internal Cmd_Line_Option *
 cmd_line_opt_from_string(Cmd_Line *cmd_line, String name)
 {
     Cmd_Line_Option **slot = cmd_line_slot_from_string(cmd_line, name);
-    Cmd_Line_Option *opt = cmd_line_opt_from_slot(slot, name);
+    Cmd_Line_Option  *opt = cmd_line_opt_from_slot(slot, name);
     return opt;
 }
 
 internal String_List
 cmd_line_strings(Cmd_Line *cmd_line, String name)
 {
-    String_List result = {0};
+    String_List      result = {0};
     Cmd_Line_Option *opt = cmd_line_opt_from_string(cmd_line, name);
-    if (opt) {
+    if (opt)
+    {
         result = opt->value_strings;
     }
     return result;
@@ -177,9 +180,10 @@ cmd_line_strings(Cmd_Line *cmd_line, String name)
 internal String
 cmd_line_string(Cmd_Line *cmd_line, String name)
 {
-    String result = {0};
+    String           result = {0};
     Cmd_Line_Option *opt = cmd_line_opt_from_string(cmd_line, name);
-    if (opt) {
+    if (opt)
+    {
         result = opt->value_string;
     }
     return result;

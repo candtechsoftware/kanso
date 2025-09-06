@@ -474,68 +474,74 @@ os_get_time(void)
 #endif
 }
 
-internal String_List 
-os_string_list_from_argcv(Arena *arena, int argc, char **argv) 
+internal String_List
+os_string_list_from_argcv(Arena *arena, int argc, char **argv)
 {
     String_List res = {0};
 
-    for (int i = 0; i < argc; i ++) 
+    for (int i = 0; i < argc; i++)
     {
-        String str = string_from_cstr(argv[i]); 
-        string_list_push(arena, &res, str); 
-
-    } 
-    return res; 
-} 
+        String str = string_from_cstr(argv[i]);
+        string_list_push(arena, &res, str);
+    }
+    return res;
+}
 
 ////////////////////////////////
 //~ Memory-mapped file functions
 
 internal void *
-os_file_map_view(String file_path, u64 *out_size) 
+os_file_map_view(String file_path, u64 *out_size)
 {
     // Convert String to null-terminated path
     char path_buf[4096];
-    u32 copy_size = Min(file_path.size, sizeof(path_buf)-1);
+    u32  copy_size = Min(file_path.size, sizeof(path_buf) - 1);
     MemoryCopy(path_buf, file_path.data, copy_size);
     path_buf[copy_size] = 0;
-    
+
     int fd = open(path_buf, O_RDONLY);
-    if (fd == -1) return 0;
-    
+    if (fd == -1)
+        return 0;
+
     struct stat st;
-    if (fstat(fd, &st) == -1) {
+    if (fstat(fd, &st) == -1)
+    {
         close(fd);
         return 0;
     }
-    
+
     void *ptr = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
     close(fd);
-    
-    if (ptr == MAP_FAILED) return 0;
-    
-    if (out_size) *out_size = st.st_size;
+
+    if (ptr == MAP_FAILED)
+        return 0;
+
+    if (out_size)
+        *out_size = st.st_size;
     return ptr;
 }
 
 internal void
 os_file_unmap_view(void *ptr, u64 size)
 {
-    if (ptr) munmap(ptr, size);
+    if (ptr)
+        munmap(ptr, size);
 }
 
 internal String
 os_file_map_view_string(String file_path, u64 *out_ptr)
 {
     String result = {0};
-    u64 size = 0;
-    void *ptr = os_file_map_view(file_path, &size);
-    
-    if (ptr) {
-        result.data = (u8*)ptr;
+    u64    size = 0;
+    void  *ptr = os_file_map_view(file_path, &size);
+
+    if (ptr)
+    {
+        result.data = (u8 *)ptr;
         result.size = size;
-        if (out_ptr) *out_ptr = (u64)ptr;
+        if (out_ptr)
+            *out_ptr = (u64)ptr;
     }
-    
+
     return result;
 }

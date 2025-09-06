@@ -32,10 +32,10 @@
                                                         : (X))
 
 // Memory operations
-#define MemoryZero(s, z)    memset((s), 0, (z))
-#define MemoryZeroStruct(s) MemoryZero((s), sizeof(*(s)))
-#define MemoryCopyStruct(d,s)  MemoryCopy((d),(s),sizeof(*(d)))
-#define MemoryCopyArray(d,s)   MemoryCopy((d),(s),sizeof(d))
+#define MemoryZero(s, z)           memset((s), 0, (z))
+#define MemoryZeroStruct(s)        MemoryZero((s), sizeof(*(s)))
+#define MemoryCopyStruct(d, s)     MemoryCopy((d), (s), sizeof(*(d)))
+#define MemoryCopyArray(d, s)      MemoryCopy((d), (s), sizeof(d))
 #define MemoryCopy(dst, src, size) memmove((dst), (src), (size))
 #define MemorySet(dst, byte, size) memset((dst), (byte), (size))
 #define MemoryCompare(a, b, size)  memcmp((a), (b), (size))

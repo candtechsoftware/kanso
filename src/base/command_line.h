@@ -34,14 +34,13 @@ struct Cmd_Line
     u64               argc;
 };
 
-
-internal Cmd_Line_Option** cmd_line_slot_from_string(Cmd_Line *cmd_line, String string);
-internal Cmd_Line_Option*  cmd_line_opt_from_slot(Cmd_Line_Option **slot, String string); 
+internal Cmd_Line_Option **cmd_line_slot_from_string(Cmd_Line *cmd_line, String string);
+internal Cmd_Line_Option  *cmd_line_opt_from_slot(Cmd_Line_Option **slot, String string);
 internal void              cmd_line_push_opt(Cmd_Line_List *list, Cmd_Line_Option *var);
-internal Cmd_Line_Option*  cmd_line_intsert_opt(Arena *arena, Cmd_Line *cmd_line, String string, String_List values);
-internal Cmd_Line          cmd_line_from_string_list(Arena *arena, String_List args); 
-internal Cmd_Line_Option*  cmd_line_opt_from_string(Cmd_Line *cmd_line, String name);
-internal String_List       cmd_line_strings(Cmd_Line *cmd_line, String name); 
-internal String            cmd_line_string(Cmd_Line *cmd_line, String name); 
-internal b32               cmd_line_has_flag(Cmd_Line *cmd_line, String name); 
+internal Cmd_Line_Option  *cmd_line_intsert_opt(Arena *arena, Cmd_Line *cmd_line, String string, String_List values);
+internal Cmd_Line          cmd_line_from_string_list(Arena *arena, String_List args);
+internal Cmd_Line_Option  *cmd_line_opt_from_string(Cmd_Line *cmd_line, String name);
+internal String_List       cmd_line_strings(Cmd_Line *cmd_line, String name);
+internal String            cmd_line_string(Cmd_Line *cmd_line, String name);
+internal b32               cmd_line_has_flag(Cmd_Line *cmd_line, String name);
 internal b32               cmd_line_has_arg(Cmd_Line *cmd_line, String name);

@@ -281,6 +281,6 @@ str_list_join(Arena *arena, String_List *list, String_Join *optional_params)
     MemoryCopy(ptr, join.post.data, join.post.size);
     ptr += join.post.size;
 
-    *ptr = 0; 
+    *ptr = 0;
     return res;
 }

@@ -119,8 +119,6 @@ struct OS_File_Info
 
 typedef void OS_Thread_Func(void *ptr);
 
-
-
 internal String_List os_string_list_from_argcv(Arena *arena, int argc, char **argv);
 
 internal void *os_reserve(u64 size);
@@ -133,14 +131,15 @@ internal void     os_mem_release(void *ptr, u64 size);
 internal Sys_Info os_get_sys_info(void);
 
 // File I/O functions
-internal String os_read_entire_file(Arena *arena, String file_path);
-internal b32    os_write_entire_file(String file_path, String data);
-internal b32    os_file_exists(String file_path);
-internal u64    os_file_last_write_time(String file_path);
+internal String          os_read_entire_file(Arena *arena, String file_path);
+internal b32             os_write_entire_file(String file_path, String data);
+internal b32             os_file_exists(String file_path);
+internal u64             os_file_last_write_time(String file_path);
+internal File_Properties os_file_properties_from_path(String file_path);
 
 // Memory-mapped file functions for fast searching
-internal void *os_file_map_view(String file_path, u64 *out_size);
-internal void  os_file_unmap_view(void *ptr, u64 size);
+internal void  *os_file_map_view(String file_path, u64 *out_size);
+internal void   os_file_unmap_view(void *ptr, u64 size);
 internal String os_file_map_view_string(String file_path, u64 *out_ptr);
 
 // Time functions
