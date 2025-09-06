@@ -34,13 +34,27 @@
 // Memory operations
 #define MemoryZero(s, z)    memset((s), 0, (z))
 #define MemoryZeroStruct(s) MemoryZero((s), sizeof(*(s)))
-
+#define MemoryCopyStruct(d,s)  MemoryCopy((d),(s),sizeof(*(d)))
+#define MemoryCopyArray(d,s)   MemoryCopy((d),(s),sizeof(d))
 #define MemoryCopy(dst, src, size) memmove((dst), (src), (size))
 #define MemorySet(dst, byte, size) memset((dst), (byte), (size))
 #define MemoryCompare(a, b, size)  memcmp((a), (b), (size))
 
 // Alignment
 #define AlignPow2(x, b) (((x) + (b) - 1) & (~((b) - 1)))
+
+// alignof macro for C99 compatibility
+#if !defined(alignof)
+#    if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+#        define alignof(T) _Alignof(T)
+#    elif defined(__GNUC__) || defined(__clang__)
+#        define alignof(T) __alignof__(T)
+#    elif defined(_MSC_VER)
+#        define alignof(T) __alignof(T)
+#    else
+#        define alignof(T) (sizeof(T))
+#    endif
+#endif
 
 #ifdef _WIN32
 #    define DEBUG_BREAK() __debugbreak()

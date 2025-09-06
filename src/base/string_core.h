@@ -2,12 +2,42 @@
 
 #include <string.h>
 #include "arena.h"
+#include "util.h"
+#if !defined(XXH_IMPLEMENTATION)
+#    define XXH_IMPLEMENTATION
+#    define XXH_STATIC_LINKING_ONLY
+#    include "../../third_party/xxhash/xxhash.h"
+#endif
 
 typedef struct String String;
 struct String
 {
     u8 *data;
     u32 size;
+};
+
+typedef struct String_Node String_Node;
+struct String_Node
+{
+    String_Node *next;
+    String       string;
+};
+
+typedef struct String_List String_List;
+struct String_List
+{
+    String_Node *first;
+    String_Node *last;
+    u64          node_count;
+    u64          total_size;
+};
+
+typedef struct String_Join String_Join;
+struct String_Join
+{
+    String pre;
+    String sep;
+    String post;
 };
 
 typedef struct String32 String32;
@@ -138,7 +168,7 @@ string32_from_string(Arena *arena, String in)
 }
 
 static inline String
-str8(u8 *data, u32 size)
+str(u8 *data, u32 size)
 {
     String result;
     result.data = data;
@@ -147,7 +177,7 @@ str8(u8 *data, u32 size)
 }
 
 static inline String
-str8_push_copy(Arena *arena, String src)
+str_push_copy(Arena *arena, String src)
 {
     String result;
     result.size = src.size;
@@ -158,7 +188,7 @@ str8_push_copy(Arena *arena, String src)
 
 // Create string from C string
 static inline String
-string8_from_cstr(const char *cstr)
+string_from_cstr(const char *cstr)
 {
     String result;
     result.data = (u8 *)cstr;
@@ -174,5 +204,83 @@ string8_from_cstr(const char *cstr)
 }
 
 // Aliases for compatibility
-#define push_string_copy str8_push_copy
+#define push_string_copy str_push_copy
 #define string_match     str_match
+
+internal String_Node *
+string_list_push_node_set_string(String_List *list, String_Node *node, String string)
+{
+    SLLQueuePush(list->first, list->last, node);
+    list->node_count += 1;
+    list->total_size += string.size;
+    node->string = string;
+    return (node);
+}
+internal String_Node *
+string_list_push(Arena *arena, String_List *list, String string)
+{
+    String_Node *node = push_array_no_zero(arena, String_Node, 1);
+    string_list_push_node_set_string(list, node, string);
+    return (node);
+}
+
+internal u64
+u64_hash_from_seed_str(u64 seed, String string)
+{
+    u64 result = XXH3_64bits_withSeed(string.data, string.size, seed);
+    return result;
+}
+
+internal u64
+u64_hash_from_str(String string)
+{
+    u64 result = u64_hash_from_seed_str(5381, string);
+    return result;
+}
+
+internal String
+string_copy(Arena *arena, String s)
+{
+    String string;
+    string.size = s.size;
+    string.data = push_array_zero(arena, u8, string.size + 1);
+    MemoryCopy(string.data, s.data, s.size);
+    string.data[s.size] = 0;
+    return string;
+}
+
+internal String
+str_list_join(Arena *arena, String_List *list, String_Join *optional_params)
+{
+    String_Join join = {0};
+    if (optional_params != 0)
+    {
+        MemoryCopyStruct(&join, optional_params);
+    }
+    u64 sep_count = 0;
+    if (list->node_count > 0)
+    {
+        sep_count = list->node_count - 1;
+    }
+    String res;
+    res.size = join.pre.size + join.post.size + sep_count * join.sep.size + list->total_size;
+    u8 *ptr = res.data = push_array_no_zero(arena, u8, res.size + 1);
+
+    MemoryCopy(ptr, join.pre.data, join.pre.size);
+    ptr += join.pre.size;
+    for (String_Node *node = list->first; node != 0; node = node->next)
+    {
+        MemoryCopy(ptr, node->string.data, node->string.size);
+        ptr += node->string.size;
+        if (node->next != 0)
+        {
+            MemoryCopy(ptr, join.sep.data, join.sep.size);
+            ptr += join.sep.size;
+        }
+    }
+    MemoryCopy(ptr, join.post.data, join.post.size);
+    ptr += join.post.size;
+
+    *ptr = 0; 
+    return res;
+}

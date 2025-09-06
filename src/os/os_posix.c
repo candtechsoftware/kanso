@@ -387,7 +387,7 @@ os_file_iter_next(Arena *arena, OS_File_Iter *iter, OS_File_Info *out_info)
         if (!skip)
         {
             u32 name_len = strlen(entry->d_name);
-            out_info->name = str8_push_copy(arena, str8((u8 *)entry->d_name, name_len));
+            out_info->name = str_push_copy(arena, str((u8 *)entry->d_name, name_len));
 
             out_info->props.flags = (File_Property_Flags)0;
             if (is_directory)
@@ -472,4 +472,70 @@ os_get_time(void)
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (f64)ts.tv_sec + (f64)ts.tv_nsec / 1e9;
 #endif
+}
+
+internal String_List 
+os_string_list_from_argcv(Arena *arena, int argc, char **argv) 
+{
+    String_List res = {0};
+
+    for (int i = 0; i < argc; i ++) 
+    {
+        String str = string_from_cstr(argv[i]); 
+        string_list_push(arena, &res, str); 
+
+    } 
+    return res; 
+} 
+
+////////////////////////////////
+//~ Memory-mapped file functions
+
+internal void *
+os_file_map_view(String file_path, u64 *out_size) 
+{
+    // Convert String to null-terminated path
+    char path_buf[4096];
+    u32 copy_size = Min(file_path.size, sizeof(path_buf)-1);
+    MemoryCopy(path_buf, file_path.data, copy_size);
+    path_buf[copy_size] = 0;
+    
+    int fd = open(path_buf, O_RDONLY);
+    if (fd == -1) return 0;
+    
+    struct stat st;
+    if (fstat(fd, &st) == -1) {
+        close(fd);
+        return 0;
+    }
+    
+    void *ptr = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    close(fd);
+    
+    if (ptr == MAP_FAILED) return 0;
+    
+    if (out_size) *out_size = st.st_size;
+    return ptr;
+}
+
+internal void
+os_file_unmap_view(void *ptr, u64 size)
+{
+    if (ptr) munmap(ptr, size);
+}
+
+internal String
+os_file_map_view_string(String file_path, u64 *out_ptr)
+{
+    String result = {0};
+    u64 size = 0;
+    void *ptr = os_file_map_view(file_path, &size);
+    
+    if (ptr) {
+        result.data = (u8*)ptr;
+        result.size = size;
+        if (out_ptr) *out_ptr = (u64)ptr;
+    }
+    
+    return result;
 }

@@ -1,5 +1,6 @@
 #include "tctx.c"
 #include "util.c"
 #include "arena.c"
+#include "command_line.c"
 #include "logger.c"
 #include "../../third_party/xxhash/xxhash.c"

@@ -12,3 +12,4 @@
 #include "array.h"
 #include "hash_table.h"
 #include "tctx.h"
+#include "command_line.h"
