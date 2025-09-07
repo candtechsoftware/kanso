@@ -92,7 +92,6 @@ renderer_metal_sample_channel_map_from_tex_2d_format(Renderer_Tex_2D_Format fmt)
 void
 renderer_init()
 {
-    ZoneScoped;
 
     if (r_metal_state)
     {
@@ -133,12 +132,21 @@ renderer_init()
 
     renderer_metal_init_shaders();
 
+    // Create blur sampler (linear filtering for smooth blur)
     MTLSamplerDescriptor *sampler_desc = [MTLSamplerDescriptor new];
     sampler_desc.minFilter = MTLSamplerMinMagFilterLinear;
     sampler_desc.magFilter = MTLSamplerMinMagFilterLinear;
     sampler_desc.sAddressMode = MTLSamplerAddressModeClampToEdge;
     sampler_desc.tAddressMode = MTLSamplerAddressModeClampToEdge;
     r_metal_state->blur_sampler = metal_retain([device newSamplerStateWithDescriptor:sampler_desc]);
+    
+    // Create font sampler (nearest filtering for crisp text)
+    MTLSamplerDescriptor *font_sampler_desc = [MTLSamplerDescriptor new];
+    font_sampler_desc.minFilter = MTLSamplerMinMagFilterNearest;
+    font_sampler_desc.magFilter = MTLSamplerMinMagFilterNearest;
+    font_sampler_desc.sAddressMode = MTLSamplerAddressModeClampToEdge;
+    font_sampler_desc.tAddressMode = MTLSamplerAddressModeClampToEdge;
+    r_metal_state->font_sampler = metal_retain([device newSamplerStateWithDescriptor:font_sampler_desc]);
 
     // Initialize frame data for triple buffering
     for (u32 i = 0; i < METAL_FRAMES_IN_FLIGHT; i++)
@@ -200,6 +208,7 @@ renderer_init()
 Renderer_Handle
 renderer_window_equip(void *window)
 {
+    Prof_Begin(__FUNCTION__);
     if (!r_metal_state || !window)
     {
         return renderer_handle_zero();
@@ -327,7 +336,7 @@ renderer_window_unequip(void *window, Renderer_Handle window_equip)
 Renderer_Handle
 renderer_tex_2d_alloc(Renderer_Resource_Kind kind, Vec2_f32 size, Renderer_Tex_2D_Format format, void *data)
 {
-    ZoneScoped;
+    Prof_Begin(__FUNCTION__);
     if (!r_metal_state)
     {
         return renderer_handle_zero();
@@ -379,7 +388,7 @@ renderer_tex_2d_alloc(Renderer_Resource_Kind kind, Vec2_f32 size, Renderer_Tex_2
     // Upload initial data if provided
     if (data)
     {
-        ZoneScopedN("MetalTextureUpload");
+        Prof_Begin("MetalTextureUpload");
         NSUInteger bytes_per_row = 0;
         switch (format)
         {
@@ -410,7 +419,8 @@ renderer_tex_2d_alloc(Renderer_Resource_Kind kind, Vec2_f32 size, Renderer_Tex_2
                                        bytesPerRow:bytes_per_row];
     }
 
-    // Create sampler
+    // Create sampler - default to linear filtering for most textures
+    // Font textures will use the dedicated font_sampler with nearest filtering
     MTLSamplerDescriptor *sampler_desc = [MTLSamplerDescriptor new];
     sampler_desc.minFilter = MTLSamplerMinMagFilterLinear;
     sampler_desc.magFilter = MTLSamplerMinMagFilterLinear;
@@ -561,7 +571,7 @@ renderer_fill_tex_2d_region(Renderer_Handle texture, Rng2_f32 subrect, void *dat
 Renderer_Handle
 renderer_buffer_alloc(Renderer_Resource_Kind kind, u64 size, void *data)
 {
-    ZoneScoped;
+    Prof_Begin(__FUNCTION__);
     if (!r_metal_state)
     {
         return renderer_handle_zero();
@@ -608,7 +618,7 @@ renderer_buffer_alloc(Renderer_Resource_Kind kind, u64 size, void *data)
 
     if (data)
     {
-        ZoneScopedN("MetalBufferAllocWithData");
+        Prof_Begin("MetalBufferAllocWithData");
         buf->buffer = metal_retain([metal_device(r_metal_state->device) newBufferWithBytes:data
                                                                                     length:size
                                                                                    options:options]);
@@ -621,7 +631,7 @@ renderer_buffer_alloc(Renderer_Resource_Kind kind, u64 size, void *data)
     }
     else
     {
-        ZoneScopedN("MetalBufferAlloc");
+        Prof_Begin("MetalBufferAlloc");
         buf->buffer = metal_retain([metal_device(r_metal_state->device) newBufferWithLength:size
                                                                                     options:options]);
     }
@@ -634,6 +644,7 @@ renderer_buffer_alloc(Renderer_Resource_Kind kind, u64 size, void *data)
 void
 renderer_buffer_release(Renderer_Handle buffer)
 {
+    Prof_Begin(__FUNCTION__);
     if (!r_metal_state || buffer.u64s[0] == 0)
     {
         return;
@@ -658,21 +669,21 @@ renderer_buffer_release(Renderer_Handle buffer)
 void
 renderer_begin_frame()
 {
-    ZoneScoped;
+    Prof_Begin(__FUNCTION__);
     // Global frame begin operations if needed
 }
 
 void
 renderer_end_frame()
 {
-    ZoneScoped;
+    Prof_Begin(__FUNCTION__);
     // Global frame end operations if needed
 }
 
 void
 renderer_window_begin_frame(void *window, Renderer_Handle window_equip)
 {
-    ZoneScoped;
+    Prof_Begin(__FUNCTION__);
     if (!r_metal_state || window_equip.u64s[0] == 0)
     {
         return;
@@ -724,14 +735,13 @@ renderer_window_begin_frame(void *window, Renderer_Handle window_equip)
 void
 renderer_window_end_frame(void *window, Renderer_Handle window_equip)
 {
-    ZoneScoped;
+    Prof_Begin(__FUNCTION__);
     // Any per-window cleanup
 }
 
 void
 renderer_window_submit(void *window, Renderer_Handle window_equip, Renderer_Pass_List *passes)
 {
-    ZoneScoped;
     if (!r_metal_state || window_equip.u64s[0] == 0 || !passes)
     {
         return;
@@ -755,7 +765,7 @@ renderer_window_submit(void *window, Renderer_Handle window_equip, Renderer_Pass
 
     id<CAMetalDrawable> drawable = NULL;
     {
-        ZoneScopedN("MetalGetDrawable");
+        Prof_Begin("MetalGetDrawable");
         [CATransaction begin];
         [CATransaction setDisableActions:YES];
 
@@ -792,7 +802,7 @@ renderer_window_submit(void *window, Renderer_Handle window_equip, Renderer_Pass
     bool                         has_blur = false;
 
     {
-        ZoneScopedN("MetalAnalyzePasses");
+        Prof_Begin("MetalAnalyzePasses");
         for (Renderer_Pass_Node *pass_node = passes->first; pass_node; pass_node = pass_node->next)
         {
             Renderer_Pass *pass = &pass_node->v;

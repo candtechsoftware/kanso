@@ -4,7 +4,7 @@
 // This prevents conflicts with macros like 'internal'
 
 #ifdef __APPLE__
-#include <mach/mach_time.h>
+#    include <mach/mach_time.h>
 #endif
 
 #include <time.h>

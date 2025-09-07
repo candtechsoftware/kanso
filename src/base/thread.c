@@ -1,88 +1,189 @@
+#pragma once
+
 #include "thread.h"
 #include "arena.h"
+#include "util.h"
 #include <pthread.h>
+#include <unistd.h>
 
-internal void *
-worker_thread(void *arg)
+internal void
+thread_pool_worker_main(void *arg)
 {
-    Thread_Pool *pool = (Thread_Pool *)arg;
+    Thread_Pool_Worker *worker = (Thread_Pool_Worker *)arg;
+    Thread_Pool        *pool = worker->pool;
 
-    while (1)
+    while (pool->is_live)
     {
-        while (pool->count == 0 && !pool->stop)
-        {
-            pthread_cond_wait(&pool->cond, &pool->lock);
-        }
+        os_semaphore_wait(pool->exec_semaphore);
 
-        if (pool->stop && pool->count == 0)
-        {
-            pthread_mutex_unlock(&pool->lock);
+        if (!pool->is_live)
             break;
+
+        while (pool->task_left > 0)
+        {
+            u64 task_index = ins_atomic_u64_dec_eval(&pool->task_left) - 1;
+
+            if (task_index < pool->task_count)
+            {
+                pool->task_func(pool->task_arena->arenas[worker->id],
+                                worker->id,
+                                task_index,
+                                pool->task_data);
+
+                ins_atomic_u64_inc_eval(&pool->task_done);
+            }
         }
 
-        Thread_Task task = pool->tasks[pool->head];
-        pool->head = (pool->head + 1) % pool->cap;
-        pool->count--;
-
-        pthread_mutex_unlock(&pool->lock);
-
-        task.fn(task.args);
+        os_semaphore_signal(pool->main_semaphore);
     }
-    return 0;
 }
 
-Thread_Pool *
-thread_pool_create(s32 n_threads, s32 cap)
+internal Thread_Pool
+thread_pool_alloc(Arena *arena, u32 worker_count, u32 max_worker_count, String name)
 {
-    Arena       *arena = arena_alloc();
-    Thread_Pool *pool = push_struct(arena, Thread_Pool);
-    pool->n_threads = n_threads;
-    pool->cap = cap;
-    pool->tasks = push_array(arena, Thread_Task, cap);
-    pool->threads = push_array(arena, pthread_t, n_threads);
+    Thread_Pool pool = {0};
 
-    pthread_mutex_init(&pool->lock, NULL);
-    pthread_cond_init(&pool->cond, NULL);
-
-    for (s32 i = 0; i < n_threads; i++)
+    if (worker_count == 0)
     {
-        pthread_create(&pool->threads[i], NULL, worker_thread, pool);
+        Sys_Info info = os_get_system_info();
+        worker_count = info.num_threads;
+    }
+
+    worker_count = Min(worker_count, max_worker_count);
+
+    pool.is_live = 1;
+    pool.worker_count = worker_count;
+    pool.workers = push_array(arena, Thread_Pool_Worker, worker_count);
+
+    pool.exec_semaphore = os_semaphore_create(0);
+    pool.task_semaphore = os_semaphore_create(1);
+    pool.main_semaphore = os_semaphore_create(0);
+
+    for (u32 i = 0; i < worker_count; i++)
+    {
+        pool.workers[i].id = i;
+        pool.workers[i].pool = &pool;
+        pool.workers[i].handle = os_thread_create(thread_pool_worker_main, &pool.workers[i]);
     }
 
     return pool;
 }
-int
-thread_pool_submit(Thread_Pool *pool, Thread_Task *fn, void *args)
-{
-    pthread_mutex_lock(&pool->lock);
 
-    if (pool->count == pool->cap)
+internal void
+thread_pool_release(Thread_Pool *pool)
+{
+    pool->is_live = 0;
+
+    for (u32 i = 0; i < pool->worker_count; i++)
     {
-        pthread_mutex_unlock(&pool->lock);
-        return -1;
+        os_semaphore_signal(pool->exec_semaphore);
     }
 
-    pool->tasks[pool->tail].fn = fn;
-    pool->tasks[pool->tail].args = args;
-    pool->tail = (pool->tail + 1) % pool->cap;
-    pool->count++;
+    for (u32 i = 0; i < pool->worker_count; i++)
+    {
+        os_thread_join(pool->workers[i].handle);
+    }
 
-    pthread_cond_signal(&pool->cond);
-    pthread_mutex_unlock(&pool->lock);
-
-    return 0;
+    os_semaphore_destroy(pool->exec_semaphore);
+    os_semaphore_destroy(pool->task_semaphore);
+    os_semaphore_destroy(pool->main_semaphore);
 }
-void
-thread_pool_destroy(Thread_Pool *pool)
-{
-    pthread_mutex_lock(&pool->lock);
-    pool->stop = 1;
-    pthread_cond_broadcast(&pool->cond);
-    pthread_mutex_unlock(&pool->lock);
 
-    for (s32 i = 0; i < pool->n_threads; i++)
+internal Thread_Pool_Arena *
+thread_pool_arena_alloc(Thread_Pool *pool)
+{
+    Arena             *arena = arena_alloc();
+    Thread_Pool_Arena *result = push_struct(arena, Thread_Pool_Arena);
+    result->count = pool->worker_count;
+    result->arenas = push_array(arena, Arena *, pool->worker_count);
+
+    for (u32 i = 0; i < pool->worker_count; i++)
     {
-        pthread_join(pool->threads[i], NULL);
+        result->arenas[i] = arena_alloc();
     }
-    arena_release(pool->arena);
+
+    return result;
+}
+
+internal void
+thread_pool_arena_release(Thread_Pool_Arena **arena_ptr)
+{
+    Thread_Pool_Arena *arena = *arena_ptr;
+    if (arena)
+    {
+        for (u64 i = 0; i < arena->count; i++)
+        {
+            arena_release(arena->arenas[i]);
+        }
+        *arena_ptr = 0;
+    }
+}
+
+internal Thread_Pool_Scratch
+thread_pool_scratch_begin(Thread_Pool_Arena *arena)
+{
+    Thread_Pool_Scratch result = {0};
+    result.count = arena->count;
+    Arena *temp_arena = arena_alloc();
+    result.v = push_array(temp_arena, Scratch, arena->count);
+
+    for (u64 i = 0; i < arena->count; i++)
+    {
+        result.v[i] = scratch_begin(arena->arenas[i]);
+    }
+
+    return result;
+}
+
+internal void
+thread_pool_scratch_end(Thread_Pool_Scratch scratch)
+{
+    for (u64 i = 0; i < scratch.count; i++)
+    {
+        scratch_end(&scratch.v[i]);
+    }
+}
+
+internal void
+thread_pool_for_parallel(Thread_Pool *pool, Thread_Pool_Arena *arena,
+                         u64 task_count, Thread_Pool_Task_Func *task_func, void *task_data)
+{
+    os_semaphore_wait(pool->task_semaphore);
+
+    pool->task_arena = arena;
+    pool->task_func = task_func;
+    pool->task_data = task_data;
+    pool->task_count = task_count;
+    pool->task_done = 0;
+    pool->task_left = (s64)task_count;
+
+    for (u32 i = 0; i < pool->worker_count; i++)
+    {
+        os_semaphore_signal(pool->exec_semaphore);
+    }
+
+    for (u32 i = 0; i < pool->worker_count; i++)
+    {
+        os_semaphore_wait(pool->main_semaphore);
+    }
+
+    os_semaphore_signal(pool->task_semaphore);
+}
+
+internal Rng1_u64 *
+thread_pool_divide_work(Arena *arena, u64 item_count, u32 worker_count)
+{
+    Rng1_u64 *ranges = push_array(arena, Rng1_u64, worker_count);
+    u64       items_per_worker = item_count / worker_count;
+    u64       remainder = item_count % worker_count;
+
+    u64 current = 0;
+    for (u32 i = 0; i < worker_count; i++)
+    {
+        ranges[i].min = current;
+        ranges[i].max = current + items_per_worker + (i < remainder ? 1 : 0);
+        current = ranges[i].max;
+    }
+
+    return ranges;
 }

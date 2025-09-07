@@ -2,12 +2,12 @@
 #pragma once
 
 #include "types.h"
-#include "thread.h"
-#include "base_core.h"
-#include "logger.h" // Must come before util.h since ASSERT uses log_error
-#include "util.h"
 #include "math_core.h"
 #include "string_core.h"
+#include "../os/os.h"
+#include "thread.h"
+#include "logger.h" // Must come before util.h since ASSERT uses log_error
+#include "util.h"
 #include "arena.h"
 #include "array.h"
 #include "hash_table.h"

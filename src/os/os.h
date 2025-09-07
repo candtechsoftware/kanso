@@ -1,6 +1,23 @@
 #pragma once
+#include "../base/types.h"
+#include "../base/math_core.h"
+#include "../base/string_core.h"
 
-#include "../base/base_inc.h"
+typedef u64 Dense_Time;
+
+typedef enum File_Property_Flags
+{
+    File_Property_Is_Folder = (1 << 0),
+} File_Property_Flags;
+
+typedef struct File_Properties File_Properties;
+struct File_Properties
+{
+    File_Property_Flags flags;
+    u64                 size;
+    Dense_Time          modified;
+    Dense_Time          created;
+};
 
 typedef union OS_Handle OS_Handle;
 union OS_Handle
@@ -33,6 +50,13 @@ typedef struct Semaphore Semaphore;
 struct Semaphore
 {
     u64 u64s[1];
+};
+
+typedef union Barrier Barrier;
+union Barrier
+{
+    u64   u64s[8]; // Enough space for pthread_barrier_t on Linux or custom impl on macOS
+    void *ptr[4];  // Alternative pointer storage
 };
 
 static inline OS_Handle
@@ -74,6 +98,7 @@ typedef struct Sys_Info Sys_Info;
 struct Sys_Info
 {
     u32 page_size;
+    u32 num_threads;
 };
 
 enum OS_MemoryFlags
@@ -179,17 +204,40 @@ internal void          os_file_iter_end(OS_File_Iter *iter);
 
 internal b32 os_create_directory_recursive(String path);
 
+// Thread and synchronization functions
+internal Sys_Info  os_get_system_info(void);
+internal OS_Handle os_thread_create(OS_Thread_Func *func, void *ptr);
+internal void      os_thread_join(OS_Handle thread);
+internal void      os_thread_detach(OS_Handle thread);
+internal u32       os_thread_get_id(void);
+
+internal Semaphore os_semaphore_create(u32 initial_count);
+internal void      os_semaphore_destroy(Semaphore sem);
+internal void      os_semaphore_wait(Semaphore sem);
+internal b32       os_semaphore_wait_timeout(Semaphore sem, u32 timeout_ms);
+internal void      os_semaphore_signal(Semaphore sem);
+
+internal Mutex os_mutex_create(void);
+internal void  os_mutex_destroy(Mutex mutex);
+internal void  os_mutex_lock(Mutex mutex);
+internal void  os_mutex_unlock(Mutex mutex);
+
+internal CondVar os_condvar_create(void);
+internal void    os_condvar_destroy(CondVar cv);
+internal void    os_condvar_wait(CondVar cv, Mutex mutex);
+internal void    os_condvar_signal(CondVar cv);
+internal void    os_condvar_broadcast(CondVar cv);
+
+internal Barrier os_barrier_create(u32 thread_count);
+internal void    os_barrier_destroy(Barrier barrier);
+internal void    os_barrier_wait(Barrier barrier);
+
 // Shader Memeory
 internal OS_Handle os_shared_memory_alloc(u64 size, String name);
 internal OS_Handle os_shared_memory_open(String name);
 internal void      os_shared_memory_close(OS_Handle handle);
 internal void     *os_shared_memory_view_open(OS_Handle, Rng1_u64 range);
 internal void      os_shared_memory_view_close(OS_Handle handle, void *ptr, Rng1_u64 range);
-
-// Threads
-internal OS_Handle os_thread_launch(OS_Thread_Func *func, void *ptr, void *params);
-internal b32       os_thread_join(OS_Handle handle, u64 end_t_us);
-internal void      os_thread_detatch(OS_Handle handle);
 
 // Sync Primitives
 internal Mutex os_mutex_alloc(void);

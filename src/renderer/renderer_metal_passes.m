@@ -47,9 +47,10 @@ renderer_metal_get_temp_buffer(u64 size)
 void
 renderer_metal_render_pass_ui(Renderer_Pass_Params_UI *params, void *command_buffer, void *target_texture, Renderer_Metal_Window_Equip *equip)
 {
-    ZoneScopedN("MetalRenderPassUI");
+    Prof_Begin("MetalRenderPassUI");
     if (!r_metal_state || !params || !command_buffer || !target_texture)
     {
+        Prof_End();
         return;
     }
 
@@ -85,7 +86,34 @@ renderer_metal_render_pass_ui(Renderer_Pass_Params_UI *params, void *command_buf
             {
                 Renderer_Metal_Tex_2D *tex = &r_metal_state->textures[tex_slot];
                 [encoder setFragmentTexture:metal_texture(tex->texture) atIndex:0];
-                [encoder setFragmentSamplerState:metal_sampler(tex->sampler) atIndex:0];
+                
+                // Check if any instance in this batch is a font texture
+                b32 is_font_batch = 0;
+                for (Renderer_Batch_Node *batch_node = group_node->batches.first; 
+                     batch_node != NULL; 
+                     batch_node = batch_node->next)
+                {
+                    if (batch_node->v.v && batch_node->v.byte_count >= sizeof(Renderer_Rect_2D_Inst))
+                    {
+                        Renderer_Rect_2D_Inst *first_inst = (Renderer_Rect_2D_Inst *)batch_node->v.v;
+                        if (first_inst->is_font_texture > 0.5f)
+                        {
+                            is_font_batch = 1;
+                            break;
+                        }
+                    }
+                }
+                
+                // Use font sampler for font textures, regular sampler otherwise
+                if (is_font_batch && r_metal_state->font_sampler)
+                {
+                    [encoder setFragmentSamplerState:metal_sampler(r_metal_state->font_sampler) atIndex:0];
+                }
+                else
+                {
+                    [encoder setFragmentSamplerState:metal_sampler(tex->sampler) atIndex:0];
+                }
+                
                 uniforms.texture_sample_channel_map = renderer_metal_sample_channel_map_from_tex_2d_format(tex->format);
             }
         }
@@ -152,7 +180,6 @@ renderer_metal_render_pass_ui(Renderer_Pass_Params_UI *params, void *command_buf
             void *buffer_data = [instance_buffer contents];
             u64   offset = 0;
             {
-                ZoneScopedN("MetalUIBatchCopy");
                 for (Renderer_Batch_Node *batch_node = group_node->batches.first; batch_node; batch_node = batch_node->next)
                 {
                     Renderer_Batch *batch = &batch_node->v;
@@ -174,14 +201,16 @@ renderer_metal_render_pass_ui(Renderer_Pass_Params_UI *params, void *command_buf
     }
 
     [encoder endEncoding];
+    Prof_End();
 }
 
 void
 renderer_metal_render_pass_blur(Renderer_Pass_Params_Blur *params, void *command_buffer, void *target_texture)
 {
-    ZoneScopedN("MetalRenderPassBlur");
+    Prof_Begin("MetalRenderPassBlur");
     if (!r_metal_state || !params || !command_buffer || !target_texture)
     {
+        Prof_End();
         return;
     }
 
@@ -259,14 +288,16 @@ renderer_metal_render_pass_blur(Renderer_Pass_Params_Blur *params, void *command
 
     [encoder drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount:4];
     [encoder endEncoding];
+    Prof_End();
 }
 
 void
 renderer_metal_render_pass_geo_3d(Renderer_Pass_Params_Geo_3D *params, void *command_buffer, void *target_texture, void *depth_texture, Renderer_Metal_Window_Equip *equip)
 {
-    ZoneScopedN("MetalRenderPassGeo3D");
+    Prof_Begin("MetalRenderPassGeo3D");
     if (!r_metal_state || !params || !command_buffer || !target_texture || !depth_texture)
     {
+        Prof_End();
         return;
     }
 
@@ -321,7 +352,6 @@ renderer_metal_render_pass_geo_3d(Renderer_Pass_Params_Geo_3D *params, void *com
 
     // Process mesh batches
     {
-        ZoneScopedN("MetalGeo3DProcessMeshes");
         for (u64 slot_idx = 0; slot_idx < params->mesh_batches.slots_count; slot_idx++)
         {
             Renderer_Batch_Group_3D_Map_Node *node = params->mesh_batches.slots[slot_idx];
@@ -356,7 +386,6 @@ renderer_metal_render_pass_geo_3d(Renderer_Pass_Params_Geo_3D *params, void *com
 
                         // Draw instances from batches
                         {
-                            ZoneScopedN("MetalGeo3DDrawBatches");
                             for (Renderer_Batch_Node *batch_node = node->batches.first; batch_node; batch_node = batch_node->next)
                             {
                                 Renderer_Batch *batch = &batch_node->v;
@@ -412,6 +441,7 @@ renderer_metal_render_pass_geo_3d(Renderer_Pass_Params_Geo_3D *params, void *com
     }
 
     [encoder endEncoding];
+    Prof_End();
 }
 
 // Helper function to render UI content
@@ -442,7 +472,34 @@ renderer_metal_render_ui_content(Renderer_Pass_Params_UI *params, id<MTLRenderCo
             {
                 Renderer_Metal_Tex_2D *tex = &r_metal_state->textures[tex_slot];
                 [encoder setFragmentTexture:metal_texture(tex->texture) atIndex:0];
-                [encoder setFragmentSamplerState:metal_sampler(tex->sampler) atIndex:0];
+                
+                // Check if any instance in this batch is a font texture
+                b32 is_font_batch = 0;
+                for (Renderer_Batch_Node *batch_node = group_node->batches.first; 
+                     batch_node != NULL; 
+                     batch_node = batch_node->next)
+                {
+                    if (batch_node->v.v && batch_node->v.byte_count >= sizeof(Renderer_Rect_2D_Inst))
+                    {
+                        Renderer_Rect_2D_Inst *first_inst = (Renderer_Rect_2D_Inst *)batch_node->v.v;
+                        if (first_inst->is_font_texture > 0.5f)
+                        {
+                            is_font_batch = 1;
+                            break;
+                        }
+                    }
+                }
+                
+                // Use font sampler for font textures, regular sampler otherwise
+                if (is_font_batch && r_metal_state->font_sampler)
+                {
+                    [encoder setFragmentSamplerState:metal_sampler(r_metal_state->font_sampler) atIndex:0];
+                }
+                else
+                {
+                    [encoder setFragmentSamplerState:metal_sampler(tex->sampler) atIndex:0];
+                }
+                
                 uniforms.texture_sample_channel_map = renderer_metal_sample_channel_map_from_tex_2d_format(tex->format);
             }
         }
@@ -632,9 +689,10 @@ renderer_metal_render_pass_combined(Renderer_Pass_Params_UI     *ui_params,
                                     void                        *depth_texture,
                                     Renderer_Metal_Window_Equip *equip)
 {
-    ZoneScopedN("MetalRenderPassCombined");
+    Prof_Begin("MetalRenderPassCombined");
     if (!r_metal_state || !command_buffer || !target_texture)
     {
+        Prof_End();
         return;
     }
 
@@ -662,16 +720,15 @@ renderer_metal_render_pass_combined(Renderer_Pass_Params_UI     *ui_params,
     // First render UI (if provided)
     if (ui_params && ui_params->rects.first)
     {
-        ZoneScopedN("CombinedUIRendering");
         renderer_metal_render_ui_content(ui_params, encoder, mtl_target_texture, equip);
     }
 
     // Then render 3D geometry (if provided)
     if (geo_params && geo_params->mesh_batches.slots_count > 0)
     {
-        ZoneScopedN("Combined3DRendering");
         renderer_metal_render_3d_content(geo_params, encoder, mtl_target_texture);
     }
 
     [encoder endEncoding];
+    Prof_End();
 }

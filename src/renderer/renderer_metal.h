@@ -121,6 +121,7 @@ struct Renderer_Metal_State
     void    *blur_temp_texture;
     Vec2_f32 blur_temp_texture_size;
     void    *blur_sampler;
+    void    *font_sampler;
 
     void *ui_render_pass_desc;
     void *blur_render_pass_desc;

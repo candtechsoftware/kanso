@@ -3,7 +3,17 @@
 #include "font.h"
 #include "../renderer/renderer_core.h"
 #include <string.h>
-// stb_truetype.h already included via font.h
+
+// Temporarily undefine 'internal' macro to avoid conflict with FreeType
+#ifdef internal
+#    undef internal
+#endif
+
+#include <ft2build.h>
+#include FT_FREETYPE_H
+
+// Restore 'internal' macro after FreeType headers
+#define internal static
 
 #if !defined(XXH_IMPLEMENTATION)
 #    define XXH_IMPLEMENTATION
@@ -568,10 +578,10 @@ font_style_from_tag_size_flags(Font_Renderer_Tag tag, f32 size, Font_Renderer_Ra
         Font_Renderer_Handle font_handle = font_handle_from_tag(tag);
         Font_Renderer        font = font_from_handle(font_handle);
 
-        if (font.info != NULL)
+        if (font.face != NULL)
         {
-            // Calculate scale for the given size
-            f32 scale = stbtt_ScaleForPixelHeight(font.info, size);
+            // Set pixel size with DPI scaling (96 DPI / 72 points)
+            FT_Set_Pixel_Sizes(font.face, 0, (FT_UInt)((96.0f / 72.0f) * size));
 
             // Calculate average width using common characters
             const char *sample_chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -581,13 +591,16 @@ font_style_from_tag_size_flags(Font_Renderer_Tag tag, f32 size, Font_Renderer_Ra
 
             for (s32 i = 0; i < sample_len; i++)
             {
-                s32 advance_width, left_side_bearing;
-                stbtt_GetCodepointHMetrics(font.info, sample_chars[i], &advance_width, &left_side_bearing);
-
-                if (advance_width > 0)
+                FT_Error error = FT_Load_Char(font.face, sample_chars[i], FT_LOAD_DEFAULT);
+                if (error == 0)
                 {
-                    total_width += advance_width * scale;
-                    valid_chars++;
+                    // Convert from 26.6 fixed point to pixels
+                    f32 advance = (f32)(font.face->glyph->advance.x >> 6);
+                    if (advance > 0)
+                    {
+                        total_width += advance;
+                        valid_chars++;
+                    }
                 }
             }
 
@@ -770,13 +783,13 @@ font_char_pos_from_tag_size_string_p(Font_Renderer_Tag tag, f32 size, f32 base_a
     Font_Renderer_Handle font_handle = font_handle_from_tag(tag);
     Font_Renderer        font = font_from_handle(font_handle);
 
-    if (font.info == NULL || string.size == 0)
+    if (font.face == NULL || string.size == 0)
     {
         return 0;
     }
 
-    // Calculate scale for the given size
-    f32 scale = stbtt_ScaleForPixelHeight(font.info, size);
+    // Set pixel size with DPI scaling (96 DPI / 72 points)
+    FT_Set_Pixel_Sizes(font.face, 0, (FT_UInt)((96.0f / 72.0f) * size));
 
     f32 current_x = base_align_px;
     u64 result_pos = 0;
@@ -824,9 +837,13 @@ font_char_pos_from_tag_size_string_p(Font_Renderer_Tag tag, f32 size, f32 base_a
                         }
                     }
 
-                    s32 advance_width, left_side_bearing;
-                    stbtt_GetCodepointHMetrics(font.info, prev_cp, &advance_width, &left_side_bearing);
-                    f32 char_width = advance_width * scale;
+                    f32      char_width = 0;
+                    FT_Error error = FT_Load_Char(font.face, prev_cp, FT_LOAD_DEFAULT);
+                    if (error == 0)
+                    {
+                        // Convert from 26.6 fixed point to pixels
+                        char_width = (f32)(font.face->glyph->advance.x >> 6);
+                    }
 
                     // Find the midpoint of the previous character
                     f32 midpoint = prev_x - (char_width / 2.0f);
@@ -904,9 +921,12 @@ font_char_pos_from_tag_size_string_p(Font_Renderer_Tag tag, f32 size, f32 base_a
         else
         {
             // Regular character
-            s32 advance_width, left_side_bearing;
-            stbtt_GetCodepointHMetrics(font.info, codepoint, &advance_width, &left_side_bearing);
-            current_x += advance_width * scale;
+            FT_Error error = FT_Load_Char(font.face, codepoint, FT_LOAD_DEFAULT);
+            if (error == 0)
+            {
+                // Convert from 26.6 fixed point to pixels
+                current_x += (f32)(font.face->glyph->advance.x >> 6);
+            }
         }
 
         i += bytes_consumed;
@@ -952,8 +972,6 @@ font_cache_init(void)
 
     font_cache_state->hash2style_slots_count = 256;
     font_cache_state->hash2style_slots = push_array_zero(arena, Font_Renderer_Style_Cache_Slot, font_cache_state->hash2style_slots_count);
-
-    log_info("Font_Renderer cache initialized");
 }
 
 void

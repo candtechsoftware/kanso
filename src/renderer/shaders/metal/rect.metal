@@ -10,7 +10,7 @@ struct VertexInput {
     float4 colors_2 [[attribute(4)]];
     float4 colors_3 [[attribute(5)]];
     float4 corner_radii [[attribute(6)]];
-    float4 style [[attribute(7)]]; // border_thickness, edge_softness, white_texture_override, unused
+    float4 style [[attribute(7)]]; // border_thickness, edge_softness, white_texture_override, is_font_texture
 };
 
 struct VertexOutput {
@@ -23,6 +23,7 @@ struct VertexOutput {
     float border_thickness;
     float softness;
     float omit_texture;
+    float is_font_texture;
 };
 
 struct Uniforms {
@@ -87,6 +88,7 @@ vertex VertexOutput rect_vertex_main(
     output.border_thickness = instance.style.x;
     output.softness = instance.style.y;
     output.omit_texture = instance.style.z;
+    output.is_font_texture = instance.style.w;
     
     return output;
 }

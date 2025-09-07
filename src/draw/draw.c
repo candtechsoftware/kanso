@@ -311,6 +311,7 @@ draw_img(Rng2_f32 dst, Rng2_f32 src, Renderer_Handle texture, Vec4_f32 color, f3
     rect->border_thickness = border_thickness;
     rect->edge_softness = edge_softness;
     rect->white_texture_override = (texture.u64s[0] == 0) ? 1 : 0;
+    rect->is_font_texture = 0; // Default to non-font texture
 
     return rect;
 }
@@ -459,7 +460,12 @@ draw_text(Vec2_f32 p, String text, Font_Renderer_Tag font, f32 size, Vec4_f32 co
 
         Renderer_Handle tex = piece->texture;
 
-        draw_img(dst, src, tex, color, 0, 0, 0);
+        // Draw with font texture flag set
+        Renderer_Rect_2D_Inst *rect = draw_img(dst, src, tex, color, 0, 0, 0);
+        if (rect)
+        {
+            rect->is_font_texture = 1.0f; // Mark as font texture for nearest neighbor sampling
+        }
         x_offset += piece->advance;
     }
 }

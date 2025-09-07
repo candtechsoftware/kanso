@@ -14,6 +14,7 @@ if [ $# -ge 1 ] && [ "$1" = "lint" ]; then
     for file in $files; do
         # Compile with all warnings enabled, just to check syntax
         output=$(clang -Wall -Wextra -Wpedantic -Wno-unused-function -Wno-unused-variable -Wno-unused-parameter \
+                 -Wno-gnu-zero-variadic-macro-arguments \
                  -Wformat=2 -Wconversion -Wshadow -Wcast-qual -Wwrite-strings \
                  -fsyntax-only -fno-color-diagnostics "$file" 2>&1 || true)
         
@@ -132,7 +133,7 @@ OS_NAME=$(uname -s)
 echo "[Detected OS: $OS_NAME]"
 
 # --- Compile/Link Line Definitions -------------------------------------------
-common="-Isrc/ -g -DBUILD_GIT_HASH=\"$git_hash\" -DBUILD_GIT_HASH_FULL=\"$git_hash_full\" -Wall -Wno-unused-function -Wno-unused-variable -D_GNU_SOURCE -DGL_SILENCE_DEPRECATION"
+common="-Isrc/ -g -DBUILD_GIT_HASH=\"$git_hash\" -DBUILD_GIT_HASH_FULL=\"$git_hash_full\" -Wall -Wno-unused-function -Wno-unused-variable -Wno-gnu-zero-variadic-macro-arguments -D_GNU_SOURCE -DGL_SILENCE_DEPRECATION"
 
 # Add profiling flags if requested
 profile_flags=""
@@ -144,10 +145,15 @@ fi
 if [ "$OS_NAME" = "Darwin" ]; then
     # macOS specific settings
     echo "[Building for macOS with Metal renderer]"
-    link_flags="-framework Cocoa -framework Metal -framework MetalKit -framework QuartzCore -framework IOKit -framework CoreVideo -ldl -lm"
+    
+    # Add FreeType support
+    freetype_cflags=$(pkg-config --cflags freetype2 2>/dev/null || echo "-I/opt/homebrew/opt/freetype/include/freetype2")
+    freetype_libs=$(pkg-config --libs freetype2 2>/dev/null || echo "-L/opt/homebrew/opt/freetype/lib -lfreetype")
+    
+    link_flags="-framework Cocoa -framework Metal -framework MetalKit -framework QuartzCore -framework IOKit -framework CoreVideo -ldl -lm $freetype_libs"
     objc_flags="-x objective-c"
-    debug_flags="$compiler -O0 -DBUILD_DEBUG=1 -DUSE_METAL=1 ${common} ${profile_flags}"
-    release_flags="$compiler -O3 -DBUILD_DEBUG=0 -DUSE_METAL=1 ${common} ${profile_flags}"
+    debug_flags="$compiler -O0 -DBUILD_DEBUG=1 -DUSE_METAL=1 ${common} ${profile_flags} ${freetype_cflags}"
+    release_flags="$compiler -O3 -DBUILD_DEBUG=0 -DUSE_METAL=1 ${common} ${profile_flags} ${freetype_cflags}"
 elif [ "$OS_NAME" = "Linux" ]; then
     # Linux specific settings
     echo "[Building for Linux with Vulkan renderer]"

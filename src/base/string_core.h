@@ -2,6 +2,7 @@
 
 #include <string.h>
 #include "arena.h"
+#include "profile.h"
 #include "util.h"
 #if !defined(XXH_IMPLEMENTATION)
 #    define XXH_IMPLEMENTATION
@@ -69,13 +70,21 @@ cstr_to_string(const char *data, u32 size)
 static inline b32
 str_match(String a, String b)
 {
+    PROF_FUNCTION;
     if (a.size != b.size)
+    {
+        prof_end();
         return 0;
+    }
     for (u32 i = 0; i < a.size; i++)
     {
         if (a.data[i] != b.data[i])
+        {
+            Prof_End();
             return 0;
+        }
     }
+    Prof_End();
     return 1;
 }
 

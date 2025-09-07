@@ -5,6 +5,7 @@ CompileFlags:
     - -Isrc
     - -Isrc/base
     - -Isrc/os
+    - -Wgnu-zero-variadic-macro-arguments
     - -Wno-main-file-suspicious-include
     - -Wno-include-angled-in-module-purview
     - -Wno-pragma-once-outside-header

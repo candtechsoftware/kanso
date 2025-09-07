@@ -66,7 +66,7 @@ struct Renderer_Rect_2D_Inst
     f32      border_thickness;
     f32      edge_softness;
     f32      white_texture_override;
-    f32      _unused_[1];
+    f32      is_font_texture;
 };
 
 typedef struct Renderer_Mesh_3D_Inst Renderer_Mesh_3D_Inst;

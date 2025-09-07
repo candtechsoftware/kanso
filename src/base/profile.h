@@ -6,23 +6,25 @@
 #include "types.h"
 
 // Maximum number of profiling zones
-#define PROF_MAX_ZONES 1024
+#define PROF_MAX_ZONES       1024
 #define PROF_MAX_NAME_LENGTH 64
 
-typedef struct Prof_Zone {
+typedef struct Prof_Zone
+{
     char name[PROF_MAX_NAME_LENGTH];
-    u64 start_ticks;
-    u64 total_ticks;
-    u32 call_count;
-    u32 depth;
+    u64  start_ticks;
+    u64  total_ticks;
+    u32  call_count;
+    u32  depth;
 } Prof_Zone;
 
-typedef struct Prof_State {
+typedef struct Prof_State
+{
     Prof_Zone zones[PROF_MAX_ZONES];
-    u32 zone_count;
-    u32 current_depth;
-    b32 enabled;
-    
+    u32       zone_count;
+    u32       current_depth;
+    b32       enabled;
+
     // Stack for tracking nested zones
     u32 zone_stack[64];
     u32 stack_depth;
@@ -40,52 +42,61 @@ void prof_write_trace_file(const char *filename);
 // Zone tracking functions
 void prof_begin(const char *name);
 void prof_end(void);
+void prof_frame_mark(void);
 
 // Main profiling macros
 #ifdef ENABLE_PROFILE
 
+// Init/shutdown/report
+#    define Prof_Init()     prof_init()
+#    define Prof_Shutdown() prof_shutdown()
+#    define Prof_Report()   prof_report()
+
 // Simple manual scoping for C compatibility
-#define Prof_ScopeN(name) prof_begin(name)
+#    define Prof_ScopeN(name) prof_begin(name)
 
 // Frame marking
-#define Prof_FrameMark         prof_frame_mark()
-#define Prof_FrameMarkNamed(name) prof_frame_mark_named(name)
+#    define Prof_FrameMark prof_frame_mark()
 
 // Memory profiling (no-op for now)
-#define Prof_Alloc(ptr, size)
-#define Prof_Free(ptr)
+#    define Prof_Alloc(ptr, size)
+#    define Prof_Free(ptr)
 
-// Messages and plots (no-op for now)  
-#define Prof_Message(txt, size)
-#define Prof_MessageL(txt)
-#define Prof_Plot(name, val)
+// Messages and plots (no-op for now)
+#    define Prof_Message(txt, size)
+#    define Prof_MessageL(txt)
+#    define Prof_Plot(name, val)
 
 // Manual begin/end
-#define Prof_Begin(name) prof_begin(name)
-#define Prof_End()       prof_end()
+#    define Prof_Begin(name) prof_begin(name)
+#    define Prof_End()       prof_end()
 
 #else
 
 // No-op macros when profiling is disabled
-#define Prof_Scope
-#define Prof_ScopeN(name)
-#define Prof_ScopeC(color)
-#define Prof_ScopeNC(name, color)
+#    define Prof_Init()
+#    define Prof_Shutdown()
+#    define Prof_Report()
 
-#define Prof_FrameMark
-#define Prof_FrameMarkNamed(name)
-#define Prof_FrameMarkStart(name)
-#define Prof_FrameMarkEnd(name)
+#    define Prof_Scope
+#    define Prof_ScopeN(name)
+#    define Prof_ScopeC(color)
+#    define Prof_ScopeNC(name, color)
 
-#define Prof_Alloc(ptr, size)
-#define Prof_Free(ptr)
+#    define Prof_FrameMark
+#    define Prof_FrameMarkNamed(name)
+#    define Prof_FrameMarkStart(name)
+#    define Prof_FrameMarkEnd(name)
 
-#define Prof_Message(txt, size)
-#define Prof_MessageL(txt)
-#define Prof_Plot(name, val)
+#    define Prof_Alloc(ptr, size)
+#    define Prof_Free(ptr)
 
-#define Prof_Begin(name)
-#define Prof_End()
+#    define Prof_Message(txt, size)
+#    define Prof_MessageL(txt)
+#    define Prof_Plot(name, val)
+
+#    define Prof_Begin(name)
+#    define Prof_End()
 
 #endif // ENABLE_PROFILE
 

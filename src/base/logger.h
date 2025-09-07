@@ -18,7 +18,7 @@ typedef enum
 void
 log_init(const char *log_file_path);
 void
-log_shutdown();
+log_shutdown(void);
 
 // Internal functions
 void

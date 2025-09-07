@@ -3,4 +3,6 @@
 #include "arena.c"
 #include "command_line.c"
 #include "logger.c"
+#include "profile.c"
+#include "thread.c"
 #include "../../third_party/xxhash/xxhash.c"

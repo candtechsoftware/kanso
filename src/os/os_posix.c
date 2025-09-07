@@ -11,8 +11,13 @@
 #include <errno.h>
 #include <time.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <pthread.h>
+#include <semaphore.h>
 #if defined(__APPLE__)
 #    include <mach/mach_time.h>
+#    include <dispatch/dispatch.h>
+#    include <sys/sysctl.h>
 #endif
 
 // Restore macros
@@ -82,6 +87,7 @@ os_get_sys_info(void)
 {
     Sys_Info info;
     info.page_size = (u32)sysconf(_SC_PAGE_SIZE);
+    info.num_threads = (u32)sysconf(_SC_NPROCESSORS_ONLN);
     return info;
 }
 
@@ -552,24 +558,26 @@ internal File_Properties
 os_file_properties_from_path(String file_path)
 {
     File_Properties props = {0};
-    
+
     // Convert String to null-terminated path
     char path_buf[4096];
-    u32 copy_size = Min(file_path.size, sizeof(path_buf)-1);
+    u32  copy_size = Min(file_path.size, sizeof(path_buf) - 1);
     MemoryCopy(path_buf, file_path.data, copy_size);
     path_buf[copy_size] = 0;
-    
+
     struct stat st;
-    if (stat(path_buf, &st) == 0) {
+    if (stat(path_buf, &st) == 0)
+    {
         props.size = st.st_size;
         props.modified = st.st_mtime;
         props.created = st.st_ctime;
-        
-        if (S_ISDIR(st.st_mode)) {
+
+        if (S_ISDIR(st.st_mode))
+        {
             props.flags |= File_Property_Is_Folder;
         }
     }
-    
+
     return props;
 }
 
@@ -578,47 +586,336 @@ os_file_info_list_from_dir(Arena *arena, String dir_path)
 {
     File_Info_List *list = push_array(arena, File_Info_List, 1);
     *list = (File_Info_List){0};
-    
+
     // Convert String to null-terminated path
     char path_buf[4096];
-    u32 copy_size = Min(dir_path.size, sizeof(path_buf)-1);
+    u32  copy_size = Min(dir_path.size, sizeof(path_buf) - 1);
     MemoryCopy(path_buf, dir_path.data, copy_size);
     path_buf[copy_size] = 0;
-    
+
     DIR *dir = opendir(path_buf);
-    if (!dir) {
-        return list;  // Return empty list
+    if (!dir)
+    {
+        return list; // Return empty list
     }
-    
+
     struct dirent *entry;
-    while ((entry = readdir(dir)) != NULL) {
+    while ((entry = readdir(dir)) != NULL)
+    {
         // Skip . and ..
-        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+        {
             continue;
         }
-        
+
         File_Info_Node *node = push_array(arena, File_Info_Node, 1);
         node->info.name = string_copy(arena, string_from_cstr(entry->d_name));
-        
+
         // Get file properties
         char full_path[4096];
         snprintf(full_path, sizeof(full_path), "%s/%s", path_buf, entry->d_name);
         struct stat st;
-        if (stat(full_path, &st) == 0) {
+        if (stat(full_path, &st) == 0)
+        {
             node->info.props.size = st.st_size;
             node->info.props.modified = st.st_mtime;
             node->info.props.created = st.st_ctime;
-            
-            if (S_ISDIR(st.st_mode)) {
+
+            if (S_ISDIR(st.st_mode))
+            {
                 node->info.props.flags |= File_Property_Is_Folder;
             }
         }
-        
+
         // Add to list
         SLLQueuePush(list->first, list->last, node);
         list->count++;
     }
-    
+
     closedir(dir);
     return list;
+}
+
+// Thread and synchronization implementations
+internal Sys_Info
+os_get_system_info(void)
+{
+    Sys_Info info = {0};
+    info.page_size = getpagesize();
+
+#ifdef __APPLE__
+    int    mib[2] = {CTL_HW, HW_NCPU};
+    size_t len = sizeof(info.num_threads);
+    sysctl(mib, 2, &info.num_threads, &len, NULL, 0);
+#else
+    info.num_threads = sysconf(_SC_NPROCESSORS_ONLN);
+#endif
+
+    return info;
+}
+
+internal OS_Handle
+os_thread_create(OS_Thread_Func *func, void *ptr)
+{
+    pthread_t thread;
+    pthread_create(&thread, NULL, (void *(*)(void *))func, ptr);
+    return os_handle_from_ptr((void *)thread);
+}
+
+internal void
+os_thread_join(OS_Handle thread)
+{
+    pthread_join((pthread_t)thread.ptr, NULL);
+}
+
+internal void
+os_thread_detach(OS_Handle thread)
+{
+    pthread_detach((pthread_t)thread.ptr);
+}
+
+internal u32
+os_thread_get_id(void)
+{
+#ifdef __APPLE__
+    uint64_t tid;
+    pthread_threadid_np(NULL, &tid);
+    return (u32)tid;
+#else
+    return (u32)pthread_self();
+#endif
+}
+
+internal Semaphore
+os_semaphore_create(u32 initial_count)
+{
+    Semaphore sem = {0};
+
+#ifdef __APPLE__
+    dispatch_semaphore_t *dsem = (dispatch_semaphore_t *)&sem.u64s[0];
+    *dsem = dispatch_semaphore_create(initial_count);
+#else
+    sem_t *psem = (sem_t *)&sem.u64s[0];
+    sem_init(psem, 0, initial_count);
+#endif
+
+    return sem;
+}
+
+internal void
+os_semaphore_destroy(Semaphore sem)
+{
+#ifdef __APPLE__
+    dispatch_semaphore_t *dsem = (dispatch_semaphore_t *)&sem.u64s[0];
+    if (*dsem)
+    {
+        dispatch_release(*dsem);
+    }
+#else
+    sem_t *psem = (sem_t *)&sem.u64s[0];
+    sem_destroy(psem);
+#endif
+}
+
+internal void
+os_semaphore_wait(Semaphore sem)
+{
+#ifdef __APPLE__
+    dispatch_semaphore_t *dsem = (dispatch_semaphore_t *)&sem.u64s[0];
+    dispatch_semaphore_wait(*dsem, DISPATCH_TIME_FOREVER);
+#else
+    sem_t *psem = (sem_t *)&sem.u64s[0];
+    sem_wait(psem);
+#endif
+}
+
+internal b32
+os_semaphore_wait_timeout(Semaphore sem, u32 timeout_ms)
+{
+#ifdef __APPLE__
+    dispatch_semaphore_t *dsem = (dispatch_semaphore_t *)&sem.u64s[0];
+    dispatch_time_t       timeout = dispatch_time(DISPATCH_TIME_NOW, timeout_ms * NSEC_PER_MSEC);
+    return dispatch_semaphore_wait(*dsem, timeout) == 0;
+#else
+    sem_t          *psem = (sem_t *)&sem.u64s[0];
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    ts.tv_sec += timeout_ms / 1000;
+    ts.tv_nsec += (timeout_ms % 1000) * 1000000;
+    if (ts.tv_nsec >= 1000000000)
+    {
+        ts.tv_sec++;
+        ts.tv_nsec -= 1000000000;
+    }
+    return sem_timedwait(psem, &ts) == 0;
+#endif
+}
+
+internal void
+os_semaphore_signal(Semaphore sem)
+{
+#ifdef __APPLE__
+    dispatch_semaphore_t *dsem = (dispatch_semaphore_t *)&sem.u64s[0];
+    dispatch_semaphore_signal(*dsem);
+#else
+    sem_t *psem = (sem_t *)&sem.u64s[0];
+    sem_post(psem);
+#endif
+}
+
+internal Mutex
+os_mutex_create(void)
+{
+    Mutex            mutex = {0};
+    pthread_mutex_t *pmutex = (pthread_mutex_t *)&mutex.u64s[0];
+    pthread_mutex_init(pmutex, NULL);
+    return mutex;
+}
+
+internal void
+os_mutex_destroy(Mutex mutex)
+{
+    pthread_mutex_t *pmutex = (pthread_mutex_t *)&mutex.u64s[0];
+    pthread_mutex_destroy(pmutex);
+}
+
+internal void
+os_mutex_lock(Mutex mutex)
+{
+    pthread_mutex_t *pmutex = (pthread_mutex_t *)&mutex.u64s[0];
+    pthread_mutex_lock(pmutex);
+}
+
+internal void
+os_mutex_unlock(Mutex mutex)
+{
+    pthread_mutex_t *pmutex = (pthread_mutex_t *)&mutex.u64s[0];
+    pthread_mutex_unlock(pmutex);
+}
+
+internal CondVar
+os_condvar_create(void)
+{
+    CondVar         cv = {0};
+    pthread_cond_t *pcond = (pthread_cond_t *)&cv.u64s[0];
+    pthread_cond_init(pcond, NULL);
+    return cv;
+}
+
+internal void
+os_condvar_destroy(CondVar cv)
+{
+    pthread_cond_t *pcond = (pthread_cond_t *)&cv.u64s[0];
+    pthread_cond_destroy(pcond);
+}
+
+internal void
+os_condvar_wait(CondVar cv, Mutex mutex)
+{
+    pthread_cond_t  *pcond = (pthread_cond_t *)&cv.u64s[0];
+    pthread_mutex_t *pmutex = (pthread_mutex_t *)&mutex.u64s[0];
+    pthread_cond_wait(pcond, pmutex);
+}
+
+internal void
+os_condvar_signal(CondVar cv)
+{
+    pthread_cond_t *pcond = (pthread_cond_t *)&cv.u64s[0];
+    pthread_cond_signal(pcond);
+}
+
+internal void
+os_condvar_broadcast(CondVar cv)
+{
+    pthread_cond_t *pcond = (pthread_cond_t *)&cv.u64s[0];
+    pthread_cond_broadcast(pcond);
+}
+
+#ifdef __APPLE__
+// Custom barrier implementation for macOS using mutex and condvar
+typedef struct Barrier_Internal Barrier_Internal;
+struct Barrier_Internal
+{
+    pthread_mutex_t mutex;
+    pthread_cond_t  cond;
+    u32             count;
+    u32             waiting;
+    u32             generation;
+};
+#endif
+
+internal Barrier
+os_barrier_create(u32 thread_count)
+{
+    Barrier barrier = {0};
+
+#ifdef __APPLE__
+    // Allocate internal barrier structure
+    Barrier_Internal *b = (Barrier_Internal *)malloc(sizeof(Barrier_Internal));
+    pthread_mutex_init(&b->mutex, NULL);
+    pthread_cond_init(&b->cond, NULL);
+    b->count = thread_count;
+    b->waiting = 0;
+    b->generation = 0;
+    barrier.ptr[0] = b;
+#else
+    // Linux has native pthread_barrier
+    pthread_barrier_t *pbarrier = (pthread_barrier_t *)&barrier.u64s[0];
+    pthread_barrier_init(pbarrier, NULL, thread_count);
+#endif
+
+    return barrier;
+}
+
+internal void
+os_barrier_destroy(Barrier barrier)
+{
+#ifdef __APPLE__
+    Barrier_Internal *b = (Barrier_Internal *)barrier.ptr[0];
+    if (b)
+    {
+        pthread_mutex_destroy(&b->mutex);
+        pthread_cond_destroy(&b->cond);
+        free(b);
+    }
+#else
+    pthread_barrier_t *pbarrier = (pthread_barrier_t *)&barrier.u64s[0];
+    pthread_barrier_destroy(pbarrier);
+#endif
+}
+
+internal void
+os_barrier_wait(Barrier barrier)
+{
+#ifdef __APPLE__
+    Barrier_Internal *b = (Barrier_Internal *)barrier.ptr[0];
+    if (!b)
+        return;
+
+    pthread_mutex_lock(&b->mutex);
+
+    u32 gen = b->generation;
+    b->waiting++;
+
+    if (b->waiting >= b->count)
+    {
+        // Last thread to arrive, reset and wake all
+        b->generation++;
+        b->waiting = 0;
+        pthread_cond_broadcast(&b->cond);
+    }
+    else
+    {
+        // Wait for other threads
+        while (gen == b->generation)
+        {
+            pthread_cond_wait(&b->cond, &b->mutex);
+        }
+    }
+
+    pthread_mutex_unlock(&b->mutex);
+#else
+    pthread_barrier_t *pbarrier = (pthread_barrier_t *)&barrier.u64s[0];
+    pthread_barrier_wait(pbarrier);
+#endif
 }
