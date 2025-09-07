@@ -6,7 +6,7 @@
 #include "string_core.h"
 #include "../os/os.h"
 #include "thread.h"
-#include "logger.h" // Must come before util.h since ASSERT uses log_error
+#include "logger.h" 
 #include "util.h"
 #include "arena.h"
 #include "array.h"

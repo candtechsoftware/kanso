@@ -1,5 +1,8 @@
 -Isrc
 -Ithird_party
+-I/usr/include/freetype2
+-I/usr/local/include/freetype2
+-I/opt/homebrew/opt/freetype/include/freetype2
 -std=c11
 -Wall
 -Wextra
