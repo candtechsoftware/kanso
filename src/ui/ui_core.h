@@ -7,6 +7,13 @@ typedef enum Axis2
     Axis2_COUNT
 } Axis2;
 
+typedef enum UI_Align
+{
+    UI_Align_Start,
+    UI_Align_Center,
+    UI_Align_End,
+} UI_Align;
+
 typedef u32 UI_BoxFlags;
 enum
 {
@@ -74,9 +81,36 @@ struct UI_Box
     f32      corner_radius;
 
     Vec4_f32 background_color;
+    Vec4_f32 background_color_hot;
+    Vec4_f32 background_color_active;
     Vec4_f32 text_color;
+    Vec4_f32 text_color_hot;
     Vec4_f32 border_color;
     f32      border_thickness;
+    
+    // Modern styling
+    Vec4_f32 shadow_color;
+    f32      shadow_offset_x;
+    f32      shadow_offset_y;
+    f32      shadow_blur;
+    f32      gradient_start_y;
+    f32      gradient_end_y;
+    Vec4_f32 gradient_color_start;
+    Vec4_f32 gradient_color_end;
+    b32      use_gradient;
+    b32      use_shadow;
+    
+    // Enhanced layout properties
+    f32 padding_left;
+    f32 padding_right;
+    f32 padding_top;
+    f32 padding_bottom;
+    f32 margin_left;
+    f32 margin_right;
+    f32 margin_top;
+    f32 margin_bottom;
+    UI_Align align_x;
+    UI_Align align_y;
 
     f32 hot_t;
     f32 active_t;
@@ -84,6 +118,9 @@ struct UI_Box
 
     void *user_data;
     void (*custom_draw)(UI_Box *box, void *user_data);
+    
+    // Font support for this box (0 means use default font passed to ui_draw)
+    Font_Renderer_Tag font;
 };
 
 typedef struct UI_Signal UI_Signal;
@@ -244,6 +281,7 @@ internal UI_Box *ui_build_box_from_stringf(UI_BoxFlags flags, char *fmt, ...);
 
 internal void ui_box_equip_display_string(UI_Box *box, String string);
 internal void ui_box_equip_custom_draw(UI_Box *box, void (*custom_draw)(UI_Box *box, void *user_data), void *user_data);
+internal void ui_box_equip_font(UI_Box *box, Font_Renderer_Tag font);
 
 internal UI_Signal ui_signal_from_box(UI_Box *box);
 
@@ -257,6 +295,116 @@ internal b32  ui_get_next_event(UI_EventList *list, UI_Event **event);
 internal String str_pushf(Arena *arena, char *fmt, ...);
 
 #define str_expand(s) (int)(s).size, (s).data
+
+// ========================================
+// MODERN DESIGN SYSTEM
+// ========================================
+
+// Modern Color Palette
+typedef struct UI_ModernColors UI_ModernColors;
+struct UI_ModernColors
+{
+    // Background colors
+    Vec4_f32 bg_primary;      // #1e1e1e - Main background
+    Vec4_f32 bg_secondary;    // #282828 - Sidebar, panels  
+    Vec4_f32 bg_tertiary;     // #323232 - Cards, elevated surfaces
+    Vec4_f32 bg_elevated;     // #3c3c3c - Dropdowns, modals
+    
+    // Interactive colors
+    Vec4_f32 interactive_normal;
+    Vec4_f32 interactive_hover;
+    Vec4_f32 interactive_active;
+    Vec4_f32 interactive_disabled;
+    
+    // Text colors
+    Vec4_f32 text_primary;    // #e0e0e0 - Primary text
+    Vec4_f32 text_secondary;  // #a8a8a8 - Secondary text
+    Vec4_f32 text_disabled;   // #777777 - Disabled text
+    Vec4_f32 text_accent;     // #67abef - Accent text
+    
+    // Border colors
+    Vec4_f32 border_subtle;
+    Vec4_f32 border_normal;
+    Vec4_f32 border_strong;
+    
+    // Status colors
+    Vec4_f32 success;         // #53bb68
+    Vec4_f32 warning;         // #e5ab31
+    Vec4_f32 error;           // #db5f5f
+    Vec4_f32 info;            // #67abef
+    
+    // Accent colors
+    Vec4_f32 accent_primary;   // #67abef
+    Vec4_f32 accent_secondary; // #906ddb
+};
+
+// Typography system
+typedef struct UI_Typography UI_Typography;
+struct UI_Typography
+{
+    f32 size_xs;      // 11px
+    f32 size_sm;      // 13px
+    f32 size_base;    // 14px
+    f32 size_lg;      // 16px
+    f32 size_xl;      // 18px
+    f32 size_2xl;     // 20px
+    f32 size_3xl;     // 24px
+};
+
+// Spacing system (8px base unit)
+typedef struct UI_Spacing UI_Spacing;
+struct UI_Spacing
+{
+    f32 xs;    // 4px
+    f32 sm;    // 8px
+    f32 base;  // 12px
+    f32 md;    // 16px
+    f32 lg;    // 20px
+    f32 xl;    // 24px
+    f32 xxl;   // 32px
+    f32 xxxl;  // 48px
+};
+
+// Complete modern design system
+typedef struct UI_ModernDesign UI_ModernDesign;
+struct UI_ModernDesign
+{
+    UI_ModernColors colors;
+    UI_Typography typography;
+    UI_Spacing spacing;
+};
+
+// Global design system access
+internal UI_ModernDesign *ui_get_modern_design(void);
+
+// Color utilities
+internal Vec4_f32 ui_color_mix(Vec4_f32 base, Vec4_f32 overlay, f32 alpha);
+internal Vec4_f32 ui_color_lighten(Vec4_f32 color, f32 amount);
+internal Vec4_f32 ui_color_darken(Vec4_f32 color, f32 amount);
+
+// Modern widget styling
+internal void ui_style_button(UI_Box *box, b32 is_primary);
+internal void ui_style_input(UI_Box *box);
+internal void ui_style_sidebar(UI_Box *box);
+internal void ui_style_card(UI_Box *box);
+internal void ui_style_list_item(UI_Box *box, b32 is_selected);
+
+// Enhanced widget creation with modern styling
+internal UI_Signal ui_modern_button(String text, b32 is_primary);
+internal UI_Signal ui_modern_buttonf(b32 is_primary, char *fmt, ...);
+internal UI_Signal ui_modern_list_item(String primary_text, String secondary_text, b32 is_selected);
+internal UI_Signal ui_modern_text_input(String *text, String placeholder, b32 is_focused);
+internal void      ui_modern_separator(void);
+internal void      ui_modern_spacer(f32 size);
+
+// File manager specific components
+internal void ui_file_row(String name, String type, String size, String date, b32 is_folder, b32 is_selected, u32 row_index);
+
+// Layout helpers
+internal void ui_set_padding(UI_Box *box, f32 left, f32 right, f32 top, f32 bottom);
+internal void ui_set_padding_all(UI_Box *box, f32 padding);
+internal void ui_set_margin(UI_Box *box, f32 left, f32 right, f32 top, f32 bottom);
+internal void ui_set_margin_all(UI_Box *box, f32 margin);
 
 #define DeferLoopChecked(begin, end) \
     for (int _i_ = ((begin), 0);     \

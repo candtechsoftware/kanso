@@ -104,7 +104,7 @@ for arg in "$@"; do declare $arg='1'; done
 # Default settings
 clang=1
 debug=1
-compiler="${CC:-clang}"
+compiler="${CC:-gcc}"
 
 # Parse arguments
 if [[ "${gcc:-0}" == "1" ]]; then

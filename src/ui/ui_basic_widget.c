@@ -6,6 +6,10 @@ ui_label(String string)
 {
     UI_Box *box = ui_build_box_from_string(UI_BoxFlag_DrawText, string);
     ui_box_equip_display_string(box, string);
+    // Size label to its text content if no explicit size is set
+    if (ui_state->pref_width == 0) {
+        box->semantic_size[Axis2_X] = ui_size_text(0, 0);
+    }
     return ui_signal_from_box(box);
 }
 
@@ -102,7 +106,13 @@ ui_row_begin(void)
 {
     UI_Box *box = ui_build_box_from_string(UI_BoxFlag_LayoutAxisX, str_lit("###row"));
     box->semantic_size[Axis2_X] = ui_size_pct(1, 0);
-    box->semantic_size[Axis2_Y] = ui_size_pct(1, 0);
+    // For rows, inherit height from parent's pushed pref_height if available,
+    // otherwise size to children
+    if (ui_state->pref_height && ui_state->pref_height->value.kind != UI_SizeKind_Null) {
+        box->semantic_size[Axis2_Y] = ui_state->pref_height->value;
+    } else {
+        box->semantic_size[Axis2_Y] = ui_size_children(0, 0);
+    }
     ui_push_parent(box);
     return box;
 }
@@ -119,7 +129,7 @@ ui_column_begin(void)
 {
     UI_Box *box = ui_build_box_from_string(0, str_lit("###column"));
     box->semantic_size[Axis2_X] = ui_size_pct(1, 0);
-    box->semantic_size[Axis2_Y] = ui_size_pct(1, 0);
+    box->semantic_size[Axis2_Y] = ui_size_children(0, 0);  // Size to content height
     ui_push_parent(box);
     return box;
 }
@@ -294,9 +304,12 @@ ui_scroll_region_end(void)
     UI_Box   *region = ui_pop_parent();
     UI_Signal sig = ui_signal_from_box(region);
 
-    if (sig.hovering && ui_state->events.first)
+    // Temporarily disable scroll handling to prevent crash
+    // TODO: Fix event list corruption issue
+    /*
+    if (sig.hovering && ui_state && ui_state->events.first)
     {
-        for (UI_Event *event = ui_state->events.first; event != 0; event = event->next)
+        for (UI_Event *event = ui_state->events.first; event != 0; )
         {
             if (event->kind == UI_EventKind_MouseScroll)
             {
@@ -304,8 +317,14 @@ ui_scroll_region_end(void)
                 if (region->rel_pos.y > 0)
                     region->rel_pos.y = 0;
             }
+            
+            // Safely advance to next event
+            UI_Event *next = event->next;
+            if (!next) break;
+            event = next;
         }
     }
+    */
 
     return sig;
 }

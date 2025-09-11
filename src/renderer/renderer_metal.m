@@ -140,10 +140,10 @@ renderer_init()
     sampler_desc.tAddressMode = MTLSamplerAddressModeClampToEdge;
     r_metal_state->blur_sampler = metal_retain([device newSamplerStateWithDescriptor:sampler_desc]);
     
-    // Create font sampler (nearest filtering for crisp text)
+    // Create font sampler (linear filtering for smooth text)
     MTLSamplerDescriptor *font_sampler_desc = [MTLSamplerDescriptor new];
-    font_sampler_desc.minFilter = MTLSamplerMinMagFilterNearest;
-    font_sampler_desc.magFilter = MTLSamplerMinMagFilterNearest;
+    font_sampler_desc.minFilter = MTLSamplerMinMagFilterLinear;
+    font_sampler_desc.magFilter = MTLSamplerMinMagFilterLinear;
     font_sampler_desc.sAddressMode = MTLSamplerAddressModeClampToEdge;
     font_sampler_desc.tAddressMode = MTLSamplerAddressModeClampToEdge;
     r_metal_state->font_sampler = metal_retain([device newSamplerStateWithDescriptor:font_sampler_desc]);
@@ -299,6 +299,8 @@ renderer_window_equip(void *window)
                                                                                           width:(NSUInteger)drawableSize.width
                                                                                          height:(NSUInteger)drawableSize.height
                                                                                       mipmapped:NO];
+    depth_desc.textureType = MTLTextureType2DMultisample;
+    depth_desc.sampleCount = 4; // 4x MSAA
     depth_desc.usage = MTLTextureUsageRenderTarget;
     depth_desc.storageMode = MTLStorageModePrivate;
 
@@ -718,6 +720,8 @@ renderer_window_begin_frame(void *window, Renderer_Handle window_equip)
                                                                                               width:(NSUInteger)(new_size.x * scale)
                                                                                              height:(NSUInteger)(new_size.y * scale)
                                                                                           mipmapped:NO];
+        depth_desc.textureType = MTLTextureType2DMultisample;
+        depth_desc.sampleCount = 4; // 4x MSAA
         depth_desc.usage = MTLTextureUsageRenderTarget;
         depth_desc.storageMode = MTLStorageModePrivate;
 

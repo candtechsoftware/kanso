@@ -445,13 +445,17 @@ draw_text(Vec2_f32 p, String text, Font_Renderer_Tag font, f32 size, Vec4_f32 co
     {
         Font_Renderer_Piece *piece = &run.pieces[i];
 
-        // Calculate destination rectangle
+        // Calculate destination rectangle with pixel-grid alignment
         f32 width = piece->subrect.max.x - piece->subrect.min.x;
         f32 height = piece->subrect.max.y - piece->subrect.min.y;
+        
+        // Snap text position to pixel grid for crisp rendering
+        f32 x_pos = floorf(p.x + x_offset + piece->offset.x + 0.5f);
+        f32 y_pos = floorf(p.y + piece->offset.y + 0.5f);
 
         Rng2_f32 dst = {
-            {{p.x + x_offset + piece->offset.x, p.y + piece->offset.y}},
-            {{p.x + x_offset + piece->offset.x + width, p.y + piece->offset.y + height}}};
+            {{x_pos, y_pos}},
+            {{x_pos + width, y_pos + height}}};
 
         // Since we're creating individual textures per text run, use full texture
         Rng2_f32 src = {
@@ -464,7 +468,7 @@ draw_text(Vec2_f32 p, String text, Font_Renderer_Tag font, f32 size, Vec4_f32 co
         Renderer_Rect_2D_Inst *rect = draw_img(dst, src, tex, color, 0, 0, 0);
         if (rect)
         {
-            rect->is_font_texture = 1.0f; // Mark as font texture for nearest neighbor sampling
+            rect->is_font_texture = 1.0f; // Use nearest filtering for crisp font rendering
         }
         x_offset += piece->advance;
     }
@@ -483,13 +487,17 @@ draw_text_run_list(Vec2_f32 p, Draw_Text_Run_List *list)
         {
             Font_Renderer_Piece *piece = &run->run.pieces[i];
 
-            // Calculate destination rectangle
+            // Calculate destination rectangle with pixel-grid alignment
             f32 width = piece->subrect.max.x - piece->subrect.min.x;
             f32 height = piece->subrect.max.y - piece->subrect.min.y;
+            
+            // Snap text position to pixel grid for crisp rendering
+            f32 x_pos = floorf(p.x + x_offset + piece->offset.x + 0.5f);
+            f32 y_pos = floorf(p.y + piece->offset.y + 0.5f);
 
             Rng2_f32 dst = {
-                {{p.x + x_offset + piece->offset.x, p.y + piece->offset.y}},
-                {{p.x + x_offset + piece->offset.x + width, p.y + piece->offset.y + height}}};
+                {{x_pos, y_pos}},
+                {{x_pos + width, y_pos + height}}};
 
             // Since we're creating individual textures per text run, use full texture
             Rng2_f32 src = {

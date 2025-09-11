@@ -60,6 +60,7 @@ renderer_metal_init_shaders()
         pipeline_desc.colorAttachments[0].sourceAlphaBlendFactor = MTLBlendFactorOne;
         pipeline_desc.colorAttachments[0].destinationRGBBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
         pipeline_desc.colorAttachments[0].destinationAlphaBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
+        pipeline_desc.sampleCount = 4; // Enable 4x MSAA
 
         r_metal_state->pipelines[Renderer_Metal_Shader_Kind_Rect].render_pipeline_state =
             metal_retain([metal_device(r_metal_state->device) newRenderPipelineStateWithDescriptor:pipeline_desc error:&error]);
@@ -108,6 +109,7 @@ renderer_metal_init_shaders()
         pipeline_desc.vertexFunction = vertex_function;
         pipeline_desc.fragmentFunction = fragment_function;
         pipeline_desc.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
+        pipeline_desc.sampleCount = 4; // Enable 4x MSAA
 
         r_metal_state->pipelines[Renderer_Metal_Shader_Kind_Blur].render_pipeline_state =
             metal_retain([metal_device(r_metal_state->device) newRenderPipelineStateWithDescriptor:pipeline_desc error:&error]);
@@ -193,6 +195,7 @@ renderer_metal_init_shaders()
         pipeline_desc.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
         pipeline_desc.depthAttachmentPixelFormat = MTLPixelFormatDepth32Float;
         pipeline_desc.rasterizationEnabled = YES;
+        pipeline_desc.sampleCount = 4; // Enable 4x MSAA
 
         printf("Creating mesh pipeline state...");
         id<MTLRenderPipelineState> mesh_pipeline = [metal_device(r_metal_state->device) newRenderPipelineStateWithDescriptor:pipeline_desc error:&error];
