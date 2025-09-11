@@ -71,9 +71,11 @@ compile_glsl_to_spirv(Arena *arena, const char *glsl_path)
     fclose(f);
 
     // Clean up temp file
-    char rm_cmd[256];
-    snprintf(rm_cmd, sizeof(rm_cmd), "rm -f \"%s\"", temp_spv);
-    system(rm_cmd);
+    char rm_cmd[512];
+    int ret = snprintf(rm_cmd, sizeof(rm_cmd), "rm -f \"%s\"", temp_spv);
+    if (ret > 0 && ret < (int)sizeof(rm_cmd)) {
+        system(rm_cmd);
+    }
 
     return result;
 }

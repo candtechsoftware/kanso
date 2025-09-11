@@ -157,10 +157,15 @@ if [ "$OS_NAME" = "Darwin" ]; then
 elif [ "$OS_NAME" = "Linux" ]; then
     # Linux specific settings
     echo "[Building for Linux with Vulkan renderer]"
+    
+    # Add FreeType support
+    freetype_cflags=$(pkg-config --cflags freetype2 2>/dev/null || echo "-I/usr/include/freetype2")
+    freetype_libs=$(pkg-config --libs freetype2 2>/dev/null || echo "-lfreetype")
+    
     common="$common -D_POSIX_C_SOURCE=200809L"
-    link_flags="-lvulkan -lX11 -ldl -lm"
-    debug_flags="$compiler -O0 -DBUILD_DEBUG=1 -DUSE_VULKAN=1 ${common} ${profile_flags}"
-    release_flags="$compiler -O3 -DBUILD_DEBUG=0 -DUSE_VULKAN=1 ${common} ${profile_flags}"
+    link_flags="-lvulkan -lX11 -lXext -lXcursor -lXi -ldl -lm $freetype_libs"
+    debug_flags="$compiler -O0 -DBUILD_DEBUG=1 -DUSE_VULKAN=1 ${common} ${profile_flags} ${freetype_cflags}"
+    release_flags="$compiler -O3 -DBUILD_DEBUG=0 -DUSE_VULKAN=1 ${common} ${profile_flags} ${freetype_cflags}"
 else
     echo "Unsupported OS: $OS_NAME"
     exit 1
@@ -175,7 +180,7 @@ mkdir -p build src/generated
 echo "Building meta tool..."
 if [ "$OS_NAME" = "Linux" ]; then
     echo "Compiling meta tool for code generation..."
-    $compile_line -o build/meta src/meta/meta.c -lm
+    $compile_line -o build/meta src/meta/meta.c $link_flags
     if [ $? -ne 0 ]; then
         echo "Meta tool compilation failed!"
         exit 1

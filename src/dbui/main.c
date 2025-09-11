@@ -155,7 +155,7 @@ internal String cstr_to_string_runtime(char *cstr) {
 internal String format_size(u64 size_bytes) {
     static char buffer[32];
     if (size_bytes < 1024) {
-        snprintf(buffer, sizeof(buffer), "%llu B", size_bytes);
+        snprintf(buffer, sizeof(buffer), "%lu B", (unsigned long)size_bytes);
     } else if (size_bytes < 1024 * 1024) {
         snprintf(buffer, sizeof(buffer), "%.1f KB", size_bytes / 1024.0);
     } else if (size_bytes < 1024 * 1024 * 1024) {
@@ -525,7 +525,7 @@ int main() {
                     if (event->character >= 32 && event->character < 127) {
                         search_buffer[search_cursor++] = (char)event->character;
                         search_buffer[search_cursor] = '\0';
-                        printf("Typed: '%c' (cursor at %llu)\n", (char)event->character, search_cursor);
+                        printf("Typed: '%c' (cursor at %lu)\n", (char)event->character, (unsigned long)search_cursor);
                     }
                 }
             } else if (search_active && event->kind == OS_Event_Press) {

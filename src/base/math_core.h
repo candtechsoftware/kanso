@@ -135,6 +135,7 @@ typedef Vec2_f32 Vec2;
 #define V2F32(x, y) ((Vec2_f32){{(x), (y)}})
 #define V2S32(x, y) ((Vec2_s32){(x), (y)})
 #define V2S64(x, y) ((Vec2_s64){(x), (y)})
+#define V4F32(x, y, z, w) ((Vec4_f32){{(x), (y), (z), (w)}})
 typedef Vec3_f32       Vec3;
 typedef Vec4_f32       Vec4;
 typedef Mat3x3_f32     Mat3x3;

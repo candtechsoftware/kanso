@@ -613,7 +613,11 @@ os_file_info_list_from_dir(Arena *arena, String dir_path)
 
         // Get file properties
         char full_path[4096];
-        snprintf(full_path, sizeof(full_path), "%s/%s", path_buf, entry->d_name);
+        int ret = snprintf(full_path, sizeof(full_path), "%s/%s", path_buf, entry->d_name);
+        if (ret < 0 || ret >= (int)sizeof(full_path)) {
+            // Path too long, skip this entry
+            continue;
+        }
         struct stat st;
         if (stat(full_path, &st) == 0)
         {

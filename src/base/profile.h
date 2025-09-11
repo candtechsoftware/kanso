@@ -102,3 +102,16 @@ void prof_frame_mark(void);
 
 // Helper macros for common profiling patterns
 #define PROF_FUNCTION Prof_ScopeN(__FUNCTION__)
+
+// Tracy-compatible macros for easier migration
+#ifdef ENABLE_PROFILE
+#    define ZoneScoped       Prof_ScopeN(__FUNCTION__)
+#    define ZoneScopedN(x)   Prof_ScopeN(x)
+#    define ZoneScopedC(x)   Prof_ScopeN(__FUNCTION__)
+#    define ZoneScopedNC(n,c) Prof_ScopeN(n)
+#else
+#    define ZoneScoped
+#    define ZoneScopedN(x)
+#    define ZoneScopedC(x)
+#    define ZoneScopedNC(n,c)
+#endif

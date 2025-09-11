@@ -427,7 +427,7 @@ ui_signal_from_box(UI_Box *box)
     
     result.mouse = ui->mouse_pos;
 
-    Vec2_f32 mouse_rel = {ui->mouse_pos.x - box->rect.min.x, ui->mouse_pos.y - box->rect.min.y};
+    Vec2_f32 mouse_rel = V2F32(ui->mouse_pos.x - box->rect.min.x, ui->mouse_pos.y - box->rect.min.y);
     result.mouse_over = (mouse_rel.x >= 0 && mouse_rel.x < (box->rect.max.x - box->rect.min.x) &&
                          mouse_rel.y >= 0 && mouse_rel.y < (box->rect.max.y - box->rect.min.y));
 
@@ -850,37 +850,37 @@ ui_get_modern_design(void)
     if (!g_modern_design_initialized)
     {
         // Finder-like colors (more authentic macOS look)
-        g_modern_design.colors.bg_primary      = (Vec4_f32){0.094f, 0.094f, 0.094f, 1.0f};  // #181818 - darker like Finder
-        g_modern_design.colors.bg_secondary    = (Vec4_f32){0.125f, 0.125f, 0.125f, 1.0f};  // #202020 - sidebar
-        g_modern_design.colors.bg_tertiary     = (Vec4_f32){0.149f, 0.149f, 0.149f, 1.0f};  // #262626 - header
-        g_modern_design.colors.bg_elevated     = (Vec4_f32){0.176f, 0.176f, 0.176f, 1.0f};  // #2d2d2d
+        g_modern_design.colors.bg_primary      = V4F32(0.094f, 0.094f, 0.094f, 1.0f);  // #181818 - darker like Finder
+        g_modern_design.colors.bg_secondary    = V4F32(0.125f, 0.125f, 0.125f, 1.0f);  // #202020 - sidebar
+        g_modern_design.colors.bg_tertiary     = V4F32(0.149f, 0.149f, 0.149f, 1.0f);  // #262626 - header
+        g_modern_design.colors.bg_elevated     = V4F32(0.176f, 0.176f, 0.176f, 1.0f);  // #2d2d2d
         
         // Interactive states - more subtle like Windows Explorer
-        g_modern_design.colors.interactive_normal   = (Vec4_f32){0.0f, 0.0f, 0.0f, 0.0f};       // transparent
-        g_modern_design.colors.interactive_hover    = (Vec4_f32){0.2f, 0.2f, 0.2f, 0.3f};       // subtle gray overlay
-        g_modern_design.colors.interactive_active   = (Vec4_f32){0.25f, 0.25f, 0.25f, 0.5f};    // slightly darker
-        g_modern_design.colors.interactive_disabled = (Vec4_f32){0.157f, 0.157f, 0.157f, 0.5f};  // #282828 50%
+        g_modern_design.colors.interactive_normal   = V4F32(0.0f, 0.0f, 0.0f, 0.0f);       // transparent
+        g_modern_design.colors.interactive_hover    = V4F32(0.2f, 0.2f, 0.2f, 0.3f);       // subtle gray overlay
+        g_modern_design.colors.interactive_active   = V4F32(0.25f, 0.25f, 0.25f, 0.5f);    // slightly darker
+        g_modern_design.colors.interactive_disabled = V4F32(0.157f, 0.157f, 0.157f, 0.5f);  // #282828 50%
         
         // Text colors with good contrast
-        g_modern_design.colors.text_primary   = (Vec4_f32){0.878f, 0.878f, 0.878f, 1.0f};  // #e0e0e0
-        g_modern_design.colors.text_secondary = (Vec4_f32){0.659f, 0.659f, 0.659f, 1.0f};  // #a8a8a8
-        g_modern_design.colors.text_disabled  = (Vec4_f32){0.467f, 0.467f, 0.467f, 1.0f};  // #777777
-        g_modern_design.colors.text_accent    = (Vec4_f32){0.403f, 0.675f, 0.937f, 1.0f};  // #67abef
+        g_modern_design.colors.text_primary   = V4F32(0.878f, 0.878f, 0.878f, 1.0f);  // #e0e0e0
+        g_modern_design.colors.text_secondary = V4F32(0.659f, 0.659f, 0.659f, 1.0f);  // #a8a8a8
+        g_modern_design.colors.text_disabled  = V4F32(0.467f, 0.467f, 0.467f, 1.0f);  // #777777
+        g_modern_design.colors.text_accent    = V4F32(0.403f, 0.675f, 0.937f, 1.0f);  // #67abef
         
         // Border colors (more subtle like macOS)
-        g_modern_design.colors.border_subtle = (Vec4_f32){0.2f, 0.2f, 0.2f, 1.0f};    // #333333 - very subtle
-        g_modern_design.colors.border_normal = (Vec4_f32){0.25f, 0.25f, 0.25f, 1.0f};  // #404040 - normal
-        g_modern_design.colors.border_strong = (Vec4_f32){0.3f, 0.3f, 0.3f, 1.0f};    // #4d4d4d - strong
+        g_modern_design.colors.border_subtle = V4F32(0.2f, 0.2f, 0.2f, 1.0f);    // #333333 - very subtle
+        g_modern_design.colors.border_normal = V4F32(0.25f, 0.25f, 0.25f, 1.0f);  // #404040 - normal
+        g_modern_design.colors.border_strong = V4F32(0.3f, 0.3f, 0.3f, 1.0f);    // #4d4d4d - strong
         
         // Status colors
-        g_modern_design.colors.success = (Vec4_f32){0.325f, 0.733f, 0.408f, 1.0f};  // #53bb68
-        g_modern_design.colors.warning = (Vec4_f32){0.898f, 0.671f, 0.192f, 1.0f};  // #e5ab31
-        g_modern_design.colors.error   = (Vec4_f32){0.859f, 0.373f, 0.373f, 1.0f};  // #db5f5f
-        g_modern_design.colors.info    = (Vec4_f32){0.403f, 0.675f, 0.937f, 1.0f};  // #67abef
+        g_modern_design.colors.success = V4F32(0.325f, 0.733f, 0.408f, 1.0f);  // #53bb68
+        g_modern_design.colors.warning = V4F32(0.898f, 0.671f, 0.192f, 1.0f);  // #e5ab31
+        g_modern_design.colors.error   = V4F32(0.859f, 0.373f, 0.373f, 1.0f);  // #db5f5f
+        g_modern_design.colors.info    = V4F32(0.403f, 0.675f, 0.937f, 1.0f);  // #67abef
         
         // Accent colors
-        g_modern_design.colors.accent_primary   = (Vec4_f32){0.403f, 0.675f, 0.937f, 1.0f};  // #67abef
-        g_modern_design.colors.accent_secondary = (Vec4_f32){0.565f, 0.427f, 0.859f, 1.0f};  // #906ddb
+        g_modern_design.colors.accent_primary   = V4F32(0.403f, 0.675f, 0.937f, 1.0f);  // #67abef
+        g_modern_design.colors.accent_secondary = V4F32(0.565f, 0.427f, 0.859f, 1.0f);  // #906ddb
         
         // Typography system
         g_modern_design.typography.size_xs   = 11.0f;
@@ -920,14 +920,14 @@ ui_color_mix(Vec4_f32 base, Vec4_f32 overlay, f32 alpha)
 internal Vec4_f32
 ui_color_lighten(Vec4_f32 color, f32 amount)
 {
-    Vec4_f32 white = (Vec4_f32){1.0f, 1.0f, 1.0f, 1.0f};
+    Vec4_f32 white = V4F32(1.0f, 1.0f, 1.0f, 1.0f);
     return ui_color_mix(color, white, amount);
 }
 
 internal Vec4_f32
 ui_color_darken(Vec4_f32 color, f32 amount)
 {
-    Vec4_f32 black = (Vec4_f32){0.0f, 0.0f, 0.0f, 1.0f};
+    Vec4_f32 black = V4F32(0.0f, 0.0f, 0.0f, 1.0f);
     return ui_color_mix(color, black, amount);
 }
 
@@ -941,7 +941,7 @@ ui_style_button(UI_Box *box, b32 is_primary)
         box->background_color = design->colors.accent_primary;
         box->background_color_hot = ui_color_lighten(design->colors.accent_primary, 0.1f);
         box->background_color_active = ui_color_darken(design->colors.accent_primary, 0.1f);
-        box->text_color = (Vec4_f32){1.0f, 1.0f, 1.0f, 1.0f};
+        box->text_color = V4F32(1.0f, 1.0f, 1.0f, 1.0f);
     }
     else
     {
@@ -956,7 +956,7 @@ ui_style_button(UI_Box *box, b32 is_primary)
     box->border_thickness = 1.0f;
     
     // Add subtle shadow
-    box->shadow_color = (Vec4_f32){0.0f, 0.0f, 0.0f, 0.1f};
+    box->shadow_color = V4F32(0.0f, 0.0f, 0.0f, 0.1f);
     box->shadow_offset_x = 0.0f;
     box->shadow_offset_y = 1.0f;
     box->shadow_blur = 4.0f;
@@ -997,7 +997,7 @@ ui_style_card(UI_Box *box)
     box->border_thickness = 1.0f;
     
     // Add subtle shadow for depth
-    box->shadow_color = (Vec4_f32){0.0f, 0.0f, 0.0f, 0.15f};
+    box->shadow_color = V4F32(0.0f, 0.0f, 0.0f, 0.15f);
     box->shadow_offset_x = 0.0f;
     box->shadow_offset_y = 2.0f;
     box->shadow_blur = 8.0f;
@@ -1171,7 +1171,7 @@ ui_file_row(String name, String type, String size, String date, b32 is_folder, b
     // Selection highlighting
     if (is_selected)
     {
-        row_bg = (Vec4_f32){0.0f, 0.47f, 0.84f, 1.0f};  // Windows blue
+        row_bg = V4F32(0.0f, 0.47f, 0.84f, 1.0f);  // Windows blue
     }
     
     ui_push_pref_height(ui_size_px(20, 1.0f));  // Compact 20px rows like real file managers
@@ -1186,7 +1186,7 @@ ui_file_row(String name, String type, String size, String date, b32 is_folder, b
         ui_push_pref_width(ui_size_pct(0.6f, 1));
         UI_TableCell
         {
-            ui_push_text_color(is_selected ? (Vec4_f32){1.0f, 1.0f, 1.0f, 1.0f} : design->colors.text_primary);
+            ui_push_text_color(is_selected ? V4F32(1.0f, 1.0f, 1.0f, 1.0f) : design->colors.text_primary);
             
             // Add folder emoji/icon with left padding
             UI_Row {
@@ -1211,7 +1211,7 @@ ui_file_row(String name, String type, String size, String date, b32 is_folder, b
         ui_push_pref_width(ui_size_pct(0.2f, 1));
         UI_TableCell
         {
-            ui_push_text_color(is_selected ? (Vec4_f32){0.9f, 0.9f, 0.9f, 1.0f} : design->colors.text_secondary);
+            ui_push_text_color(is_selected ? V4F32(0.9f, 0.9f, 0.9f, 1.0f) : design->colors.text_secondary);
             ui_labelf("%.*s", str_expand(size));
             ui_pop_text_color();
         }
@@ -1221,7 +1221,7 @@ ui_file_row(String name, String type, String size, String date, b32 is_folder, b
         ui_push_pref_width(ui_size_pct(0.2f, 1));
         UI_TableCell
         {
-            ui_push_text_color(is_selected ? (Vec4_f32){0.9f, 0.9f, 0.9f, 1.0f} : design->colors.text_secondary);
+            ui_push_text_color(is_selected ? V4F32(0.9f, 0.9f, 0.9f, 1.0f) : design->colors.text_secondary);
             ui_labelf("%.*s", str_expand(type));
             ui_pop_text_color();
         }

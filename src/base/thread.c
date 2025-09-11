@@ -30,7 +30,7 @@ thread_pool_worker_main(void *arg)
                                 task_index,
                                 pool->task_data);
 
-                ins_atomic_u64_inc_eval(&pool->task_done);
+                (void)ins_atomic_u64_inc_eval(&pool->task_done);
             }
         }
 
