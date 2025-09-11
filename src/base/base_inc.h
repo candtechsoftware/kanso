@@ -14,3 +14,4 @@
 #include "tctx.h"
 #include "command_line.h"
 #include "profile.h"
+#include "loop.h"

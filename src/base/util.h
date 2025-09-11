@@ -67,6 +67,7 @@
 #    define EXPORT_FN
 #endif
 
+#include "logger.h"
 #define ASSERT(x, msg, ...)                \
     {                                      \
         if (!(x))                          \
