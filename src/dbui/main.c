@@ -49,7 +49,7 @@ typedef enum IconKind {
 
 // Icon character mapping table - these map to glyphs in icons.ttf
 // We'll initialize this at runtime since str_lit is not compile-time constant
-global String icon_kind_text_table[IconKind_COUNT];
+static String icon_kind_text_table[IconKind_COUNT];
 
 internal void init_icon_table(void) {
     // Use simple Unicode characters without borders

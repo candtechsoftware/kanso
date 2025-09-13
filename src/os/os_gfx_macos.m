@@ -1,22 +1,20 @@
-#include "../base/base_inc.h"
-#include "os_gfx.h"
+#pragma push_macro("internal")
+#pragma push_macro("static")
+#undef internal
+#undef static
+
 #include <AppKit/AppKit.h>
 #include <Foundation/Foundation.h>
-
-#pragma push_macro("internal")
-#pragma push_macro("global")
-#undef internal
-#undef global
-
 #include <Cocoa/Cocoa.h>
 #include <objc/runtime.h>
 #include <objc/message.h>
 #include <limits.h>
 
-#pragma pop_macro("global")
+#pragma pop_macro("static")
 #pragma pop_macro("internal")
 
-#include "util.h"
+#include "../base/base_inc.h"
+#include "os_gfx.h"
 
 typedef struct MacOS_Window_State MacOS_Window_State;
 struct MacOS_Window_State
@@ -46,7 +44,7 @@ struct macOS_State
     Arena              *event_arena;
 };
 
-global macOS_State *macos_state = 0;
+static macOS_State *macos_state = 0;
 
 internal OS_Key              os_key_from_macos_keycode(u16 keycode);
 internal OS_Modifiers        os_modifiers_from_macos_flags(NSEventModifierFlags flags);

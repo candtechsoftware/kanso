@@ -52,8 +52,8 @@ arena_alloc_default(u64 reserve_size, u64 commit_size, const char *file, int lin
     return arena_alloc_(&params);
 }
 
-global u64 arena_default_reserve_size = MB(64);
-global u64 arena_default_commit_size = KB(64);
+static u64 arena_default_reserve_size = MB(64);
+static u64 arena_default_commit_size = KB(64);
 
 #define arena_alloc()                               \
     arena_alloc_default(arena_default_reserve_size, \

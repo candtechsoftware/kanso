@@ -134,10 +134,26 @@ renderer_metal_render_pass_ui(Renderer_Pass_Params_UI *params, void *command_buf
         if (group_params->clip.min.x < group_params->clip.max.x && group_params->clip.min.y < group_params->clip.max.y)
         {
             MTLScissorRect scissor;
-            scissor.x = (NSUInteger)group_params->clip.min.x;
-            scissor.y = (NSUInteger)group_params->clip.min.y;
-            scissor.width = (NSUInteger)(group_params->clip.max.x - group_params->clip.min.x);
-            scissor.height = (NSUInteger)(group_params->clip.max.y - group_params->clip.min.y);
+            // Metal has Y=0 at top, but our UI has Y=0 at bottom, so flip the Y coordinate
+            // Clamp to texture bounds to avoid negative values
+            f32 clip_min_y = Min(group_params->clip.min.y, (f32)mtl_target_texture.height);
+            f32 clip_max_y = Min(group_params->clip.max.y, (f32)mtl_target_texture.height);
+            f32 flipped_y = mtl_target_texture.height - clip_max_y;
+            
+            scissor.x = (NSUInteger)Max(0, group_params->clip.min.x);
+            scissor.y = (NSUInteger)Max(0, flipped_y);
+            scissor.width = (NSUInteger)Min(group_params->clip.max.x - group_params->clip.min.x, mtl_target_texture.width);
+            scissor.height = (NSUInteger)(clip_max_y - clip_min_y);
+            [encoder setScissorRect:scissor];
+        }
+        else
+        {
+            // No clipping - set scissor to full viewport
+            MTLScissorRect scissor;
+            scissor.x = 0;
+            scissor.y = 0;
+            scissor.width = mtl_target_texture.width;
+            scissor.height = mtl_target_texture.height;
             [encoder setScissorRect:scissor];
         }
 
@@ -199,7 +215,6 @@ renderer_metal_render_pass_ui(Renderer_Pass_Params_UI *params, void *command_buf
                       instanceCount:total_instances];
         }
     }
-
     [encoder endEncoding];
     Prof_End();
 }
@@ -520,10 +535,26 @@ renderer_metal_render_ui_content(Renderer_Pass_Params_UI *params, id<MTLRenderCo
         if (group_params->clip.min.x < group_params->clip.max.x && group_params->clip.min.y < group_params->clip.max.y)
         {
             MTLScissorRect scissor;
-            scissor.x = (NSUInteger)group_params->clip.min.x;
-            scissor.y = (NSUInteger)group_params->clip.min.y;
-            scissor.width = (NSUInteger)(group_params->clip.max.x - group_params->clip.min.x);
-            scissor.height = (NSUInteger)(group_params->clip.max.y - group_params->clip.min.y);
+            // Metal has Y=0 at top, but our UI has Y=0 at bottom, so flip the Y coordinate
+            // Clamp to texture bounds to avoid negative values
+            f32 clip_min_y = Min(group_params->clip.min.y, (f32)target_texture.height);
+            f32 clip_max_y = Min(group_params->clip.max.y, (f32)target_texture.height);
+            f32 flipped_y = target_texture.height - clip_max_y;
+            
+            scissor.x = (NSUInteger)Max(0, group_params->clip.min.x);
+            scissor.y = (NSUInteger)Max(0, flipped_y);
+            scissor.width = (NSUInteger)Min(group_params->clip.max.x - group_params->clip.min.x, target_texture.width);
+            scissor.height = (NSUInteger)(clip_max_y - clip_min_y);
+            [encoder setScissorRect:scissor];
+        }
+        else
+        {
+            // No clipping - set scissor to full viewport
+            MTLScissorRect scissor;
+            scissor.x = 0;
+            scissor.y = 0;
+            scissor.width = target_texture.width;
+            scissor.height = target_texture.height;
             [encoder setScissorRect:scissor];
         }
 

@@ -1,4 +1,5 @@
 // Temporarily undefine macros that conflict with system headers
+#include "profile.h"
 #pragma push_macro("internal")
 #undef internal
 
@@ -584,6 +585,7 @@ os_file_properties_from_path(String file_path)
 internal File_Info_List *
 os_file_info_list_from_dir(Arena *arena, String dir_path)
 {
+    Prof_Begin("search_directory");
     File_Info_List *list = push_array(arena, File_Info_List, 1);
     *list = (File_Info_List){0};
 
@@ -637,6 +639,7 @@ os_file_info_list_from_dir(Arena *arena, String dir_path)
     }
 
     closedir(dir);
+    Prof_End();
     return list;
 }
 

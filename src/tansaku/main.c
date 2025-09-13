@@ -1,8 +1,10 @@
-// Include system headers first to avoid macro conflicts
 #include "../base/system_headers.h"
+
+#define ENABLE_PROFILE 1
 
 #include "../os/os_inc.h"
 #include "../base/base_inc.h"
+#include "../base/profile.h"
 #include "tansaku.h"
 
 #include "../base/base_inc.c"
@@ -23,9 +25,9 @@ process_file(Arena *arena, String file_path, Search_Config *config)
     u64    ptr_val = 0;
     String file_content;
     {
-        prof_begin("mmap_file");
+        Prof_Begin("mmap_file");
         file_content = os_file_map_view_string(file_path, &ptr_val);
-        prof_end();
+        Prof_End();
     }
 
     if (file_content.data)
@@ -38,7 +40,7 @@ process_file(Arena *arena, String file_path, Search_Config *config)
         // Search content
         if (config->pattern.size > 0 && !config->search_files_only)
         {
-            prof_begin("search_content");
+            Prof_Begin("search_content");
             u32 matches = 0;
 
             for (u32 i = 0; i <= file_content.size - config->pattern.size; i++)
@@ -61,7 +63,7 @@ process_file(Arena *arena, String file_path, Search_Config *config)
             {
                 print("{s}: {d} matches\n", file_path, matches);
             }
-            prof_end();
+            Prof_End();
         }
 
         os_file_unmap_view((void *)ptr_val, file_content.size);
@@ -95,7 +97,7 @@ string_contains(String haystack, String needle)
     Prof_Begin("string_contains");
     if (needle.size == 0 || needle.size > haystack.size)
     {
-        prof_end();
+        Prof_End();
         return 0;
     }
 
@@ -103,7 +105,7 @@ string_contains(String haystack, String needle)
     {
         if (MemoryCompare(haystack.data + i, needle.data, needle.size) == 0)
         {
-            prof_end();
+            Prof_End();
             return 1;
         }
     }
@@ -118,7 +120,7 @@ pattern_match(String filename, String pattern)
     // Simple pattern matching with * wildcard
     if (pattern.size == 0)
     {
-        prof_end();
+        Prof_End();
         return 1;
     }
 
@@ -131,7 +133,7 @@ pattern_match(String filename, String pattern)
         // *pattern* - contains
         String search = str(pattern.data + 1, pattern.size - 2);
         b32    result = string_contains(filename, search);
-        prof_end();
+        Prof_End();
         return result;
     }
     else if (starts_with_star && pattern.size > 1)
@@ -141,7 +143,7 @@ pattern_match(String filename, String pattern)
         if (filename.size >= suffix.size)
         {
             b32 result = str_match(str(filename.data + filename.size - suffix.size, suffix.size), suffix);
-            prof_end();
+            Prof_End();
             return result;
         }
     }
@@ -152,7 +154,7 @@ pattern_match(String filename, String pattern)
         if (filename.size >= prefix.size)
         {
             b32 result = str_match(str(filename.data, prefix.size), prefix);
-            prof_end();
+            Prof_End();
             return result;
         }
     }
@@ -160,7 +162,7 @@ pattern_match(String filename, String pattern)
     {
         // No wildcards - exact match or contains
         b32 result = string_contains(filename, pattern);
-        prof_end();
+        Prof_End();
         return result;
     }
     prof_end();
@@ -180,11 +182,12 @@ search_directory(Arena *arena, String dir_path, Search_Config *config)
         {
             log_error("Failed to read directory: {s}\n", dir_path);
         }
-        prof_end();
+        Prof_End();
         return;
     }
 
     // Process each file/directory
+    Prof_Begin("search_directory_process"); 
     for (File_Info_Node *node = file_list->first; node; node = node->next)
     {
         File_Info *info = &node->info;
@@ -239,6 +242,7 @@ search_directory(Arena *arena, String dir_path, Search_Config *config)
         scratch_end(&scratch);
     }
     Prof_End();
+    Prof_End();
 }
 
 internal int
@@ -252,7 +256,7 @@ run_tansaku(Cmd_Line *cmd_line)
         cmd_line->inputs.node_count == 0)
     {
         print_help(cmd_line->bin_name);
-        prof_end();
+        Prof_End();
         return 0;
     }
 
@@ -349,7 +353,7 @@ run_tansaku(Cmd_Line *cmd_line)
 
                 thread_pool_arena_release(&pool_arena);
                 thread_pool_release(&pool);
-                prof_end();
+                Prof_End();
             }
             else
             {
@@ -390,7 +394,7 @@ run_tansaku(Cmd_Line *cmd_line)
     else
     {
         log_error("Path does not exist: {s}\n", search_path);
-        prof_end();
+        Prof_End();
         return 1;
     }
 
