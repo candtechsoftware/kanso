@@ -1,6 +1,5 @@
 CompileFlags:
   Add:
-    - -D__APPLE__
     - -DRENDERER_METAL=1
     - -Isrc
     - -Isrc/base
@@ -22,6 +21,11 @@ CompileFlags:
     - -Wno-unused-parameter
     - -Wno-undefined-internal
 
+InlayHints:
+  Enabled: No
+  ParameterNames: No
+  DeducedTypes: No
+
 Diagnostics:
   Suppress:
     - main-file-suspicious-include
@@ -41,3 +45,22 @@ Diagnostics:
       - performance-enum-size
       - readability-enum-initial-value
       - bugprone-easily-swappable-parameters
+  UnusedIncludes: None
+  MissingIncludes: None
+
+Completion:
+  AllScopes: No
+  IncludeCleaner: No
+
+Index:
+  StandardLibrary: No
+
+Format:
+  BasedOnStyle: Google
+  IndentWidth: 4
+  BreakBeforeBraces: Attach
+  AllowShortFunctionsOnASingleLine: None
+  AllowShortIfStatementsOnASingleLine: Never
+  AlwaysBreakAfterReturnType: None
+  AlwaysBreakAfterDefinitionReturnType: None
+  PenaltyReturnTypeOnItsOwnLine: 200

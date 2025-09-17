@@ -12,30 +12,26 @@
 typedef THREAD_POOL_TASK_FUNC(Thread_Pool_Task_Func);
 
 typedef struct Thread_Pool_Arena Thread_Pool_Arena;
-struct Thread_Pool_Arena
-{
+struct Thread_Pool_Arena {
     u64     count;
     Arena **arenas;
 };
 
 typedef struct Thread_Pool_Scratch Thread_Pool_Scratch;
-struct Thread_Pool_Scratch
-{
+struct Thread_Pool_Scratch {
     u64      count;
     Scratch *v;
 };
 
 typedef struct Thread_Pool_Worker Thread_Pool_Worker;
-struct Thread_Pool_Worker
-{
+struct Thread_Pool_Worker {
     u64                 id;
     struct Thread_Pool *pool;
     OS_Handle           handle;
 };
 
 typedef struct Thread_Pool Thread_Pool;
-struct Thread_Pool
-{
+struct Thread_Pool {
     b32       is_live;
     Semaphore exec_semaphore;
     Semaphore task_semaphore;

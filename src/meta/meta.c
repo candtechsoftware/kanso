@@ -7,8 +7,7 @@
 #include <time.h>
 
 typedef struct Shader_Info Shader_Info;
-struct Shader_Info
-{
+struct Shader_Info {
     const char *filename;
     const char *var_name;
     const char *type; // "vert" or "frag"
@@ -26,8 +25,7 @@ static Shader_Info shaders[] = {
 static const u64 shader_count = sizeof(shaders) / sizeof(shaders[0]);
 
 internal String
-compile_glsl_to_spirv(Arena *arena, const char *glsl_path)
-{
+compile_glsl_to_spirv(Arena *arena, const char *glsl_path) {
     String result = {0};
 
     // Create temp output path
@@ -42,16 +40,14 @@ compile_glsl_to_spirv(Arena *arena, const char *glsl_path)
 
     // Run compiler
     int exit_code = system(cmd);
-    if (exit_code != 0)
-    {
+    if (exit_code != 0) {
         printf("Error: Failed to compile %s\n", glsl_path);
         return result;
     }
 
     // Read compiled SPIR-V
     FILE *f = fopen(temp_spv, "rb");
-    if (!f)
-    {
+    if (!f) {
         printf("Error: Could not read compiled SPIR-V from %s\n", temp_spv);
         return result;
     }
@@ -60,8 +56,7 @@ compile_glsl_to_spirv(Arena *arena, const char *glsl_path)
     long size = ftell(f);
     fseek(f, 0, SEEK_SET);
 
-    if (size > 0)
-    {
+    if (size > 0) {
         u8 *data = push_array(arena, u8, size);
         fread(data, 1, size, f);
         result.data = data;
@@ -72,7 +67,7 @@ compile_glsl_to_spirv(Arena *arena, const char *glsl_path)
 
     // Clean up temp file
     char rm_cmd[512];
-    int ret = snprintf(rm_cmd, sizeof(rm_cmd), "rm -f \"%s\"", temp_spv);
+    int  ret = snprintf(rm_cmd, sizeof(rm_cmd), "rm -f \"%s\"", temp_spv);
     if (ret > 0 && ret < (int)sizeof(rm_cmd)) {
         system(rm_cmd);
     }
@@ -81,14 +76,12 @@ compile_glsl_to_spirv(Arena *arena, const char *glsl_path)
 }
 
 internal void
-generate_shader_c_array(Arena *arena, FILE *out_c, FILE *out_h, const char *var_name, String spirv_data)
-{
+generate_shader_c_array(Arena *arena, FILE *out_c, FILE *out_h, const char *var_name, String spirv_data) {
     // Write to .c file
     fprintf(out_c, "const unsigned char renderer_vulkan_%s_shader_src[] = {\n",
             var_name);
 
-    for (u64 i = 0; i < spirv_data.size; i++)
-    {
+    for (u64 i = 0; i < spirv_data.size; i++) {
         if (i % 16 == 0)
             fprintf(out_c, "    ");
         fprintf(out_c, "0x%02x", spirv_data.data[i]);
@@ -112,20 +105,16 @@ generate_shader_c_array(Arena *arena, FILE *out_c, FILE *out_h, const char *var_
 }
 
 internal b32
-file_exists(const char *path)
-{
+file_exists(const char *path) {
     FILE *f = fopen(path, "r");
-    if (f)
-    {
+    if (f) {
         fclose(f);
         return true;
     }
     return false;
 }
 
-int
-main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
     Arena *arena = arena_alloc();
 
     printf("Kanso Meta Build Tool\n");
@@ -133,8 +122,7 @@ main(int argc, char **argv)
 
     // Check if glslangValidator is available
     int validator_check = system("command -v glslangValidator >/dev/null 2>&1");
-    if (validator_check != 0)
-    {
+    if (validator_check != 0) {
         printf("Error: glslangValidator not found. Install glslang-tools.\n");
         printf("On Ubuntu/Debian: sudo apt install glslang-tools\n");
         printf("On Arch: sudo pacman -S glslang\n");
@@ -145,8 +133,7 @@ main(int argc, char **argv)
     FILE *out_c = fopen("src/generated/vulkan_shaders.c", "w");
     FILE *out_h = fopen("src/generated/vulkan_shaders.h", "w");
 
-    if (!out_c || !out_h)
-    {
+    if (!out_c || !out_h) {
         printf("Error: Could not create generated files\n");
         return 1;
     }
@@ -161,8 +148,7 @@ main(int argc, char **argv)
     fprintf(out_h, "#pragma once\n\n");
 
     // Process each shader
-    for (u64 i = 0; i < shader_count; i++)
-    {
+    for (u64 i = 0; i < shader_count; i++) {
         Shader_Info *shader = &shaders[i];
         char         shader_path[256];
         snprintf(shader_path, sizeof(shader_path), "src/renderer/shaders/glsl/%s",
@@ -170,8 +156,7 @@ main(int argc, char **argv)
 
         printf("Processing %s...\n", shader->filename);
 
-        if (!file_exists(shader_path))
-        {
+        if (!file_exists(shader_path)) {
             printf("Error: Shader file not found: %s\n", shader_path);
             fclose(out_c);
             fclose(out_h);
@@ -179,8 +164,7 @@ main(int argc, char **argv)
         }
 
         String spirv_data = compile_glsl_to_spirv(arena, shader_path);
-        if (spirv_data.size == 0)
-        {
+        if (spirv_data.size == 0) {
             printf("Error: Failed to compile shader %s\n", shader->filename);
             fclose(out_c);
             fclose(out_h);

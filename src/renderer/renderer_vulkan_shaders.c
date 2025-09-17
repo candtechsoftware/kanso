@@ -2,9 +2,7 @@
 #include "../base/base_inc.h"
 #include "../generated/vulkan_shaders.h"
 
-void
-renderer_vulkan_create_shaders()
-{
+void renderer_vulkan_create_shaders() {
     // Create shader modules from pre-compiled SPIR-V bytecode
     g_vulkan->shaders.rect_vert = renderer_vulkan_create_shader_module(
         renderer_vulkan_rect_vert_shader_src,
@@ -31,9 +29,7 @@ renderer_vulkan_create_shaders()
         renderer_vulkan_mesh_frag_shader_src_size);
 }
 
-void
-renderer_vulkan_destroy_shaders()
-{
+void renderer_vulkan_destroy_shaders() {
     if (g_vulkan->shaders.rect_vert)
         vkDestroyShaderModule(g_vulkan->device, g_vulkan->shaders.rect_vert, NULL);
     if (g_vulkan->shaders.rect_frag)
@@ -50,9 +46,7 @@ renderer_vulkan_destroy_shaders()
     MemoryZero(&g_vulkan->shaders, sizeof(g_vulkan->shaders));
 }
 
-void
-renderer_vulkan_create_descriptor_set_layouts()
-{
+void renderer_vulkan_create_descriptor_set_layouts() {
     // UI Global descriptor set layout (set = 0)
     {
         VkDescriptorSetLayoutBinding bindings[] = {
@@ -156,9 +150,7 @@ renderer_vulkan_create_descriptor_set_layouts()
     }
 }
 
-void
-renderer_vulkan_create_pipeline_layouts()
-{
+void renderer_vulkan_create_pipeline_layouts() {
     // UI pipeline layout
     {
         VkDescriptorSetLayout layouts[] = {
@@ -207,9 +199,7 @@ renderer_vulkan_create_pipeline_layouts()
     }
 }
 
-void
-renderer_vulkan_create_pipelines(VkRenderPass render_pass)
-{
+void renderer_vulkan_create_pipelines(VkRenderPass render_pass) {
     VkPipelineCache pipeline_cache = VK_NULL_HANDLE;
 
     // Common dynamic states
@@ -256,8 +246,7 @@ renderer_vulkan_create_pipelines(VkRenderPass render_pass)
         attr_descs[1].offset = offsetof(Renderer_Rect_2D_Inst, src);
 
         // colors[0-3]
-        for (int i = 0; i < 4; i++)
-        {
+        for (int i = 0; i < 4; i++) {
             attr_descs[2 + i].binding = 0;
             attr_descs[2 + i].location = 2 + i;
             attr_descs[2 + i].format = VK_FORMAT_R32G32B32A32_SFLOAT;
@@ -362,8 +351,7 @@ renderer_vulkan_create_pipelines(VkRenderPass render_pass)
         pipeline_info.subpass = 0;
 
         if (vkCreateGraphicsPipelines(g_vulkan->device, pipeline_cache, 1, &pipeline_info,
-                                      NULL, &g_vulkan->pipelines.ui) != VK_SUCCESS)
-        {
+                                      NULL, &g_vulkan->pipelines.ui) != VK_SUCCESS) {
             assert(0 && "Failed to create UI graphics pipeline!");
         }
     }
@@ -452,8 +440,7 @@ renderer_vulkan_create_pipelines(VkRenderPass render_pass)
 
         // Create both horizontal and vertical blur pipelines
         if (vkCreateGraphicsPipelines(g_vulkan->device, pipeline_cache, 1, &pipeline_info,
-                                      NULL, &g_vulkan->pipelines.blur_horizontal) != VK_SUCCESS)
-        {
+                                      NULL, &g_vulkan->pipelines.blur_horizontal) != VK_SUCCESS) {
             assert(0 && "Failed to create horizontal blur graphics pipeline!");
         }
 
@@ -512,8 +499,7 @@ renderer_vulkan_create_pipelines(VkRenderPass render_pass)
         attr_descs[3].offset = sizeof(f32) * 8;
 
         // Instance transform (mat4 = 4 vec4s)
-        for (int i = 0; i < 4; i++)
-        {
+        for (int i = 0; i < 4; i++) {
             attr_descs[4 + i].binding = 1;
             attr_descs[4 + i].location = 4 + i;
             attr_descs[4 + i].format = VK_FORMAT_R32G32B32A32_SFLOAT;
@@ -609,8 +595,7 @@ renderer_vulkan_create_pipelines(VkRenderPass render_pass)
         pipeline_info.subpass = 0;
 
         if (vkCreateGraphicsPipelines(g_vulkan->device, pipeline_cache, 1, &pipeline_info,
-                                      NULL, &g_vulkan->pipelines.geo_3d) != VK_SUCCESS)
-        {
+                                      NULL, &g_vulkan->pipelines.geo_3d) != VK_SUCCESS) {
             assert(0 && "Failed to create 3D geometry graphics pipeline!");
         }
     }

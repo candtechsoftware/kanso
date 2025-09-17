@@ -3,8 +3,7 @@
 #include "../os/os.h"
 #include "types.h"
 
-typedef enum Loop_Operation
-{
+typedef enum Loop_Operation {
     LOOP_OP_NOP = 0,
     LOOP_OP_ADD,
     LOOP_OP_MOD,
@@ -14,16 +13,14 @@ typedef enum Loop_Operation
     LOOP_OP_USER
 } Loop_Operation;
 
-typedef enum Loop_Event_Flags
-{
+typedef enum Loop_Event_Flags {
     Loop_Event_Flag_Read = (1 << 0),
     Loop_Event_Flag_Write = (1 << 1),
     Loop_Event_Flag_Error = (1 << 2),
 } Loop_Event_Flags;
 
 typedef struct Loop_Submission Loop_Submission;
-struct Loop_Submission
-{
+struct Loop_Submission {
     Loop_Submission *next;
     Loop_Operation   op;
     OS_Handle        handle;
@@ -32,16 +29,14 @@ struct Loop_Submission
 };
 
 typedef struct Loop_Submission_List Loop_Submission_List;
-struct Loop_Submission_List
-{
+struct Loop_Submission_List {
     Loop_Submission *first;
     Loop_Submission *last;
     uint64_t         node_count;
 };
 
 typedef struct Loop_Event Loop_Event;
-struct Loop_Event
-{
+struct Loop_Event {
     Loop_Event *next;
     OS_Handle   handle;
     u32         events;
@@ -50,8 +45,7 @@ struct Loop_Event
 };
 
 typedef struct Loop_Event_List Loop_Event_List;
-struct Loop_Event_List
-{
+struct Loop_Event_List {
     Loop_Event *first;
     Loop_Event *last;
     u64         node_count;

@@ -6,7 +6,7 @@
 #include "string_core.h"
 #include "../os/os.h"
 #include "thread.h"
-#include "logger.h" 
+#include "logger.h"
 #include "util.h"
 #include "arena.h"
 #include "array.h"

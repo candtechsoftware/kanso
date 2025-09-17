@@ -4,8 +4,7 @@
 #include "math_core.h"
 
 typedef struct Cmd_Line_Option Cmd_Line_Option;
-struct Cmd_Line_Option
-{
+struct Cmd_Line_Option {
     Cmd_Line_Option *next;
     Cmd_Line_Option *hash_next;
     u64              hash;
@@ -15,16 +14,14 @@ struct Cmd_Line_Option
 };
 
 typedef struct Cmd_Line_List Cmd_Line_List;
-struct Cmd_Line_List
-{
+struct Cmd_Line_List {
     Cmd_Line_Option *first;
     Cmd_Line_Option *last;
     u64              count;
 };
 
 typedef struct Cmd_Line Cmd_Line;
-struct Cmd_Line
-{
+struct Cmd_Line {
     String            bin_name;
     Cmd_Line_List     options;
     String_List       inputs;

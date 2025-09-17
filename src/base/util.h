@@ -69,8 +69,7 @@
 #include "logger.h"
 #define ASSERT(x, msg, ...)                \
     {                                      \
-        if (!(x))                          \
-        {                                  \
+        if (!(x)) {                        \
             log_error(msg, ##__VA_ARGS__); \
             DEBUG_BREAK();                 \
             log_error("Assertion HIT!");   \

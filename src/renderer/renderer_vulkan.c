@@ -42,8 +42,7 @@ debug_callback(
     VkDebugUtilsMessageSeverityFlagBitsEXT      severity,
     VkDebugUtilsMessageTypeFlagsEXT             type,
     const VkDebugUtilsMessengerCallbackDataEXT *callback_data,
-    void                                       *user_data)
-{
+    void                                       *user_data) {
     log_error("Vulkan validation: %s", callback_data->pMessage);
     return VK_FALSE;
 }
@@ -51,10 +50,8 @@ debug_callback(
 
 // Utility functions
 VkFormat
-renderer_vulkan_format_from_tex_2d_format(Renderer_Tex_2D_Format format)
-{
-    switch (format)
-    {
+renderer_vulkan_format_from_tex_2d_format(Renderer_Tex_2D_Format format) {
+    switch (format) {
     case Renderer_Tex_2D_Format_R8:
         return VK_FORMAT_R8_UNORM;
     case Renderer_Tex_2D_Format_RG8:
@@ -74,14 +71,10 @@ renderer_vulkan_format_from_tex_2d_format(Renderer_Tex_2D_Format format)
     }
 }
 
-u32
-renderer_vulkan_find_memory_type(u32 type_filter, VkMemoryPropertyFlags properties)
-{
-    for (u32 i = 0; i < g_vulkan->memory_properties.memoryTypeCount; i++)
-    {
+u32 renderer_vulkan_find_memory_type(u32 type_filter, VkMemoryPropertyFlags properties) {
+    for (u32 i = 0; i < g_vulkan->memory_properties.memoryTypeCount; i++) {
         if ((type_filter & (1 << i)) &&
-            (g_vulkan->memory_properties.memoryTypes[i].propertyFlags & properties) == properties)
-        {
+            (g_vulkan->memory_properties.memoryTypes[i].propertyFlags & properties) == properties) {
             return i;
         }
     }
@@ -90,19 +83,16 @@ renderer_vulkan_find_memory_type(u32 type_filter, VkMemoryPropertyFlags properti
     return 0;
 }
 
-void
-renderer_vulkan_create_buffer(VkDeviceSize size, VkBufferUsageFlags usage,
-                              VkMemoryPropertyFlags properties, VkBuffer *buffer,
-                              VkDeviceMemory *buffer_memory)
-{
+void renderer_vulkan_create_buffer(VkDeviceSize size, VkBufferUsageFlags usage,
+                                   VkMemoryPropertyFlags properties, VkBuffer *buffer,
+                                   VkDeviceMemory *buffer_memory) {
     VkBufferCreateInfo buffer_info = {0};
     buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     buffer_info.size = size;
     buffer_info.usage = usage;
     buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-    if (vkCreateBuffer(g_vulkan->device, &buffer_info, NULL, buffer) != VK_SUCCESS)
-    {
+    if (vkCreateBuffer(g_vulkan->device, &buffer_info, NULL, buffer) != VK_SUCCESS) {
         assert(0 && "Failed to create buffer!");
         return;
     }
@@ -115,8 +105,7 @@ renderer_vulkan_create_buffer(VkDeviceSize size, VkBufferUsageFlags usage,
     alloc_info.allocationSize = mem_requirements.size;
     alloc_info.memoryTypeIndex = renderer_vulkan_find_memory_type(mem_requirements.memoryTypeBits, properties);
 
-    if (vkAllocateMemory(g_vulkan->device, &alloc_info, NULL, buffer_memory) != VK_SUCCESS)
-    {
+    if (vkAllocateMemory(g_vulkan->device, &alloc_info, NULL, buffer_memory) != VK_SUCCESS) {
         assert(0 && "Failed to allocate buffer memory!");
         return;
     }
@@ -124,11 +113,9 @@ renderer_vulkan_create_buffer(VkDeviceSize size, VkBufferUsageFlags usage,
     vkBindBufferMemory(g_vulkan->device, *buffer, *buffer_memory, 0);
 }
 
-void
-renderer_vulkan_create_image(u32 width, u32 height, VkFormat format, VkImageTiling tiling,
-                             VkImageUsageFlags usage, VkMemoryPropertyFlags properties,
-                             VkImage *image, VkDeviceMemory *image_memory)
-{
+void renderer_vulkan_create_image(u32 width, u32 height, VkFormat format, VkImageTiling tiling,
+                                  VkImageUsageFlags usage, VkMemoryPropertyFlags properties,
+                                  VkImage *image, VkDeviceMemory *image_memory) {
     VkImageCreateInfo image_info = {0};
     image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     image_info.imageType = VK_IMAGE_TYPE_2D;
@@ -144,8 +131,7 @@ renderer_vulkan_create_image(u32 width, u32 height, VkFormat format, VkImageTili
     image_info.samples = VK_SAMPLE_COUNT_1_BIT;
     image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-    if (vkCreateImage(g_vulkan->device, &image_info, NULL, image) != VK_SUCCESS)
-    {
+    if (vkCreateImage(g_vulkan->device, &image_info, NULL, image) != VK_SUCCESS) {
         assert(0 && "Failed to create image!");
         return;
     }
@@ -158,8 +144,7 @@ renderer_vulkan_create_image(u32 width, u32 height, VkFormat format, VkImageTili
     alloc_info.allocationSize = mem_requirements.size;
     alloc_info.memoryTypeIndex = renderer_vulkan_find_memory_type(mem_requirements.memoryTypeBits, properties);
 
-    if (vkAllocateMemory(g_vulkan->device, &alloc_info, NULL, image_memory) != VK_SUCCESS)
-    {
+    if (vkAllocateMemory(g_vulkan->device, &alloc_info, NULL, image_memory) != VK_SUCCESS) {
         log_error("Failed to allocate image memory!");
         return;
     }
@@ -168,8 +153,7 @@ renderer_vulkan_create_image(u32 width, u32 height, VkFormat format, VkImageTili
 }
 
 VkImageView
-renderer_vulkan_create_image_view(VkImage image, VkFormat format, VkImageAspectFlags aspect_flags)
-{
+renderer_vulkan_create_image_view(VkImage image, VkFormat format, VkImageAspectFlags aspect_flags) {
     VkImageViewCreateInfo view_info = {0};
     view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     view_info.image = image;
@@ -182,8 +166,7 @@ renderer_vulkan_create_image_view(VkImage image, VkFormat format, VkImageAspectF
     view_info.subresourceRange.layerCount = 1;
 
     VkImageView image_view;
-    if (vkCreateImageView(g_vulkan->device, &view_info, NULL, &image_view) != VK_SUCCESS)
-    {
+    if (vkCreateImageView(g_vulkan->device, &view_info, NULL, &image_view) != VK_SUCCESS) {
         log_error("Failed to create image view!");
         return VK_NULL_HANDLE;
     }
@@ -192,8 +175,7 @@ renderer_vulkan_create_image_view(VkImage image, VkFormat format, VkImageAspectF
 }
 
 VkCommandBuffer
-renderer_vulkan_begin_single_time_commands()
-{
+renderer_vulkan_begin_single_time_commands() {
     VkCommandBufferAllocateInfo alloc_info = {0};
     alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
@@ -212,9 +194,7 @@ renderer_vulkan_begin_single_time_commands()
     return command_buffer;
 }
 
-void
-renderer_vulkan_end_single_time_commands(VkCommandBuffer command_buffer)
-{
+void renderer_vulkan_end_single_time_commands(VkCommandBuffer command_buffer) {
     vkEndCommandBuffer(command_buffer);
 
     VkSubmitInfo submit_info = {0};
@@ -228,10 +208,8 @@ renderer_vulkan_end_single_time_commands(VkCommandBuffer command_buffer)
     vkFreeCommandBuffers(g_vulkan->device, g_vulkan->transient_command_pool, 1, &command_buffer);
 }
 
-void
-renderer_vulkan_transition_image_layout(VkImage image, VkFormat format,
-                                        VkImageLayout old_layout, VkImageLayout new_layout)
-{
+void renderer_vulkan_transition_image_layout(VkImage image, VkFormat format,
+                                             VkImageLayout old_layout, VkImageLayout new_layout) {
     VkCommandBuffer command_buffer = renderer_vulkan_begin_single_time_commands();
 
     VkImageMemoryBarrier barrier = {0};
@@ -250,24 +228,19 @@ renderer_vulkan_transition_image_layout(VkImage image, VkFormat format,
     VkPipelineStageFlags source_stage;
     VkPipelineStageFlags destination_stage;
 
-    if (old_layout == VK_IMAGE_LAYOUT_UNDEFINED && new_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-    {
+    if (old_layout == VK_IMAGE_LAYOUT_UNDEFINED && new_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
         barrier.srcAccessMask = 0;
         barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 
         source_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
         destination_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-    }
-    else if (old_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && new_layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-    {
+    } else if (old_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && new_layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
         barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
         barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
         source_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
         destination_stage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-    }
-    else
-    {
+    } else {
         log_error("Unsupported layout transition!");
         return;
     }
@@ -283,9 +256,7 @@ renderer_vulkan_transition_image_layout(VkImage image, VkFormat format,
     renderer_vulkan_end_single_time_commands(command_buffer);
 }
 
-void
-renderer_vulkan_copy_buffer_to_image(VkBuffer buffer, VkImage image, u32 width, u32 height)
-{
+void renderer_vulkan_copy_buffer_to_image(VkBuffer buffer, VkImage image, u32 width, u32 height) {
     VkCommandBuffer command_buffer = renderer_vulkan_begin_single_time_commands();
 
     VkBufferImageCopy region = {0};
@@ -311,8 +282,7 @@ renderer_vulkan_copy_buffer_to_image(VkBuffer buffer, VkImage image, u32 width, 
 // Simple GLSL to SPIR-V compilation using temporary files
 static bool
 compile_glsl_to_spirv(const char *source, VkShaderStageFlagBits stage,
-                      u32 *spirv_buffer, u64 *spirv_size, u64 max_size)
-{
+                      u32 *spirv_buffer, u64 *spirv_size, u64 max_size) {
     // Use OS temp directory
     const char *temp_dir = "/tmp";
     char        glsl_path[256];
@@ -326,8 +296,7 @@ compile_glsl_to_spirv(const char *source, VkShaderStageFlagBits stage,
 
     // Write GLSL source to temp file
     FILE *glsl_file = fopen(glsl_path, "w");
-    if (!glsl_file)
-    {
+    if (!glsl_file) {
         log_error("Failed to create temporary GLSL file");
         return false;
     }
@@ -341,17 +310,13 @@ compile_glsl_to_spirv(const char *source, VkShaderStageFlagBits stage,
     // Try glslc first (from shaderc/Google)
     snprintf(cmd, sizeof(cmd), "glslc -fshader-stage=%s %s -o %s 2>/dev/null",
              stage_ext, glsl_path, spirv_path);
-    if (system(cmd) == 0)
-    {
+    if (system(cmd) == 0) {
         compiled = true;
-    }
-    else
-    {
+    } else {
         // Try glslangValidator (from Khronos)
         snprintf(cmd, sizeof(cmd), "glslangValidator -V %s -o %s 2>/dev/null",
                  glsl_path, spirv_path);
-        if (system(cmd) == 0)
-        {
+        if (system(cmd) == 0) {
             compiled = true;
         }
     }
@@ -359,16 +324,14 @@ compile_glsl_to_spirv(const char *source, VkShaderStageFlagBits stage,
     // Clean up GLSL file
     unlink(glsl_path);
 
-    if (!compiled)
-    {
+    if (!compiled) {
         log_error("Failed to compile GLSL to SPIR-V. Install glslc or glslangValidator.");
         return false;
     }
 
     // Read SPIR-V file
     FILE *spirv_file = fopen(spirv_path, "rb");
-    if (!spirv_file)
-    {
+    if (!spirv_file) {
         log_error("Failed to open compiled SPIR-V file");
         return false;
     }
@@ -377,8 +340,7 @@ compile_glsl_to_spirv(const char *source, VkShaderStageFlagBits stage,
     long file_size = ftell(spirv_file);
     fseek(spirv_file, 0, SEEK_SET);
 
-    if (file_size < 0 || (u64)file_size > max_size)
-    {
+    if (file_size < 0 || (u64)file_size > max_size) {
         log_error("Compiled SPIR-V is too large: %ld bytes (max %lu)", file_size, max_size);
         fclose(spirv_file);
         unlink(spirv_path);
@@ -396,8 +358,7 @@ compile_glsl_to_spirv(const char *source, VkShaderStageFlagBits stage,
 }
 
 VkShaderModule
-renderer_vulkan_create_shader_module(const u8 *code, u64 size)
-{
+renderer_vulkan_create_shader_module(const u8 *code, u64 size) {
     // Check if this is GLSL (text) or SPIR-V (binary)
     bool is_spirv = size >= 4 && *((u32 *)code) == 0x07230203;
 
@@ -407,35 +368,28 @@ renderer_vulkan_create_shader_module(const u8 *code, u64 size)
     // Static buffer for compiled SPIR-V (128KB should be plenty for shaders)
     static u32 compiled_spirv_buffer[32768]; // 32K u32s = 128KB
 
-    if (is_spirv)
-    {
+    if (is_spirv) {
         // Already SPIR-V
         spirv_code = (const u32 *)code;
         spirv_size = size;
-    }
-    else
-    {
+    } else {
         // Need to compile GLSL to SPIR-V
         // Determine shader stage from the source (hack for now)
         VkShaderStageFlagBits stage = VK_SHADER_STAGE_VERTEX_BIT;
         const char           *source = (const char *)code;
         // Simple string search
         const char *frag_indicators[] = {"gl_FragCoord", "layout(location = 0) out", "frag_", NULL};
-        for (int i = 0; frag_indicators[i]; i++)
-        {
+        for (int i = 0; frag_indicators[i]; i++) {
             const char *search = frag_indicators[i];
             const char *p = source;
-            while (*p)
-            {
+            while (*p) {
                 const char *s = search;
                 const char *t = p;
-                while (*s && *t && *s == *t)
-                {
+                while (*s && *t && *s == *t) {
                     s++;
                     t++;
                 }
-                if (!*s)
-                {
+                if (!*s) {
                     stage = VK_SHADER_STAGE_FRAGMENT_BIT;
                     break;
                 }
@@ -446,8 +400,7 @@ renderer_vulkan_create_shader_module(const u8 *code, u64 size)
         }
 
         u64 compiled_size = 0;
-        if (!compile_glsl_to_spirv(source, stage, compiled_spirv_buffer, &compiled_size, sizeof(compiled_spirv_buffer)))
-        {
+        if (!compile_glsl_to_spirv(source, stage, compiled_spirv_buffer, &compiled_size, sizeof(compiled_spirv_buffer))) {
             return VK_NULL_HANDLE;
         }
 
@@ -461,8 +414,7 @@ renderer_vulkan_create_shader_module(const u8 *code, u64 size)
     create_info.pCode = spirv_code;
 
     VkShaderModule shader_module;
-    if (vkCreateShaderModule(g_vulkan->device, &create_info, NULL, &shader_module) != VK_SUCCESS)
-    {
+    if (vkCreateShaderModule(g_vulkan->device, &create_info, NULL, &shader_module) != VK_SUCCESS) {
         log_error("Failed to create shader module!");
         return VK_NULL_HANDLE;
     }
@@ -471,9 +423,7 @@ renderer_vulkan_create_shader_module(const u8 *code, u64 size)
 }
 
 // Initialize Vulkan
-void
-renderer_init()
-{
+void renderer_init() {
     ZoneScoped;
     // Allocate global Vulkan state
     Arena *arena = arena_alloc();
@@ -528,8 +478,7 @@ renderer_init()
     create_info.pNext = NULL;
 #endif
 
-    if (vkCreateInstance(&create_info, NULL, &g_vulkan->instance) != VK_SUCCESS)
-    {
+    if (vkCreateInstance(&create_info, NULL, &g_vulkan->instance) != VK_SUCCESS) {
         log_error("Failed to create Vulkan instance!");
         return;
     }
@@ -537,8 +486,7 @@ renderer_init()
     // Setup debug messenger
 #ifdef RENDERER_VULKAN_VALIDATION_LAYERS
     PFN_vkCreateDebugUtilsMessengerEXT func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(g_vulkan->instance, "vkCreateDebugUtilsMessengerEXT");
-    if (func != NULL)
-    {
+    if (func != NULL) {
         func(g_vulkan->instance, &debug_create_info, NULL, &g_vulkan->debug_messenger);
     }
 #endif
@@ -547,8 +495,7 @@ renderer_init()
     u32 device_count = 0;
     vkEnumeratePhysicalDevices(g_vulkan->instance, &device_count, NULL);
 
-    if (device_count == 0)
-    {
+    if (device_count == 0) {
         log_error("Failed to find GPUs with Vulkan support!");
         return;
     }
@@ -557,23 +504,20 @@ renderer_init()
     vkEnumeratePhysicalDevices(g_vulkan->instance, &device_count, devices);
 
     // Pick first suitable device (can be improved)
-    for (u32 i = 0; i < device_count; i++)
-    {
+    for (u32 i = 0; i < device_count; i++) {
         VkPhysicalDevice           device = devices[i];
         VkPhysicalDeviceProperties device_properties;
         vkGetPhysicalDeviceProperties(device, &device_properties);
 
         // Check for discrete GPU first
-        if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
-        {
+        if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
             g_vulkan->physical_device = device;
             break;
         }
     }
 
     // If no discrete GPU found, use the first one
-    if (g_vulkan->physical_device == VK_NULL_HANDLE)
-    {
+    if (g_vulkan->physical_device == VK_NULL_HANDLE) {
         g_vulkan->physical_device = devices[0];
     }
 
@@ -588,10 +532,8 @@ renderer_init()
     vkGetPhysicalDeviceQueueFamilyProperties(g_vulkan->physical_device, &queue_family_count, queue_families);
 
     // Find graphics queue family
-    for (u32 i = 0; i < queue_family_count; i++)
-    {
-        if (queue_families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
-        {
+    for (u32 i = 0; i < queue_family_count; i++) {
+        if (queue_families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
             g_vulkan->graphics_queue_family = i;
             g_vulkan->present_queue_family = i; // Will be updated when creating surface
             break;
@@ -629,8 +571,7 @@ renderer_init()
     device_create_info.enabledLayerCount = 0;
 #endif
 
-    if (vkCreateDevice(g_vulkan->physical_device, &device_create_info, NULL, &g_vulkan->device) != VK_SUCCESS)
-    {
+    if (vkCreateDevice(g_vulkan->physical_device, &device_create_info, NULL, &g_vulkan->device) != VK_SUCCESS) {
         log_error("Failed to create logical device!");
         return;
     }
@@ -645,16 +586,14 @@ renderer_init()
     pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
     pool_info.queueFamilyIndex = g_vulkan->graphics_queue_family;
 
-    if (vkCreateCommandPool(g_vulkan->device, &pool_info, NULL, &g_vulkan->command_pool) != VK_SUCCESS)
-    {
+    if (vkCreateCommandPool(g_vulkan->device, &pool_info, NULL, &g_vulkan->command_pool) != VK_SUCCESS) {
         log_error("Failed to create command pool!");
         return;
     }
 
     // Create transient command pool
     pool_info.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
-    if (vkCreateCommandPool(g_vulkan->device, &pool_info, NULL, &g_vulkan->transient_command_pool) != VK_SUCCESS)
-    {
+    if (vkCreateCommandPool(g_vulkan->device, &pool_info, NULL, &g_vulkan->transient_command_pool) != VK_SUCCESS) {
         log_error("Failed to create transient command pool!");
         return;
     }
@@ -675,8 +614,7 @@ renderer_init()
     descriptor_pool_info.maxSets = 30000;
     descriptor_pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
 
-    if (vkCreateDescriptorPool(g_vulkan->device, &descriptor_pool_info, NULL, &g_vulkan->descriptor_pool) != VK_SUCCESS)
-    {
+    if (vkCreateDescriptorPool(g_vulkan->device, &descriptor_pool_info, NULL, &g_vulkan->descriptor_pool) != VK_SUCCESS) {
         log_error("Failed to create descriptor pool!");
         return;
     }
@@ -697,8 +635,7 @@ renderer_init()
     sampler_info.compareOp = VK_COMPARE_OP_ALWAYS;
     sampler_info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
 
-    if (vkCreateSampler(g_vulkan->device, &sampler_info, NULL, &g_vulkan->sampler_nearest) != VK_SUCCESS)
-    {
+    if (vkCreateSampler(g_vulkan->device, &sampler_info, NULL, &g_vulkan->sampler_nearest) != VK_SUCCESS) {
         log_error("Failed to create nearest sampler!");
         return;
     }
@@ -707,8 +644,7 @@ renderer_init()
     sampler_info.minFilter = VK_FILTER_LINEAR;
     sampler_info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
 
-    if (vkCreateSampler(g_vulkan->device, &sampler_info, NULL, &g_vulkan->sampler_linear) != VK_SUCCESS)
-    {
+    if (vkCreateSampler(g_vulkan->device, &sampler_info, NULL, &g_vulkan->sampler_linear) != VK_SUCCESS) {
         log_error("Failed to create linear sampler!");
         return;
     }
@@ -796,9 +732,7 @@ renderer_init()
 }
 
 // Cleanup function
-void
-renderer_shutdown()
-{
+void renderer_shutdown() {
     ZoneScoped;
     if (g_vulkan->device == VK_NULL_HANDLE)
         return;
@@ -885,11 +819,9 @@ renderer_shutdown()
 
     // Destroy debug messenger
 #ifdef RENDERER_VULKAN_VALIDATION_LAYERS
-    if (g_vulkan->debug_messenger)
-    {
+    if (g_vulkan->debug_messenger) {
         PFN_vkDestroyDebugUtilsMessengerEXT func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(g_vulkan->instance, "vkDestroyDebugUtilsMessengerEXT");
-        if (func != NULL)
-        {
+        if (func != NULL) {
             func(g_vulkan->instance, g_vulkan->debug_messenger, NULL);
         }
     }
@@ -904,9 +836,7 @@ renderer_shutdown()
 }
 
 // Helper function to recreate swapchain
-void
-renderer_vulkan_recreate_swapchain(Renderer_Vulkan_Window_Equipment *equip)
-{
+void renderer_vulkan_recreate_swapchain(Renderer_Vulkan_Window_Equipment *equip) {
     printf("RECREATING SWAPCHAIN - old extent: %dx%d\n", equip->swapchain_extent.width, equip->swapchain_extent.height);
     // Get current window size
     // Note: we don't have the window pointer here, so we'll handle differently
@@ -914,8 +844,7 @@ renderer_vulkan_recreate_swapchain(Renderer_Vulkan_Window_Equipment *equip)
     vkDeviceWaitIdle(g_vulkan->device);
 
     // Cleanup old swapchain resources
-    for (u32 i = 0; i < equip->swapchain_image_count; i++)
-    {
+    for (u32 i = 0; i < equip->swapchain_image_count; i++) {
         if (equip->framebuffers)
             vkDestroyFramebuffer(g_vulkan->device, equip->framebuffers[i], NULL);
         if (equip->swapchain_image_views)
@@ -936,16 +865,14 @@ renderer_vulkan_recreate_swapchain(Renderer_Vulkan_Window_Equipment *equip)
 
     // Choose new extent
     VkExtent2D extent = capabilities.currentExtent;
-    if (capabilities.currentExtent.width == UINT32_MAX)
-    {
+    if (capabilities.currentExtent.width == UINT32_MAX) {
         // Use current swapchain extent as fallback if we can't get window size
         extent = equip->swapchain_extent;
     }
     printf("New swapchain extent: %dx%d (current: %dx%d)\n", extent.width, extent.height, capabilities.currentExtent.width, capabilities.currentExtent.height);
 
     // Skip if minimized
-    if (extent.width == 0 || extent.height == 0)
-    {
+    if (extent.width == 0 || extent.height == 0) {
         return;
     }
 
@@ -958,11 +885,9 @@ renderer_vulkan_recreate_swapchain(Renderer_Vulkan_Window_Equipment *equip)
     vkGetPhysicalDeviceSurfaceFormatsKHR(g_vulkan->physical_device, equip->surface, &format_count, formats);
 
     VkSurfaceFormatKHR surface_format = formats[0];
-    for (u32 i = 0; i < format_count; i++)
-    {
+    for (u32 i = 0; i < format_count; i++) {
         VkSurfaceFormatKHR format = formats[i];
-        if (format.format == VK_FORMAT_B8G8R8A8_UNORM && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
-        {
+        if (format.format == VK_FORMAT_B8G8R8A8_UNORM && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
             surface_format = format;
             break;
         }
@@ -970,8 +895,7 @@ renderer_vulkan_recreate_swapchain(Renderer_Vulkan_Window_Equipment *equip)
 
     // Recreate swapchain
     u32 image_count = capabilities.minImageCount + 1;
-    if (capabilities.maxImageCount > 0 && image_count > capabilities.maxImageCount)
-    {
+    if (capabilities.maxImageCount > 0 && image_count > capabilities.maxImageCount) {
         image_count = capabilities.maxImageCount;
     }
 
@@ -986,14 +910,11 @@ renderer_vulkan_recreate_swapchain(Renderer_Vulkan_Window_Equipment *equip)
     swapchain_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
     u32 queue_family_indices[] = {g_vulkan->graphics_queue_family, g_vulkan->present_queue_family};
-    if (g_vulkan->graphics_queue_family != g_vulkan->present_queue_family)
-    {
+    if (g_vulkan->graphics_queue_family != g_vulkan->present_queue_family) {
         swapchain_info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
         swapchain_info.queueFamilyIndexCount = 2;
         swapchain_info.pQueueFamilyIndices = queue_family_indices;
-    }
-    else
-    {
+    } else {
         swapchain_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
     }
 
@@ -1003,8 +924,7 @@ renderer_vulkan_recreate_swapchain(Renderer_Vulkan_Window_Equipment *equip)
     swapchain_info.clipped = VK_TRUE;
     swapchain_info.oldSwapchain = old_swapchain;
 
-    if (vkCreateSwapchainKHR(g_vulkan->device, &swapchain_info, NULL, &equip->swapchain) != VK_SUCCESS)
-    {
+    if (vkCreateSwapchainKHR(g_vulkan->device, &swapchain_info, NULL, &equip->swapchain) != VK_SUCCESS) {
         log_error("Failed to recreate swap chain!");
         return;
     }
@@ -1023,8 +943,7 @@ renderer_vulkan_recreate_swapchain(Renderer_Vulkan_Window_Equipment *equip)
     equip->swapchain_images = push_array(g_vulkan->arena, VkImage, image_count);
     equip->swapchain_image_views = push_array(g_vulkan->arena, VkImageView, image_count);
 
-    for (u32 i = 0; i < image_count; i++)
-    {
+    for (u32 i = 0; i < image_count; i++) {
         equip->swapchain_images[i] = temp_images[i];
         equip->swapchain_image_views[i] = renderer_vulkan_create_image_view(
             equip->swapchain_images[i], equip->swapchain_format, VK_IMAGE_ASPECT_COLOR_BIT);
@@ -1043,8 +962,7 @@ renderer_vulkan_recreate_swapchain(Renderer_Vulkan_Window_Equipment *equip)
 
     // Recreate framebuffers
     equip->framebuffers = push_array_zero(g_vulkan->arena, VkFramebuffer, image_count);
-    for (u32 i = 0; i < image_count; i++)
-    {
+    for (u32 i = 0; i < image_count; i++) {
         VkImageView attachments[] = {
             equip->swapchain_image_views[i],
             equip->depth_image_view};
@@ -1058,8 +976,7 @@ renderer_vulkan_recreate_swapchain(Renderer_Vulkan_Window_Equipment *equip)
         framebuffer_info.height = extent.height;
         framebuffer_info.layers = 1;
 
-        if (vkCreateFramebuffer(g_vulkan->device, &framebuffer_info, NULL, &equip->framebuffers[i]) != VK_SUCCESS)
-        {
+        if (vkCreateFramebuffer(g_vulkan->device, &framebuffer_info, NULL, &equip->framebuffers[i]) != VK_SUCCESS) {
             log_error("Failed to recreate framebuffer!");
             // Critical failure - cannot continue without valid framebuffers
             return;
@@ -1069,8 +986,7 @@ renderer_vulkan_recreate_swapchain(Renderer_Vulkan_Window_Equipment *equip)
 
 // Window equipment functions
 Renderer_Handle
-renderer_window_equip(void *window)
-{
+renderer_window_equip(void *window) {
     ZoneScoped;
     Arena                            *arena = arena_alloc();
     Renderer_Vulkan_Window_Equipment *equip = push_array(arena, Renderer_Vulkan_Window_Equipment, 1);
@@ -1086,23 +1002,20 @@ renderer_window_equip(void *window)
 #    ifdef USE_WAYLAND
     // Wayland surface creation
     struct wl_display *wayland_display = glfwGetWaylandDisplay();
-    if (wayland_display != NULL)
-    {
+    if (wayland_display != NULL) {
         VkWaylandSurfaceCreateInfoKHR surface_info = {0};
         surface_info.sType = VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR;
         surface_info.display = wayland_display;
         surface_info.surface = glfwGetWaylandWindow(glfw_window);
 
         PFN_vkCreateWaylandSurfaceKHR func = (PFN_vkCreateWaylandSurfaceKHR)vkGetInstanceProcAddr(g_vulkan->instance, "vkCreateWaylandSurfaceKHR");
-        if (func != NULL)
-        {
+        if (func != NULL) {
             result = func(g_vulkan->instance, &surface_info, NULL, &equip->surface);
         }
     }
 #    else
     // X11 surface creation - use the display from the X11 state
-    if (x11_state && x11_state->display)
-    {
+    if (x11_state && x11_state->display) {
         printf("Creating X11 surface with display=%p, window=0x%lx\n", x11_state->display, (Window)(uintptr_t)window);
 
         VkXlibSurfaceCreateInfoKHR surface_info = {0};
@@ -1111,18 +1024,13 @@ renderer_window_equip(void *window)
         surface_info.window = (Window)(uintptr_t)window;
 
         PFN_vkCreateXlibSurfaceKHR func = (PFN_vkCreateXlibSurfaceKHR)vkGetInstanceProcAddr(g_vulkan->instance, "vkCreateXlibSurfaceKHR");
-        if (func != NULL)
-        {
+        if (func != NULL) {
             result = func(g_vulkan->instance, &surface_info, NULL, &equip->surface);
             printf("X11 surface creation result: %d\n", result);
-        }
-        else
-        {
+        } else {
             printf("ERROR: vkCreateXlibSurfaceKHR function not found!\n");
         }
-    }
-    else
-    {
+    } else {
         printf("ERROR: x11_state is NULL or display is NULL! x11_state=%p\n", x11_state);
         if (x11_state)
             printf("x11_state->display=%p\n", x11_state->display);
@@ -1132,8 +1040,7 @@ renderer_window_equip(void *window)
 
     // Don't close the X11 display - it's managed by the X11 state
 
-    if (result != VK_SUCCESS)
-    {
+    if (result != VK_SUCCESS) {
         log_error("Failed to create window surface!");
         arena_release(arena);
         return renderer_handle_zero();
@@ -1144,17 +1051,14 @@ renderer_window_equip(void *window)
     vkGetPhysicalDeviceSurfaceSupportKHR(g_vulkan->physical_device, g_vulkan->graphics_queue_family,
                                          equip->surface, &present_support);
 
-    if (!present_support)
-    {
+    if (!present_support) {
         // Find a queue that supports presentation
         u32 queue_family_count = 0;
         vkGetPhysicalDeviceQueueFamilyProperties(g_vulkan->physical_device, &queue_family_count, NULL);
 
-        for (u32 i = 0; i < queue_family_count; i++)
-        {
+        for (u32 i = 0; i < queue_family_count; i++) {
             vkGetPhysicalDeviceSurfaceSupportKHR(g_vulkan->physical_device, i, equip->surface, &present_support);
-            if (present_support)
-            {
+            if (present_support) {
                 g_vulkan->present_queue_family = i;
                 vkGetDeviceQueue(g_vulkan->device, i, 0, &g_vulkan->present_queue);
                 break;
@@ -1178,11 +1082,9 @@ renderer_window_equip(void *window)
 
     // Choose swap surface format
     VkSurfaceFormatKHR surface_format = formats[0];
-    for (u32 i = 0; i < format_count; i++)
-    {
+    for (u32 i = 0; i < format_count; i++) {
         VkSurfaceFormatKHR format = formats[i];
-        if (format.format == VK_FORMAT_B8G8R8A8_UNORM && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
-        {
+        if (format.format == VK_FORMAT_B8G8R8A8_UNORM && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
             surface_format = format;
             break;
         }
@@ -1191,25 +1093,21 @@ renderer_window_equip(void *window)
     // Choose present mode - prefer immediate mode for no vsync
     VkPresentModeKHR present_mode = VK_PRESENT_MODE_IMMEDIATE_KHR;
     bool             found_immediate = false;
-    for (u32 i = 0; i < present_mode_count; i++)
-    {
-        if (present_modes[i] == VK_PRESENT_MODE_IMMEDIATE_KHR)
-        {
+    for (u32 i = 0; i < present_mode_count; i++) {
+        if (present_modes[i] == VK_PRESENT_MODE_IMMEDIATE_KHR) {
             found_immediate = true;
             break;
         }
     }
 
     // Fallback to FIFO if immediate not available
-    if (!found_immediate)
-    {
+    if (!found_immediate) {
         present_mode = VK_PRESENT_MODE_FIFO_KHR;
     }
 
     // Choose swap extent
     VkExtent2D extent = capabilities.currentExtent;
-    if (capabilities.currentExtent.width == UINT32_MAX)
-    {
+    if (capabilities.currentExtent.width == UINT32_MAX) {
         // For now, use default size - in real implementation this would come from OS window
         int width = 800, height = 600;
 
@@ -1224,8 +1122,7 @@ renderer_window_equip(void *window)
 
     // Create swap chain
     u32 image_count = capabilities.minImageCount + 1;
-    if (capabilities.maxImageCount > 0 && image_count > capabilities.maxImageCount)
-    {
+    if (capabilities.maxImageCount > 0 && image_count > capabilities.maxImageCount) {
         image_count = capabilities.maxImageCount;
     }
 
@@ -1241,14 +1138,11 @@ renderer_window_equip(void *window)
 
     u32 queue_family_indices[] = {g_vulkan->graphics_queue_family, g_vulkan->present_queue_family};
 
-    if (g_vulkan->graphics_queue_family != g_vulkan->present_queue_family)
-    {
+    if (g_vulkan->graphics_queue_family != g_vulkan->present_queue_family) {
         swapchain_info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
         swapchain_info.queueFamilyIndexCount = 2;
         swapchain_info.pQueueFamilyIndices = queue_family_indices;
-    }
-    else
-    {
+    } else {
         swapchain_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
     }
 
@@ -1258,8 +1152,7 @@ renderer_window_equip(void *window)
     swapchain_info.clipped = VK_TRUE;
     swapchain_info.oldSwapchain = VK_NULL_HANDLE;
 
-    if (vkCreateSwapchainKHR(g_vulkan->device, &swapchain_info, NULL, &equip->swapchain) != VK_SUCCESS)
-    {
+    if (vkCreateSwapchainKHR(g_vulkan->device, &swapchain_info, NULL, &equip->swapchain) != VK_SUCCESS) {
         log_error("Failed to create swap chain!");
         vkDestroySurfaceKHR(g_vulkan->instance, equip->surface, NULL);
         arena_release(arena);
@@ -1278,15 +1171,13 @@ renderer_window_equip(void *window)
     equip->swapchain_image_count = image_count; // CRITICAL: Store the image count!
 
     equip->swapchain_images = push_array(arena, VkImage, image_count);
-    for (u32 i = 0; i < image_count; i++)
-    {
+    for (u32 i = 0; i < image_count; i++) {
         equip->swapchain_images[i] = temp_images[i];
     }
 
     // Create image views
     equip->swapchain_image_views = push_array(arena, VkImageView, image_count);
-    for (u32 i = 0; i < image_count; i++)
-    {
+    for (u32 i = 0; i < image_count; i++) {
         equip->swapchain_image_views[i] = renderer_vulkan_create_image_view(
             equip->swapchain_images[i],
             equip->swapchain_format,
@@ -1347,8 +1238,7 @@ renderer_window_equip(void *window)
     render_pass_info.dependencyCount = 1;
     render_pass_info.pDependencies = &dependency;
 
-    if (vkCreateRenderPass(g_vulkan->device, &render_pass_info, NULL, &equip->render_pass) != VK_SUCCESS)
-    {
+    if (vkCreateRenderPass(g_vulkan->device, &render_pass_info, NULL, &equip->render_pass) != VK_SUCCESS) {
         log_error("Failed to create render pass!");
         // Cleanup and return
         return renderer_handle_zero();
@@ -1367,8 +1257,7 @@ renderer_window_equip(void *window)
 
     // Create framebuffers
     equip->framebuffers = push_array_zero(arena, VkFramebuffer, image_count);
-    for (u32 i = 0; i < image_count; i++)
-    {
+    for (u32 i = 0; i < image_count; i++) {
         VkImageView attachments[] = {
             equip->swapchain_image_views[i],
             equip->depth_image_view};
@@ -1382,8 +1271,7 @@ renderer_window_equip(void *window)
         framebuffer_info.height = equip->swapchain_extent.height;
         framebuffer_info.layers = 1;
 
-        if (vkCreateFramebuffer(g_vulkan->device, &framebuffer_info, NULL, &equip->framebuffers[i]) != VK_SUCCESS)
-        {
+        if (vkCreateFramebuffer(g_vulkan->device, &framebuffer_info, NULL, &equip->framebuffers[i]) != VK_SUCCESS) {
             log_error("Failed to create framebuffer!");
             return renderer_handle_zero();
         }
@@ -1396,8 +1284,7 @@ renderer_window_equip(void *window)
     alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     alloc_info.commandBufferCount = MAX_FRAMES_IN_FLIGHT;
 
-    if (vkAllocateCommandBuffers(g_vulkan->device, &alloc_info, equip->command_buffers) != VK_SUCCESS)
-    {
+    if (vkAllocateCommandBuffers(g_vulkan->device, &alloc_info, equip->command_buffers) != VK_SUCCESS) {
         log_error("Failed to allocate command buffers!");
         return renderer_handle_zero();
     }
@@ -1411,12 +1298,10 @@ renderer_window_equip(void *window)
     fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-    {
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         if (vkCreateSemaphore(g_vulkan->device, &semaphore_info, NULL, &equip->image_available_semaphores[i]) != VK_SUCCESS ||
             vkCreateSemaphore(g_vulkan->device, &semaphore_info, NULL, &equip->render_finished_semaphores[i]) != VK_SUCCESS ||
-            vkCreateFence(g_vulkan->device, &fence_info, NULL, &equip->in_flight_fences[i]) != VK_SUCCESS)
-        {
+            vkCreateFence(g_vulkan->device, &fence_info, NULL, &equip->in_flight_fences[i]) != VK_SUCCESS) {
             log_error("Failed to create synchronization objects!");
             return renderer_handle_zero();
         }
@@ -1425,16 +1310,14 @@ renderer_window_equip(void *window)
     equip->current_frame = 0;
 
     // Create pipelines if not already created
-    if (g_vulkan->pipelines.ui == VK_NULL_HANDLE)
-    {
+    if (g_vulkan->pipelines.ui == VK_NULL_HANDLE) {
         void renderer_vulkan_create_pipelines(VkRenderPass render_pass);
         renderer_vulkan_create_pipelines(equip->render_pass);
     }
 
     // Allocate descriptor sets for each frame (array already sized)
 
-    for (u32 i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-    {
+    for (u32 i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         // Allocate UI global descriptor set
         VkDescriptorSetAllocateInfo alloc_info = {0};
         alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -1443,24 +1326,21 @@ renderer_window_equip(void *window)
         alloc_info.pSetLayouts = &g_vulkan->descriptor_set_layouts.ui_global;
 
         if (vkAllocateDescriptorSets(g_vulkan->device, &alloc_info,
-                                     &equip->frame_resources[i].ui_global_set) != VK_SUCCESS)
-        {
+                                     &equip->frame_resources[i].ui_global_set) != VK_SUCCESS) {
             log_error("Failed to allocate UI global descriptor set!");
         }
 
         // Allocate blur descriptor set
         alloc_info.pSetLayouts = &g_vulkan->descriptor_set_layouts.blur_global;
         if (vkAllocateDescriptorSets(g_vulkan->device, &alloc_info,
-                                     &equip->frame_resources[i].blur_set) != VK_SUCCESS)
-        {
+                                     &equip->frame_resources[i].blur_set) != VK_SUCCESS) {
             log_error("Failed to allocate blur descriptor set!");
         }
 
         // Allocate geo 3D global descriptor set
         alloc_info.pSetLayouts = &g_vulkan->descriptor_set_layouts.geo_3d_global;
         if (vkAllocateDescriptorSets(g_vulkan->device, &alloc_info,
-                                     &equip->frame_resources[i].geo_3d_global_set) != VK_SUCCESS)
-        {
+                                     &equip->frame_resources[i].geo_3d_global_set) != VK_SUCCESS) {
             log_error("Failed to allocate geo 3D global descriptor set!");
         }
 
@@ -1474,9 +1354,7 @@ renderer_window_equip(void *window)
     return handle;
 }
 
-void
-renderer_window_unequip(void *window, Renderer_Handle window_equip)
-{
+void renderer_window_unequip(void *window, Renderer_Handle window_equip) {
     ZoneScoped;
     Renderer_Vulkan_Window_Equipment *equip = (Renderer_Vulkan_Window_Equipment *)window_equip.u64s[0];
     if (!equip)
@@ -1503,16 +1381,14 @@ renderer_window_unequip(void *window, Renderer_Handle window_equip)
         vkFreeMemory(g_vulkan->device, equip->blur_texture_b_memory, NULL);
 
     // Cleanup synchronization
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-    {
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         vkDestroySemaphore(g_vulkan->device, equip->render_finished_semaphores[i], NULL);
         vkDestroySemaphore(g_vulkan->device, equip->image_available_semaphores[i], NULL);
         vkDestroyFence(g_vulkan->device, equip->in_flight_fences[i], NULL);
     }
 
     // Cleanup framebuffers
-    for (u32 i = 0; i < equip->swapchain_image_count; i++)
-    {
+    for (u32 i = 0; i < equip->swapchain_image_count; i++) {
         if (equip->framebuffers)
             vkDestroyFramebuffer(g_vulkan->device, equip->framebuffers[i], NULL);
     }
@@ -1526,8 +1402,7 @@ renderer_window_unequip(void *window, Renderer_Handle window_equip)
     vkDestroyRenderPass(g_vulkan->device, equip->render_pass, NULL);
 
     // Cleanup image views
-    for (u32 i = 0; i < equip->swapchain_image_count; i++)
-    {
+    for (u32 i = 0; i < equip->swapchain_image_count; i++) {
         if (equip->swapchain_image_views)
             vkDestroyImageView(g_vulkan->device, equip->swapchain_image_views[i], NULL);
     }
@@ -1543,8 +1418,7 @@ renderer_window_unequip(void *window, Renderer_Handle window_equip)
 
 // Texture management
 Renderer_Handle
-renderer_tex_2d_alloc(Renderer_Resource_Kind kind, Vec2_f32 size, Renderer_Tex_2D_Format format, void *data)
-{
+renderer_tex_2d_alloc(Renderer_Resource_Kind kind, Vec2_f32 size, Renderer_Tex_2D_Format format, void *data) {
     ZoneScoped;
     Arena                      *arena = arena_alloc();
     Renderer_Vulkan_Texture_2D *tex = push_array(arena, Renderer_Vulkan_Texture_2D, 1);
@@ -1560,8 +1434,7 @@ renderer_tex_2d_alloc(Renderer_Resource_Kind kind, Vec2_f32 size, Renderer_Tex_2
 
     // Calculate data size
     u32 bytes_per_pixel = 0;
-    switch (format)
-    {
+    switch (format) {
     case Renderer_Tex_2D_Format_R8:
         bytes_per_pixel = 1;
         break;
@@ -1592,8 +1465,7 @@ renderer_tex_2d_alloc(Renderer_Resource_Kind kind, Vec2_f32 size, Renderer_Tex_2
                                  &tex->image, &tex->memory);
 
     // Transition image layout and copy data if provided
-    if (data)
-    {
+    if (data) {
         // Copy data to staging buffer
         memcpy((u8 *)g_vulkan->staging_buffer_mapped + g_vulkan->staging_buffer_offset, data, image_size);
 
@@ -1629,9 +1501,7 @@ renderer_tex_2d_alloc(Renderer_Resource_Kind kind, Vec2_f32 size, Renderer_Tex_2
         renderer_vulkan_transition_image_layout(tex->image, vk_format,
                                                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-    }
-    else
-    {
+    } else {
         // Just transition to shader read
         renderer_vulkan_transition_image_layout(tex->image, vk_format,
                                                 VK_IMAGE_LAYOUT_UNDEFINED,
@@ -1646,9 +1516,7 @@ renderer_tex_2d_alloc(Renderer_Resource_Kind kind, Vec2_f32 size, Renderer_Tex_2
     return handle;
 }
 
-void
-renderer_tex_2d_release(Renderer_Handle texture)
-{
+void renderer_tex_2d_release(Renderer_Handle texture) {
     ZoneScoped;
     Renderer_Vulkan_Texture_2D *tex = (Renderer_Vulkan_Texture_2D *)texture.u64s[0];
     if (!tex)
@@ -1667,29 +1535,24 @@ renderer_tex_2d_release(Renderer_Handle texture)
 }
 
 Renderer_Resource_Kind
-renderer_kind_from_tex_2d(Renderer_Handle texture)
-{
+renderer_kind_from_tex_2d(Renderer_Handle texture) {
     Renderer_Vulkan_Texture_2D *tex = (Renderer_Vulkan_Texture_2D *)texture.u64s[0];
     return tex ? tex->kind : Renderer_Resource_Kind_Static;
 }
 
 Vec2_f32
-renderer_size_from_tex_2d(Renderer_Handle texture)
-{
+renderer_size_from_tex_2d(Renderer_Handle texture) {
     Renderer_Vulkan_Texture_2D *tex = (Renderer_Vulkan_Texture_2D *)texture.u64s[0];
     return tex ? tex->size : (Vec2_f32){{0, 0}};
 }
 
 Renderer_Tex_2D_Format
-renderer_format_from_tex_2d(Renderer_Handle texture)
-{
+renderer_format_from_tex_2d(Renderer_Handle texture) {
     Renderer_Vulkan_Texture_2D *tex = (Renderer_Vulkan_Texture_2D *)texture.u64s[0];
     return tex ? tex->format : Renderer_Tex_2D_Format_RGBA8;
 }
 
-void
-renderer_fill_tex_2d_region(Renderer_Handle texture, Rng2_f32 subrect, void *data)
-{
+void renderer_fill_tex_2d_region(Renderer_Handle texture, Rng2_f32 subrect, void *data) {
     ZoneScoped;
     Renderer_Vulkan_Texture_2D *tex = (Renderer_Vulkan_Texture_2D *)texture.u64s[0];
     if (!tex || !data)
@@ -1703,8 +1566,7 @@ renderer_fill_tex_2d_region(Renderer_Handle texture, Rng2_f32 subrect, void *dat
 
     // Calculate data size
     u32 bytes_per_pixel = 0;
-    switch (tex->format)
-    {
+    switch (tex->format) {
     case Renderer_Tex_2D_Format_R8:
         bytes_per_pixel = 1;
         break;
@@ -1767,8 +1629,7 @@ renderer_fill_tex_2d_region(Renderer_Handle texture, Rng2_f32 subrect, void *dat
 
 // Buffer management
 Renderer_Handle
-renderer_buffer_alloc(Renderer_Resource_Kind kind, u64 size, void *data)
-{
+renderer_buffer_alloc(Renderer_Resource_Kind kind, u64 size, void *data) {
     ZoneScoped;
     Arena                  *arena = arena_alloc();
     Renderer_Vulkan_Buffer *buf = push_array(arena, Renderer_Vulkan_Buffer, 1);
@@ -1780,32 +1641,24 @@ renderer_buffer_alloc(Renderer_Resource_Kind kind, u64 size, void *data)
     VkBufferUsageFlags    usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
     VkMemoryPropertyFlags properties = 0;
 
-    if (kind == Renderer_Resource_Kind_Dynamic)
-    {
+    if (kind == Renderer_Resource_Kind_Dynamic) {
         usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
         properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-    }
-    else
-    {
+    } else {
         usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
         properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
     }
 
     renderer_vulkan_create_buffer(size, usage, properties, &buf->buffer, &buf->memory);
 
-    if (kind == Renderer_Resource_Kind_Dynamic)
-    {
+    if (kind == Renderer_Resource_Kind_Dynamic) {
         vkMapMemory(g_vulkan->device, buf->memory, 0, size, 0, &buf->mapped);
     }
 
-    if (data)
-    {
-        if (kind == Renderer_Resource_Kind_Dynamic)
-        {
+    if (data) {
+        if (kind == Renderer_Resource_Kind_Dynamic) {
             memcpy(buf->mapped, data, size);
-        }
-        else
-        {
+        } else {
             // Use staging buffer
             memcpy((u8 *)g_vulkan->staging_buffer_mapped + g_vulkan->staging_buffer_offset, data, size);
 
@@ -1827,9 +1680,7 @@ renderer_buffer_alloc(Renderer_Resource_Kind kind, u64 size, void *data)
     return handle;
 }
 
-void
-renderer_buffer_release(Renderer_Handle buffer)
-{
+void renderer_buffer_release(Renderer_Handle buffer) {
     ZoneScoped;
     Renderer_Vulkan_Buffer *buf = (Renderer_Vulkan_Buffer *)buffer.u64s[0];
     if (!buf)
@@ -1848,24 +1699,18 @@ renderer_buffer_release(Renderer_Handle buffer)
 }
 
 // Frame management
-void
-renderer_begin_frame()
-{
+void renderer_begin_frame() {
     ZoneScoped;
     // Reset staging buffer offset
     g_vulkan->staging_buffer_offset = 0;
 }
 
-void
-renderer_end_frame()
-{
+void renderer_end_frame() {
     ZoneScoped;
     // Nothing to do here for Vulkan
 }
 
-void
-renderer_window_begin_frame(void *window, Renderer_Handle window_equip)
-{
+void renderer_window_begin_frame(void *window, Renderer_Handle window_equip) {
     ZoneScoped;
     Renderer_Vulkan_Window_Equipment *equip = (Renderer_Vulkan_Window_Equipment *)window_equip.u64s[0];
     if (!equip)
@@ -1883,8 +1728,7 @@ renderer_window_begin_frame(void *window, Renderer_Handle window_equip)
                                             VK_NULL_HANDLE, &equip->current_image_index);
     printf("Acquire image result: %d, image index: %d\n", result, equip->current_image_index);
 
-    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
-    {
+    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
         printf("Swapchain out of date on acquire, recreating...\n");
         // Recreate swapchain
         void renderer_vulkan_recreate_swapchain(Renderer_Vulkan_Window_Equipment * equip);
@@ -1913,9 +1757,7 @@ renderer_window_begin_frame(void *window, Renderer_Handle window_equip)
     equip->frame_begun = 1;
 }
 
-void
-renderer_window_end_frame(void *window, Renderer_Handle window_equip)
-{
+void renderer_window_end_frame(void *window, Renderer_Handle window_equip) {
     ZoneScoped;
     Renderer_Vulkan_Window_Equipment *equip = (Renderer_Vulkan_Window_Equipment *)window_equip.u64s[0];
     if (!equip || !equip->frame_begun)
@@ -1944,8 +1786,7 @@ renderer_window_end_frame(void *window, Renderer_Handle window_equip)
     submit_info.pSignalSemaphores = signal_semaphores;
 
     VkResult submit_result = vkQueueSubmit(g_vulkan->graphics_queue, 1, &submit_info, equip->in_flight_fences[equip->current_frame]);
-    if (submit_result != VK_SUCCESS)
-    {
+    if (submit_result != VK_SUCCESS) {
         printf("ERROR: vkQueueSubmit failed with result: %d\n", submit_result);
     }
 
@@ -1965,13 +1806,10 @@ renderer_window_end_frame(void *window, Renderer_Handle window_equip)
     VkResult result = vkQueuePresentKHR(g_vulkan->present_queue, &present_info);
     printf("Present result: %d (image index: %d)\n", result, equip->current_image_index);
 
-    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
-    {
+    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
         printf("Recreating swapchain due to present result: %d\n", result);
         renderer_vulkan_recreate_swapchain(equip);
-    }
-    else if (result != VK_SUCCESS)
-    {
+    } else if (result != VK_SUCCESS) {
         printf("ERROR: Present failed with result: %d\n", result);
     }
 

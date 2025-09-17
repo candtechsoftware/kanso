@@ -13,49 +13,38 @@
 #endif
 
 void *
-os_reserve(u64 size)
-{
+os_reserve(u64 size) {
     void *result = VirtualAlloc(NULL, size, MEM_RESERVE, PAGE_NOACCESS);
     return result;
 }
 
 void *
-os_reserve_large(u64 size)
-{
+os_reserve_large(u64 size) {
     // TODO(Alex) actually handle this better????
     return os_reserve(size);
 }
 
-b32
-os_commit(void *ptr, u64 size)
-{
+b32 os_commit(void *ptr, u64 size) {
     void *result = VirtualAlloc(ptr, size, MEM_COMMIT, PAGE_READWRITE);
     return result != NULL;
 }
 
-b32
-os_commit_large(void *ptr, u64 size)
-{
+b32 os_commit_large(void *ptr, u64 size) {
     return os_commit(ptr, size);
 }
 
-void
-os_decommit(void *ptr, u64 size)
-{
+void os_decommit(void *ptr, u64 size) {
     VirtualFree(ptr, size, MEM_DECOMMIT);
 }
 
-void
-os_release(void *ptr, u64 size)
-{
+void os_release(void *ptr, u64 size) {
     // size is ignored with MEM_RELEASE
     (void)size;
     VirtualFree(ptr, 0, MEM_RELEASE);
 }
 
 Sys_Info
-os_get_sys_info(void)
-{
+os_get_sys_info(void) {
     Sys_Info    info;
     SYSTEM_INFO sys_info;
     GetSystemInfo(&sys_info);
@@ -64,8 +53,7 @@ os_get_sys_info(void)
 }
 
 String
-os_read_entire_file(Arena *arena, String file_path)
-{
+os_read_entire_file(Arena *arena, String file_path) {
     String result = {0};
 
     u8 *null_term_path = push_array(arena, u8, file_path.size + 1);
@@ -80,22 +68,19 @@ os_read_entire_file(Arena *arena, String file_path)
                               FILE_ATTRIBUTE_NORMAL,
                               NULL);
 
-    if (file == INVALID_HANDLE_VALUE)
-    {
+    if (file == INVALID_HANDLE_VALUE) {
         arena_pop(arena, file_path.size + 1);
         return result;
     }
 
     LARGE_INTEGER file_size;
-    if (!GetFileSizeEx(file, &file_size))
-    {
+    if (!GetFileSizeEx(file, &file_size)) {
         CloseHandle(file);
         arena_pop(arena, file_path.size + 1);
         return result;
     }
 
-    if (file_size.QuadPart > 0xFFFFFFFF)
-    {
+    if (file_size.QuadPart > 0xFFFFFFFF) {
         // File too large for our String type (u32 size)
         CloseHandle(file);
         arena_pop(arena, file_path.size + 1);
@@ -106,8 +91,7 @@ os_read_entire_file(Arena *arena, String file_path)
     u8 *data = push_array(arena, u8, size);
 
     DWORD bytes_read;
-    if (!ReadFile(file, data, size, &bytes_read, NULL) || bytes_read != size)
-    {
+    if (!ReadFile(file, data, size, &bytes_read, NULL) || bytes_read != size) {
         CloseHandle(file);
         arena_pop(arena, file_path.size + 1 + size);
         return result;
@@ -121,18 +105,13 @@ os_read_entire_file(Arena *arena, String file_path)
     return result;
 }
 
-b32
-os_write_entire_file(String file_path, String data)
-{
+b32 os_write_entire_file(String file_path, String data) {
     u8  stack_buffer[1024];
     u8 *null_term_path;
 
-    if (file_path.size + 1 <= sizeof(stack_buffer))
-    {
+    if (file_path.size + 1 <= sizeof(stack_buffer)) {
         null_term_path = stack_buffer;
-    }
-    else
-    {
+    } else {
         return false;
     }
 
@@ -147,8 +126,7 @@ os_write_entire_file(String file_path, String data)
                               FILE_ATTRIBUTE_NORMAL,
                               NULL);
 
-    if (file == INVALID_HANDLE_VALUE)
-    {
+    if (file == INVALID_HANDLE_VALUE) {
         return false;
     }
 
@@ -160,18 +138,13 @@ os_write_entire_file(String file_path, String data)
     return success;
 }
 
-b32
-os_file_exists(String file_path)
-{
+b32 os_file_exists(String file_path) {
     u8  stack_buffer[1024];
     u8 *null_term_path;
 
-    if (file_path.size + 1 <= sizeof(stack_buffer))
-    {
+    if (file_path.size + 1 <= sizeof(stack_buffer)) {
         null_term_path = stack_buffer;
-    }
-    else
-    {
+    } else {
         return false;
     }
 
@@ -184,17 +157,13 @@ os_file_exists(String file_path)
 }
 
 internal u64
-os_file_last_write_time(String file_path)
-{
+os_file_last_write_time(String file_path) {
     u8  stack_buffer[1024];
     u8 *null_term_path;
 
-    if (file_path.size + 1 <= sizeof(stack_buffer))
-    {
+    if (file_path.size + 1 <= sizeof(stack_buffer)) {
         null_term_path = stack_buffer;
-    }
-    else
-    {
+    } else {
         return 0;
     }
 
@@ -202,8 +171,7 @@ os_file_last_write_time(String file_path)
     null_term_path[file_path.size] = 0;
 
     WIN32_FILE_ATTRIBUTE_DATA file_info;
-    if (!GetFileAttributesExA((LPCSTR)null_term_path, GetFileExInfoStandard, &file_info))
-    {
+    if (!GetFileAttributesExA((LPCSTR)null_term_path, GetFileExInfoStandard, &file_info)) {
         return 0;
     }
 
@@ -216,8 +184,7 @@ os_file_last_write_time(String file_path)
 }
 
 internal OS_Handle
-os_open_file(String path, int mode)
-{
+os_open_file(String path, int mode) {
     OS_Handle           res = 0;
     Scratch             scratch = tctx_scratch_begin(0, 0);
     String32            path32 = string32_from_string(scratch.arena, path);
@@ -227,37 +194,29 @@ os_open_file(String path, int mode)
     SECURITY_ATTRIBUTES sec_attrb = {sizeof(sec_attrb), 0, 0};
 
     OS_Access_Flags flags = (OS_Access_Flags)mode;
-    if (flags & OS_Access_Flag_Read)
-    {
+    if (flags & OS_Access_Flag_Read) {
         access_flags |= GENERIC_READ;
     }
-    if (flags & OS_Access_Flag_Write)
-    {
+    if (flags & OS_Access_Flag_Write) {
         access_flags |= GENERIC_WRITE;
     }
-    if (flags & OS_Access_Flag_Execute)
-    {
+    if (flags & OS_Access_Flag_Execute) {
         access_flags |= GENERIC_EXECUTE;
     }
-    if (flags & OS_Access_Flag_Share_Read)
-    {
+    if (flags & OS_Access_Flag_Share_Read) {
         share_mode |= FILE_SHARE_READ;
     }
-    if (flags & OS_Access_Flag_Share_Write)
-    {
+    if (flags & OS_Access_Flag_Share_Write) {
         share_mode |= FILE_SHARE_WRITE | FILE_SHARE_DELETE;
     }
-    if (flags & OS_Access_Flag_Write)
-    {
+    if (flags & OS_Access_Flag_Write) {
         creation_disposition = CREATE_ALWAYS;
     }
-    if (flags & OS_Access_Flag_Append)
-    {
+    if (flags & OS_Access_Flag_Append) {
         creation_disposition = OPEN_ALWAYS;
         access_flags |= FILE_APPEND_DATA;
     }
-    if (flags & OS_Access_Flag_Inherited)
-    {
+    if (flags & OS_Access_Flag_Inherited) {
         sec_attrb.bInheritHandle = 1;
     }
     HANDLE file = CreateFileW((WCHAR *)path32.data,
@@ -267,8 +226,7 @@ os_open_file(String path, int mode)
                               creation_disposition,
                               FILE_ATTRIBUTE_NORMAL,
                               0);
-    if (file != INVALID_HANDLE_VALUE)
-    {
+    if (file != INVALID_HANDLE_VALUE) {
         res = (u64)file;
     }
     tctx_scratch_end(scratch);
@@ -276,29 +234,23 @@ os_open_file(String path, int mode)
 }
 
 internal void
-os_file_close(OS_Handle file)
-{
-    if (file)
-    {
+os_file_close(OS_Handle file) {
+    if (file) {
         CloseHandle((HANDLE)file);
     }
 }
 
 internal u64
-os_file_read(OS_Handle file, Rng1_u32 rng, void *out_data)
-{
+os_file_read(OS_Handle file, Rng1_u32 rng, void *out_data) {
     u64 bytes_read = 0;
-    if (file)
-    {
+    if (file) {
         HANDLE        h = (HANDLE)file;
         LARGE_INTEGER pos;
         pos.QuadPart = rng.min;
-        if (SetFilePointerEx(h, pos, NULL, FILE_BEGIN))
-        {
+        if (SetFilePointerEx(h, pos, NULL, FILE_BEGIN)) {
             DWORD to_read = rng.max - rng.min;
             DWORD actually_read = 0;
-            if (ReadFile(h, out_data, to_read, &actually_read, NULL))
-            {
+            if (ReadFile(h, out_data, to_read, &actually_read, NULL)) {
                 bytes_read = actually_read;
             }
         }
@@ -307,23 +259,18 @@ os_file_read(OS_Handle file, Rng1_u32 rng, void *out_data)
 }
 
 internal u64
-os_file_write(OS_Handle file, Rng1_u64 rng, void *data)
-{
+os_file_write(OS_Handle file, Rng1_u64 rng, void *data) {
     u64 bytes_written = 0;
-    if (file)
-    {
+    if (file) {
         HANDLE        h = (HANDLE)file;
         LARGE_INTEGER pos;
         pos.QuadPart = rng.min;
-        if (SetFilePointerEx(h, pos, NULL, FILE_BEGIN))
-        {
+        if (SetFilePointerEx(h, pos, NULL, FILE_BEGIN)) {
             u64 to_write = rng.max - rng.min;
-            if (to_write <= 0xFFFFFFFF)
-            {
+            if (to_write <= 0xFFFFFFFF) {
                 DWORD write_size = (DWORD)to_write;
                 DWORD actually_written = 0;
-                if (WriteFile(h, data, write_size, &actually_written, NULL))
-                {
+                if (WriteFile(h, data, write_size, &actually_written, NULL)) {
                     bytes_written = actually_written;
                 }
             }
@@ -333,8 +280,7 @@ os_file_write(OS_Handle file, Rng1_u64 rng, void *data)
 }
 
 internal OS_File_Iter *
-os_file_iter_begin(Arena *arena, String path, OS_File_Iter_Flags flags)
-{
+os_file_iter_begin(Arena *arena, String path, OS_File_Iter_Flags flags) {
     OS_File_Iter *iter = push_array(arena, OS_File_Iter, 1);
     iter->flags = flags;
 
@@ -348,8 +294,7 @@ os_file_iter_begin(Arena *arena, String path, OS_File_Iter_Flags flags)
     search_path[path_len + 2] = 0;
 
     HANDLE find_handle = FindFirstFileA((LPCSTR)search_path, find_data);
-    if (find_handle == INVALID_HANDLE_VALUE)
-    {
+    if (find_handle == INVALID_HANDLE_VALUE) {
         iter->flags = (OS_File_Iter_Flags)(iter->flags | OS_File_Iter_Skip_Done);
         return iter;
     }
@@ -359,44 +304,36 @@ os_file_iter_begin(Arena *arena, String path, OS_File_Iter_Flags flags)
 }
 
 internal b32
-os_file_iter_next(Arena *arena, OS_File_Iter *iter, OS_File_Info *out_info)
-{
-    if (iter->flags & OS_File_Iter_Skip_Done)
-    {
+os_file_iter_next(Arena *arena, OS_File_Iter *iter, OS_File_Info *out_info) {
+    if (iter->flags & OS_File_Iter_Skip_Done) {
         return false;
     }
 
     WIN32_FIND_DATAA *find_data = (WIN32_FIND_DATAA *)iter->memory;
     HANDLE            find_handle = *(HANDLE *)(iter->memory + sizeof(WIN32_FIND_DATAA));
 
-    while (true)
-    {
+    while (true) {
         b32 is_directory = (find_data->dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
         b32 is_hidden = (find_data->dwFileAttributes & FILE_ATTRIBUTE_HIDDEN) != 0;
 
         b32 skip = false;
-        if (is_directory && (iter->flags & OS_File_Iter_Skip_Folders))
-        {
+        if (is_directory && (iter->flags & OS_File_Iter_Skip_Folders)) {
             skip = true;
         }
-        if (!is_directory && (iter->flags & OS_File_Iter_Skip_Files))
-        {
+        if (!is_directory && (iter->flags & OS_File_Iter_Skip_Files)) {
             skip = true;
         }
-        if (is_hidden && (iter->flags & OS_File_Iter_Skip_Skip_Hidden_Files))
-        {
+        if (is_hidden && (iter->flags & OS_File_Iter_Skip_Skip_Hidden_Files)) {
             skip = true;
         }
 
         if (find_data->cFileName[0] == '.' &&
             (find_data->cFileName[1] == 0 ||
-             (find_data->cFileName[1] == '.' && find_data->cFileName[2] == 0)))
-        {
+             (find_data->cFileName[1] == '.' && find_data->cFileName[2] == 0))) {
             skip = true;
         }
 
-        if (!skip)
-        {
+        if (!skip) {
             u32 name_len = 0;
             while (find_data->cFileName[name_len])
                 name_len++;
@@ -421,16 +358,14 @@ os_file_iter_next(Arena *arena, OS_File_Iter *iter, OS_File_Info *out_info)
             time.LowPart = find_data->ftCreationTime.dwLowDateTime;
             out_info->props.created = time.QuadPart;
 
-            if (!FindNextFileA(find_handle, find_data))
-            {
+            if (!FindNextFileA(find_handle, find_data)) {
                 iter->flags = (OS_File_Iter_Flags)(iter->flags | OS_File_Iter_Skip_Done);
             }
 
             return true;
         }
 
-        if (!FindNextFileA(find_handle, find_data))
-        {
+        if (!FindNextFileA(find_handle, find_data)) {
             iter->flags = (OS_File_Iter_Flags)(iter->flags | OS_File_Iter_Skip_Done);
             return false;
         }
@@ -438,10 +373,8 @@ os_file_iter_next(Arena *arena, OS_File_Iter *iter, OS_File_Info *out_info)
 }
 
 internal void
-os_file_iter_end(OS_File_Iter *iter)
-{
-    if (!(iter->flags & OS_File_Iter_Skip_Done))
-    {
+os_file_iter_end(OS_File_Iter *iter) {
+    if (!(iter->flags & OS_File_Iter_Skip_Done)) {
         HANDLE find_handle = *(HANDLE *)(iter->memory + sizeof(WIN32_FIND_DATAA));
         FindClose(find_handle);
         iter->flags = (OS_File_Iter_Flags)(iter->flags | OS_File_Iter_Skip_Done);
@@ -449,11 +382,9 @@ os_file_iter_end(OS_File_Iter *iter)
 }
 
 internal f64
-os_get_time(void)
-{
+os_get_time(void) {
     static LARGE_INTEGER frequency = {0};
-    if (frequency.QuadPart == 0)
-    {
+    if (frequency.QuadPart == 0) {
         QueryPerformanceFrequency(&frequency);
     }
     LARGE_INTEGER counter;

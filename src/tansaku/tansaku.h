@@ -1,36 +1,35 @@
 #pragma once
 #include "../base/base_inc.h"
 
-// Tansaku search tool
-
-// Search configuration - ready for thread pool
 typedef struct Search_Config Search_Config;
-struct Search_Config
-{
-    String pattern;           // What to search for
-    b32    search_files_only; // Search filenames vs content
-    b32    verbose;           // Verbose output
-    b32    recursive;         // Recursive directory search
+struct Search_Config {
+    String pattern;
+    b32    search_files_only;
+    b32    recursive;
 };
 
-// Search task for thread pool
+static inline Search_Config
+default_search_config() {
+    Search_Config c = {0};
+    c.search_files_only = false;
+    c.recursive = false;
+    return c;
+}
+
 typedef struct Search_Task Search_Task;
-struct Search_Task
-{
-    String         path;   // File or directory path
-    Search_Config *config; // Search configuration
+struct Search_Task {
+    String         path;
+    Search_Config *config;
 };
 
-// Core search functions
+internal b32  parse_args(Cmd_Line *cmd, Search_Config *config);
 internal b32  string_contains(String haystack, String needle);
 internal b32  pattern_match(String text, String pattern);
 internal void process_file(Arena *arena, String file_path, Search_Config *config);
 internal void search_directory(Arena *arena, String dir_path, Search_Config *config);
 internal void collect_files_recursive(Arena *arena, String dir_path, String_List *out_files, String pattern, b32 files_only);
 
-// Thread pool task function
 internal void search_file_task(Arena *arena, u64 worker_id, u64 task_id, void *raw_task);
 
-// Helper functions
 internal void print_help(String bin_name);
-internal int  run_tansaku(Cmd_Line *cmd_line);
+internal b32  run_tansaku(Search_Config config);

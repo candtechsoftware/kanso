@@ -5,14 +5,12 @@
 
 typedef u64 Dense_Time;
 
-typedef enum File_Property_Flags
-{
+typedef enum File_Property_Flags {
     File_Property_Is_Folder = (1 << 0),
 } File_Property_Flags;
 
 typedef struct File_Properties File_Properties;
-struct File_Properties
-{
+struct File_Properties {
     File_Property_Flags flags;
     u64                 size;
     Dense_Time          modified;
@@ -20,8 +18,7 @@ struct File_Properties
 };
 
 typedef union OS_Handle OS_Handle;
-union OS_Handle
-{
+union OS_Handle {
     u64   u64s[1];
     u32   u32s[2];
     u16   u16s[4];
@@ -29,88 +26,75 @@ union OS_Handle
 };
 
 typedef struct Mutex Mutex;
-struct Mutex
-{
+struct Mutex {
     u64 u64s[1];
 };
 
 typedef struct RWMutex RWMutex;
-struct RWMutex
-{
+struct RWMutex {
     u64 u64s[1];
 };
 
 typedef struct CondVar CondVar;
-struct CondVar
-{
+struct CondVar {
     u64 u64s[1];
 };
 
 typedef struct Semaphore Semaphore;
-struct Semaphore
-{
-    u64 u64s[1];
+struct Semaphore {
+    u64 u64s[4]; // Increased to 32 bytes to accommodate Linux sem_t
 };
 
 typedef union Barrier Barrier;
-union Barrier
-{
+union Barrier {
     u64   u64s[8]; // Enough space for pthread_barrier_t on Linux or custom impl on macOS
     void *ptr[4];  // Alternative pointer storage
 };
 
 static inline OS_Handle
-os_handle_zero(void)
-{
+os_handle_zero(void) {
     OS_Handle result = {0};
     return result;
 }
 
 static inline OS_Handle
-os_handle_from_u64(u64 value)
-{
+os_handle_from_u64(u64 value) {
     OS_Handle result = {0};
     result.u64s[0] = value;
     return result;
 }
 
 static inline OS_Handle
-os_handle_from_ptr(void *ptr)
-{
+os_handle_from_ptr(void *ptr) {
     OS_Handle result = {0};
     result.ptr = ptr;
     return result;
 }
 
 static inline b32
-os_handle_is_zero(OS_Handle handle)
-{
+os_handle_is_zero(OS_Handle handle) {
     return handle.u64s[0] == 0;
 }
 
 static inline b32
-os_handle_match(OS_Handle a, OS_Handle b)
-{
+os_handle_match(OS_Handle a, OS_Handle b) {
     return a.u64s[0] == b.u64s[0];
 }
 
 typedef struct Sys_Info Sys_Info;
-struct Sys_Info
-{
+struct Sys_Info {
     u32 page_size;
     u32 num_threads;
 };
 
-enum OS_MemoryFlags
-{
+enum OS_MemoryFlags {
     OS_MemoryFlag_Read = (1 << 0),
     OS_MemoryFlag_Write = (1 << 1),
     OS_MemoryFlag_Execute = (1 << 2),
     OS_MemoryFlag_LargePages = (1 << 3)
 };
 
-typedef enum OS_Access_Flags
-{
+typedef enum OS_Access_Flags {
     OS_Access_Flag_Read = (1 << 0),
     OS_Access_Flag_Write = (1 << 1),
     OS_Access_Flag_Execute = (1 << 2),
@@ -120,8 +104,7 @@ typedef enum OS_Access_Flags
     OS_Access_Flag_Inherited = (1 << 6),
 } OS_Access_Flags;
 
-typedef enum OS_File_Iter_Flags
-{
+typedef enum OS_File_Iter_Flags {
     OS_File_Iter_Skip_Folders = (1 << 0),
     OS_File_Iter_Skip_Files = (1 << 1),
     OS_File_Iter_Skip_Skip_Hidden_Files = (1 << 2),
@@ -129,36 +112,31 @@ typedef enum OS_File_Iter_Flags
 } OS_File_Iter_Flags;
 
 typedef struct OS_File_Iter OS_File_Iter;
-struct OS_File_Iter
-{
+struct OS_File_Iter {
     OS_File_Iter_Flags flags;
     u8                 memory[1000];
 };
 
 typedef struct OS_File_Info OS_File_Info;
-struct OS_File_Info
-{
+struct OS_File_Info {
     String          name;
     File_Properties props;
 };
 
 typedef struct File_Info File_Info;
-struct File_Info
-{
+struct File_Info {
     String          name;
     File_Properties props;
 };
 
 typedef struct File_Info_Node File_Info_Node;
-struct File_Info_Node
-{
+struct File_Info_Node {
     File_Info_Node *next;
     File_Info       info;
 };
 
 typedef struct File_Info_List File_Info_List;
-struct File_Info_List
-{
+struct File_Info_List {
     File_Info_Node *first;
     File_Info_Node *last;
     u64             count;

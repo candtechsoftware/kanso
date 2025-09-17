@@ -7,16 +7,14 @@
 #include "../os/os.h"
 
 typedef struct Lane_Ctx Lane_Ctx;
-struct Lane_Ctx
-{
+struct Lane_Ctx {
     u64     lane_idx;
     u64     lane_count;
     Barrier barrier;
 };
 
 typedef struct TCTX TCTX;
-struct TCTX
-{
+struct TCTX {
     Arena *arenas[2];
 
     u8  thread_name[32];

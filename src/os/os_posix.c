@@ -32,23 +32,19 @@
 #endif
 
 internal void *
-os_reserve(u64 size)
-{
+os_reserve(u64 size) {
     void *result = mmap(NULL, size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-    if (result == MAP_FAILED)
-    {
+    if (result == MAP_FAILED) {
         return NULL;
     }
     return result;
 }
 
 internal void *
-os_reserve_large(u64 size)
-{
+os_reserve_large(u64 size) {
 #ifdef MAP_HUGETLB
     void *result = mmap(NULL, size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB, -1, 0);
-    if (result == MAP_FAILED)
-    {
+    if (result == MAP_FAILED) {
         return os_reserve(size);
     }
     return result;
@@ -58,34 +54,29 @@ os_reserve_large(u64 size)
 }
 
 internal b32
-os_commit(void *ptr, u64 size)
-{
+os_commit(void *ptr, u64 size) {
     int result = mprotect(ptr, size, PROT_READ | PROT_WRITE);
     return result == 0;
 }
 
 internal b32
-os_commit_large(void *ptr, u64 size)
-{
+os_commit_large(void *ptr, u64 size) {
     return os_commit(ptr, size);
 }
 
 internal void
-os_decommit(void *ptr, u64 size)
-{
+os_decommit(void *ptr, u64 size) {
     mprotect(ptr, size, PROT_NONE);
     madvise(ptr, size, MADV_DONTNEED);
 }
 
 internal void
-os_mem_release(void *ptr, u64 size)
-{
+os_mem_release(void *ptr, u64 size) {
     munmap(ptr, size);
 }
 
 internal Sys_Info
-os_get_sys_info(void)
-{
+os_get_sys_info(void) {
     Sys_Info info;
     info.page_size = (u32)sysconf(_SC_PAGE_SIZE);
     info.num_threads = (u32)sysconf(_SC_NPROCESSORS_ONLN);
@@ -93,8 +84,7 @@ os_get_sys_info(void)
 }
 
 internal String
-os_read_entire_file(Arena *arena, String file_path)
-{
+os_read_entire_file(Arena *arena, String file_path) {
     String result = {0};
 
     u8 *null_term_path = push_array(arena, u8, file_path.size + 1);
@@ -102,22 +92,19 @@ os_read_entire_file(Arena *arena, String file_path)
     null_term_path[file_path.size] = 0;
 
     int fd = open((const char *)null_term_path, O_RDONLY);
-    if (fd == -1)
-    {
+    if (fd == -1) {
         arena_pop(arena, file_path.size + 1);
         return result;
     }
 
     struct stat file_stat;
-    if (fstat(fd, &file_stat) == -1)
-    {
+    if (fstat(fd, &file_stat) == -1) {
         close(fd);
         arena_pop(arena, file_path.size + 1);
         return result;
     }
 
-    if (file_stat.st_size > 0xFFFFFFFF)
-    {
+    if (file_stat.st_size > 0xFFFFFFFF) {
         close(fd);
         arena_pop(arena, file_path.size + 1);
         return result;
@@ -127,8 +114,7 @@ os_read_entire_file(Arena *arena, String file_path)
     u8 *data = push_array(arena, u8, size);
 
     ssize_t bytes_read = read(fd, data, size);
-    if (bytes_read != size)
-    {
+    if (bytes_read != size) {
         close(fd);
         arena_pop(arena, file_path.size + 1 + size);
         return result;
@@ -142,18 +128,13 @@ os_read_entire_file(Arena *arena, String file_path)
     return result;
 }
 
-b32
-os_write_entire_file(String file_path, String data)
-{
+b32 os_write_entire_file(String file_path, String data) {
     u8  stack_buffer[1024];
     u8 *null_term_path;
 
-    if (file_path.size + 1 <= sizeof(stack_buffer))
-    {
+    if (file_path.size + 1 <= sizeof(stack_buffer)) {
         null_term_path = stack_buffer;
-    }
-    else
-    {
+    } else {
         return false;
     }
 
@@ -162,8 +143,7 @@ os_write_entire_file(String file_path, String data)
 
     int fd = open((const char *)null_term_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
 
-    if (fd == -1)
-    {
+    if (fd == -1) {
         return false;
     }
 
@@ -174,18 +154,13 @@ os_write_entire_file(String file_path, String data)
     return success;
 }
 
-b32
-os_file_exists(String file_path)
-{
+b32 os_file_exists(String file_path) {
     u8  stack_buffer[1024];
     u8 *null_term_path;
 
-    if (file_path.size + 1 <= sizeof(stack_buffer))
-    {
+    if (file_path.size + 1 <= sizeof(stack_buffer)) {
         null_term_path = stack_buffer;
-    }
-    else
-    {
+    } else {
         return false;
     }
 
@@ -193,8 +168,7 @@ os_file_exists(String file_path)
     null_term_path[file_path.size] = 0;
 
     struct stat file_stat;
-    if (stat((const char *)null_term_path, &file_stat) != 0)
-    {
+    if (stat((const char *)null_term_path, &file_stat) != 0) {
         return false;
     }
 
@@ -203,17 +177,13 @@ os_file_exists(String file_path)
 }
 
 internal u64
-os_file_last_write_time(String file_path)
-{
+os_file_last_write_time(String file_path) {
     u8  stack_buffer[1024];
     u8 *null_term_path;
 
-    if (file_path.size + 1 <= sizeof(stack_buffer))
-    {
+    if (file_path.size + 1 <= sizeof(stack_buffer)) {
         null_term_path = stack_buffer;
-    }
-    else
-    {
+    } else {
         return 0;
     }
 
@@ -221,8 +191,7 @@ os_file_last_write_time(String file_path)
     null_term_path[file_path.size] = 0;
 
     struct stat file_stat;
-    if (stat((const char *)null_term_path, &file_stat) != 0)
-    {
+    if (stat((const char *)null_term_path, &file_stat) != 0) {
         return 0;
     }
 
@@ -237,8 +206,7 @@ os_file_last_write_time(String file_path)
 }
 
 internal OS_Handle
-os_open_file(String path, int mode)
-{
+os_open_file(String path, int mode) {
     OS_Handle res = os_handle_zero();
     Scratch   scratch = tctx_scratch_begin(0, 0);
 
@@ -251,33 +219,25 @@ os_open_file(String path, int mode)
 
     OS_Access_Flags flags = (OS_Access_Flags)mode;
 
-    if ((flags & OS_Access_Flag_Read) && (flags & OS_Access_Flag_Write))
-    {
+    if ((flags & OS_Access_Flag_Read) && (flags & OS_Access_Flag_Write)) {
         open_flags |= O_RDWR;
-    }
-    else if (flags & OS_Access_Flag_Read)
-    {
+    } else if (flags & OS_Access_Flag_Read) {
         open_flags |= O_RDONLY;
-    }
-    else if (flags & OS_Access_Flag_Write)
-    {
+    } else if (flags & OS_Access_Flag_Write) {
         open_flags |= O_WRONLY | O_CREAT | O_TRUNC;
     }
 
-    if (flags & OS_Access_Flag_Append)
-    {
+    if (flags & OS_Access_Flag_Append) {
         open_flags |= O_APPEND;
         open_flags &= ~O_TRUNC;
     }
 
-    if (flags & OS_Access_Flag_Execute)
-    {
+    if (flags & OS_Access_Flag_Execute) {
         open_mode |= 0111;
     }
 
     int fd = open((const char *)null_term_path, open_flags, open_mode);
-    if (fd != -1)
-    {
+    if (fd != -1) {
         res = os_handle_from_u64((u64)fd);
     }
 
@@ -286,28 +246,22 @@ os_open_file(String path, int mode)
 }
 
 internal void
-os_file_close(OS_Handle file)
-{
-    if (!os_handle_is_zero(file))
-    {
+os_file_close(OS_Handle file) {
+    if (!os_handle_is_zero(file)) {
         close((int)file.u64s[0]);
     }
 }
 
 internal u64
-os_file_read(OS_Handle file, Rng1_u32 rng, void *out_data)
-{
+os_file_read(OS_Handle file, Rng1_u32 rng, void *out_data) {
     u64 bytes_read = 0;
-    if (!os_handle_is_zero(file))
-    {
+    if (!os_handle_is_zero(file)) {
         int   fd = (int)file.u64s[0];
         off_t offset = lseek(fd, rng.min, SEEK_SET);
-        if (offset != -1)
-        {
+        if (offset != -1) {
             size_t  to_read = rng.max - rng.min;
             ssize_t actually_read = read(fd, out_data, to_read);
-            if (actually_read > 0)
-            {
+            if (actually_read > 0) {
                 bytes_read = actually_read;
             }
         }
@@ -316,19 +270,15 @@ os_file_read(OS_Handle file, Rng1_u32 rng, void *out_data)
 }
 
 internal u64
-os_file_write(OS_Handle file, Rng1_u64 rng, void *data)
-{
+os_file_write(OS_Handle file, Rng1_u64 rng, void *data) {
     u64 bytes_written = 0;
-    if (!os_handle_is_zero(file))
-    {
+    if (!os_handle_is_zero(file)) {
         int   fd = (int)file.u64s[0];
         off_t offset = lseek(fd, rng.min, SEEK_SET);
-        if (offset != -1)
-        {
+        if (offset != -1) {
             size_t  to_write = rng.max - rng.min;
             ssize_t actually_written = write(fd, data, to_write);
-            if (actually_written > 0)
-            {
+            if (actually_written > 0) {
                 bytes_written = actually_written;
             }
         }
@@ -337,8 +287,7 @@ os_file_write(OS_Handle file, Rng1_u64 rng, void *data)
 }
 
 internal OS_File_Iter *
-os_file_iter_begin(Arena *arena, String path, OS_File_Iter_Flags flags)
-{
+os_file_iter_begin(Arena *arena, String path, OS_File_Iter_Flags flags) {
     OS_File_Iter *iter = push_array(arena, OS_File_Iter, 1);
     iter->flags = flags;
 
@@ -348,8 +297,7 @@ os_file_iter_begin(Arena *arena, String path, OS_File_Iter_Flags flags)
     null_term_path[path_len] = 0;
 
     DIR *dir = opendir((const char *)null_term_path);
-    if (dir == NULL)
-    {
+    if (dir == NULL) {
         iter->flags = (OS_File_Iter_Flags)(iter->flags | OS_File_Iter_Skip_Done);
         return iter;
     }
@@ -359,42 +307,34 @@ os_file_iter_begin(Arena *arena, String path, OS_File_Iter_Flags flags)
 }
 
 internal b32
-os_file_iter_next(Arena *arena, OS_File_Iter *iter, OS_File_Info *out_info)
-{
-    if (iter->flags & OS_File_Iter_Skip_Done)
-    {
+os_file_iter_next(Arena *arena, OS_File_Iter *iter, OS_File_Info *out_info) {
+    if (iter->flags & OS_File_Iter_Skip_Done) {
         return false;
     }
 
     DIR           *dir = *(DIR **)(iter->memory);
     struct dirent *entry;
 
-    while ((entry = readdir(dir)) != NULL)
-    {
+    while ((entry = readdir(dir)) != NULL) {
         b32 is_directory = (entry->d_type == DT_DIR);
         b32 is_hidden = (entry->d_name[0] == '.');
 
         b32 skip = false;
-        if (is_directory && (iter->flags & OS_File_Iter_Skip_Folders))
-        {
+        if (is_directory && (iter->flags & OS_File_Iter_Skip_Folders)) {
             skip = true;
         }
-        if (!is_directory && (iter->flags & OS_File_Iter_Skip_Files))
-        {
+        if (!is_directory && (iter->flags & OS_File_Iter_Skip_Files)) {
             skip = true;
         }
-        if (is_hidden && (iter->flags & OS_File_Iter_Skip_Skip_Hidden_Files))
-        {
+        if (is_hidden && (iter->flags & OS_File_Iter_Skip_Skip_Hidden_Files)) {
             skip = true;
         }
 
-        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
-        {
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
             skip = true;
         }
 
-        if (!skip)
-        {
+        if (!skip) {
             u32 name_len = strlen(entry->d_name);
             out_info->name = str_push_copy(arena, str((u8 *)entry->d_name, name_len));
 
@@ -415,10 +355,8 @@ os_file_iter_next(Arena *arena, OS_File_Iter *iter, OS_File_Info *out_info)
 }
 
 internal void
-os_file_iter_end(OS_File_Iter *iter)
-{
-    if (!(iter->flags & OS_File_Iter_Skip_Done))
-    {
+os_file_iter_end(OS_File_Iter *iter) {
+    if (!(iter->flags & OS_File_Iter_Skip_Done)) {
         DIR *dir = *(DIR **)(iter->memory);
         closedir(dir);
         iter->flags = (OS_File_Iter_Flags)(iter->flags | OS_File_Iter_Skip_Done);
@@ -426,13 +364,11 @@ os_file_iter_end(OS_File_Iter *iter)
 }
 
 internal b32
-os_create_directory_recursive(String path)
-{
+os_create_directory_recursive(String path) {
     u8  stack_buffer[1024];
     u8 *null_term_path;
 
-    if (path.size + 1 > sizeof(stack_buffer))
-    {
+    if (path.size + 1 > sizeof(stack_buffer)) {
         return false;
     }
 
@@ -441,16 +377,13 @@ os_create_directory_recursive(String path)
     null_term_path[path.size] = 0;
 
     u32 len = path.size;
-    if (len > 0 && null_term_path[len - 1] == '/')
-    {
+    if (len > 0 && null_term_path[len - 1] == '/') {
         null_term_path[len - 1] = 0;
         len--;
     }
 
-    for (u32 i = 1; i < len; i++)
-    {
-        if (null_term_path[i] == '/')
-        {
+    for (u32 i = 1; i < len; i++) {
+        if (null_term_path[i] == '/') {
             null_term_path[i] = 0;
             mkdir((const char *)null_term_path, 0755);
             null_term_path[i] = '/';
@@ -462,13 +395,11 @@ os_create_directory_recursive(String path)
 }
 
 internal f64
-os_get_time(void)
-{
+os_get_time(void) {
 #ifdef __APPLE__
     // macOS using mach_absolute_time for high precision
     static mach_timebase_info_data_t timebase = {0};
-    if (timebase.denom == 0)
-    {
+    if (timebase.denom == 0) {
         mach_timebase_info(&timebase);
     }
     u64 time = mach_absolute_time();
@@ -484,12 +415,10 @@ os_get_time(void)
 }
 
 internal String_List
-os_string_list_from_argcv(Arena *arena, int argc, char **argv)
-{
+os_string_list_from_argcv(Arena *arena, int argc, char **argv) {
     String_List res = {0};
 
-    for (int i = 0; i < argc; i++)
-    {
+    for (int i = 0; i < argc; i++) {
         String str = string_from_cstr(argv[i]);
         string_list_push(arena, &res, str);
     }
@@ -500,8 +429,7 @@ os_string_list_from_argcv(Arena *arena, int argc, char **argv)
 //~ Memory-mapped file functions
 
 internal void *
-os_file_map_view(String file_path, u64 *out_size)
-{
+os_file_map_view(String file_path, u64 *out_size) {
     // Convert String to null-terminated path
     char path_buf[4096];
     u32  copy_size = Min(file_path.size, sizeof(path_buf) - 1);
@@ -513,8 +441,7 @@ os_file_map_view(String file_path, u64 *out_size)
         return 0;
 
     struct stat st;
-    if (fstat(fd, &st) == -1)
-    {
+    if (fstat(fd, &st) == -1) {
         close(fd);
         return 0;
     }
@@ -531,21 +458,18 @@ os_file_map_view(String file_path, u64 *out_size)
 }
 
 internal void
-os_file_unmap_view(void *ptr, u64 size)
-{
+os_file_unmap_view(void *ptr, u64 size) {
     if (ptr)
         munmap(ptr, size);
 }
 
 internal String
-os_file_map_view_string(String file_path, u64 *out_ptr)
-{
+os_file_map_view_string(String file_path, u64 *out_ptr) {
     String result = {0};
     u64    size = 0;
     void  *ptr = os_file_map_view(file_path, &size);
 
-    if (ptr)
-    {
+    if (ptr) {
         result.data = (u8 *)ptr;
         result.size = size;
         if (out_ptr)
@@ -556,8 +480,7 @@ os_file_map_view_string(String file_path, u64 *out_ptr)
 }
 
 internal File_Properties
-os_file_properties_from_path(String file_path)
-{
+os_file_properties_from_path(String file_path) {
     File_Properties props = {0};
 
     // Convert String to null-terminated path
@@ -567,14 +490,12 @@ os_file_properties_from_path(String file_path)
     path_buf[copy_size] = 0;
 
     struct stat st;
-    if (stat(path_buf, &st) == 0)
-    {
+    if (stat(path_buf, &st) == 0) {
         props.size = st.st_size;
         props.modified = st.st_mtime;
         props.created = st.st_ctime;
 
-        if (S_ISDIR(st.st_mode))
-        {
+        if (S_ISDIR(st.st_mode)) {
             props.flags |= File_Property_Is_Folder;
         }
     }
@@ -583,8 +504,7 @@ os_file_properties_from_path(String file_path)
 }
 
 internal File_Info_List *
-os_file_info_list_from_dir(Arena *arena, String dir_path)
-{
+os_file_info_list_from_dir(Arena *arena, String dir_path) {
     Prof_Begin("search_directory");
     File_Info_List *list = push_array(arena, File_Info_List, 1);
     *list = (File_Info_List){0};
@@ -596,39 +516,35 @@ os_file_info_list_from_dir(Arena *arena, String dir_path)
     path_buf[copy_size] = 0;
 
     DIR *dir = opendir(path_buf);
-    if (!dir)
-    {
+    if (!dir) {
         return list; // Return empty list
     }
 
     struct dirent *entry;
-    while ((entry = readdir(dir)) != NULL)
-    {
+    while ((entry = readdir(dir)) != NULL) {
         // Skip . and ..
-        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
-        {
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
             continue;
         }
 
-        File_Info_Node *node = push_array(arena, File_Info_Node, 1);
-        node->info.name = string_copy(arena, string_from_cstr(entry->d_name));
-
         // Get file properties
         char full_path[4096];
-        int ret = snprintf(full_path, sizeof(full_path), "%s/%s", path_buf, entry->d_name);
+        int  ret = snprintf(full_path, sizeof(full_path), "%s/%s", path_buf, entry->d_name);
         if (ret < 0 || ret >= (int)sizeof(full_path)) {
             // Path too long, skip this entry
             continue;
         }
+
+        File_Info_Node *node = push_array(arena, File_Info_Node, 1);
+        *node = (File_Info_Node){0};
+        node->info.name = string_copy(arena, string_from_cstr(entry->d_name));
         struct stat st;
-        if (stat(full_path, &st) == 0)
-        {
+        if (stat(full_path, &st) == 0) {
             node->info.props.size = st.st_size;
             node->info.props.modified = st.st_mtime;
             node->info.props.created = st.st_ctime;
 
-            if (S_ISDIR(st.st_mode))
-            {
+            if (S_ISDIR(st.st_mode)) {
                 node->info.props.flags |= File_Property_Is_Folder;
             }
         }
@@ -645,8 +561,7 @@ os_file_info_list_from_dir(Arena *arena, String dir_path)
 
 // Thread and synchronization implementations
 internal Sys_Info
-os_get_system_info(void)
-{
+os_get_system_info(void) {
     Sys_Info info = {0};
     info.page_size = getpagesize();
 
@@ -662,28 +577,24 @@ os_get_system_info(void)
 }
 
 internal OS_Handle
-os_thread_create(OS_Thread_Func *func, void *ptr)
-{
+os_thread_create(OS_Thread_Func *func, void *ptr) {
     pthread_t thread;
     pthread_create(&thread, NULL, (void *(*)(void *))func, ptr);
     return os_handle_from_ptr((void *)thread);
 }
 
 internal void
-os_thread_join(OS_Handle thread)
-{
+os_thread_join(OS_Handle thread) {
     pthread_join((pthread_t)thread.ptr, NULL);
 }
 
 internal void
-os_thread_detach(OS_Handle thread)
-{
+os_thread_detach(OS_Handle thread) {
     pthread_detach((pthread_t)thread.ptr);
 }
 
 internal u32
-os_thread_get_id(void)
-{
+os_thread_get_id(void) {
 #ifdef __APPLE__
     uint64_t tid;
     pthread_threadid_np(NULL, &tid);
@@ -694,8 +605,7 @@ os_thread_get_id(void)
 }
 
 internal Semaphore
-os_semaphore_create(u32 initial_count)
-{
+os_semaphore_create(u32 initial_count) {
     Semaphore sem = {0};
 
 #ifdef __APPLE__
@@ -710,12 +620,10 @@ os_semaphore_create(u32 initial_count)
 }
 
 internal void
-os_semaphore_destroy(Semaphore sem)
-{
+os_semaphore_destroy(Semaphore sem) {
 #ifdef __APPLE__
     dispatch_semaphore_t *dsem = (dispatch_semaphore_t *)&sem.u64s[0];
-    if (*dsem)
-    {
+    if (*dsem) {
         dispatch_release(*dsem);
     }
 #else
@@ -725,8 +633,7 @@ os_semaphore_destroy(Semaphore sem)
 }
 
 internal void
-os_semaphore_wait(Semaphore sem)
-{
+os_semaphore_wait(Semaphore sem) {
 #ifdef __APPLE__
     dispatch_semaphore_t *dsem = (dispatch_semaphore_t *)&sem.u64s[0];
     dispatch_semaphore_wait(*dsem, DISPATCH_TIME_FOREVER);
@@ -737,8 +644,7 @@ os_semaphore_wait(Semaphore sem)
 }
 
 internal b32
-os_semaphore_wait_timeout(Semaphore sem, u32 timeout_ms)
-{
+os_semaphore_wait_timeout(Semaphore sem, u32 timeout_ms) {
 #ifdef __APPLE__
     dispatch_semaphore_t *dsem = (dispatch_semaphore_t *)&sem.u64s[0];
     dispatch_time_t       timeout = dispatch_time(DISPATCH_TIME_NOW, timeout_ms * NSEC_PER_MSEC);
@@ -749,8 +655,7 @@ os_semaphore_wait_timeout(Semaphore sem, u32 timeout_ms)
     clock_gettime(CLOCK_REALTIME, &ts);
     ts.tv_sec += timeout_ms / 1000;
     ts.tv_nsec += (timeout_ms % 1000) * 1000000;
-    if (ts.tv_nsec >= 1000000000)
-    {
+    if (ts.tv_nsec >= 1000000000) {
         ts.tv_sec++;
         ts.tv_nsec -= 1000000000;
     }
@@ -759,8 +664,7 @@ os_semaphore_wait_timeout(Semaphore sem, u32 timeout_ms)
 }
 
 internal void
-os_semaphore_signal(Semaphore sem)
-{
+os_semaphore_signal(Semaphore sem) {
 #ifdef __APPLE__
     dispatch_semaphore_t *dsem = (dispatch_semaphore_t *)&sem.u64s[0];
     dispatch_semaphore_signal(*dsem);
@@ -771,8 +675,7 @@ os_semaphore_signal(Semaphore sem)
 }
 
 internal Mutex
-os_mutex_create(void)
-{
+os_mutex_create(void) {
     Mutex            mutex = {0};
     pthread_mutex_t *pmutex = (pthread_mutex_t *)&mutex.u64s[0];
     pthread_mutex_init(pmutex, NULL);
@@ -780,29 +683,25 @@ os_mutex_create(void)
 }
 
 internal void
-os_mutex_destroy(Mutex mutex)
-{
+os_mutex_destroy(Mutex mutex) {
     pthread_mutex_t *pmutex = (pthread_mutex_t *)&mutex.u64s[0];
     pthread_mutex_destroy(pmutex);
 }
 
 internal void
-os_mutex_lock(Mutex mutex)
-{
+os_mutex_lock(Mutex mutex) {
     pthread_mutex_t *pmutex = (pthread_mutex_t *)&mutex.u64s[0];
     pthread_mutex_lock(pmutex);
 }
 
 internal void
-os_mutex_unlock(Mutex mutex)
-{
+os_mutex_unlock(Mutex mutex) {
     pthread_mutex_t *pmutex = (pthread_mutex_t *)&mutex.u64s[0];
     pthread_mutex_unlock(pmutex);
 }
 
 internal CondVar
-os_condvar_create(void)
-{
+os_condvar_create(void) {
     CondVar         cv = {0};
     pthread_cond_t *pcond = (pthread_cond_t *)&cv.u64s[0];
     pthread_cond_init(pcond, NULL);
@@ -810,30 +709,26 @@ os_condvar_create(void)
 }
 
 internal void
-os_condvar_destroy(CondVar cv)
-{
+os_condvar_destroy(CondVar cv) {
     pthread_cond_t *pcond = (pthread_cond_t *)&cv.u64s[0];
     pthread_cond_destroy(pcond);
 }
 
 internal void
-os_condvar_wait(CondVar cv, Mutex mutex)
-{
+os_condvar_wait(CondVar cv, Mutex mutex) {
     pthread_cond_t  *pcond = (pthread_cond_t *)&cv.u64s[0];
     pthread_mutex_t *pmutex = (pthread_mutex_t *)&mutex.u64s[0];
     pthread_cond_wait(pcond, pmutex);
 }
 
 internal void
-os_condvar_signal(CondVar cv)
-{
+os_condvar_signal(CondVar cv) {
     pthread_cond_t *pcond = (pthread_cond_t *)&cv.u64s[0];
     pthread_cond_signal(pcond);
 }
 
 internal void
-os_condvar_broadcast(CondVar cv)
-{
+os_condvar_broadcast(CondVar cv) {
     pthread_cond_t *pcond = (pthread_cond_t *)&cv.u64s[0];
     pthread_cond_broadcast(pcond);
 }
@@ -841,8 +736,7 @@ os_condvar_broadcast(CondVar cv)
 #ifdef __APPLE__
 // Custom barrier implementation for macOS using mutex and condvar
 typedef struct Barrier_Internal Barrier_Internal;
-struct Barrier_Internal
-{
+struct Barrier_Internal {
     pthread_mutex_t mutex;
     pthread_cond_t  cond;
     u32             count;
@@ -852,8 +746,7 @@ struct Barrier_Internal
 #endif
 
 internal Barrier
-os_barrier_create(u32 thread_count)
-{
+os_barrier_create(u32 thread_count) {
     Barrier barrier = {0};
 
 #ifdef __APPLE__
@@ -875,12 +768,10 @@ os_barrier_create(u32 thread_count)
 }
 
 internal void
-os_barrier_destroy(Barrier barrier)
-{
+os_barrier_destroy(Barrier barrier) {
 #ifdef __APPLE__
     Barrier_Internal *b = (Barrier_Internal *)barrier.ptr[0];
-    if (b)
-    {
+    if (b) {
         pthread_mutex_destroy(&b->mutex);
         pthread_cond_destroy(&b->cond);
         free(b);
@@ -892,8 +783,7 @@ os_barrier_destroy(Barrier barrier)
 }
 
 internal void
-os_barrier_wait(Barrier barrier)
-{
+os_barrier_wait(Barrier barrier) {
 #ifdef __APPLE__
     Barrier_Internal *b = (Barrier_Internal *)barrier.ptr[0];
     if (!b)
@@ -904,18 +794,14 @@ os_barrier_wait(Barrier barrier)
     u32 gen = b->generation;
     b->waiting++;
 
-    if (b->waiting >= b->count)
-    {
+    if (b->waiting >= b->count) {
         // Last thread to arrive, reset and wake all
         b->generation++;
         b->waiting = 0;
         pthread_cond_broadcast(&b->cond);
-    }
-    else
-    {
+    } else {
         // Wait for other threads
-        while (gen == b->generation)
-        {
+        while (gen == b->generation) {
             pthread_cond_wait(&b->cond, &b->mutex);
         }
     }

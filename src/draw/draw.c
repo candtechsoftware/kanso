@@ -9,11 +9,8 @@ _Thread_local Draw_Thread_Context *draw_thread_ctx = NULL;
 #endif
 
 // Frame management
-void
-draw_begin_frame(Font_Renderer_Tag default_font)
-{
-    if (!draw_thread_ctx)
-    {
+void draw_begin_frame(Font_Renderer_Tag default_font) {
+    if (!draw_thread_ctx) {
         Arena *arena = arena_alloc();
         draw_thread_ctx = push_struct(arena, Draw_Thread_Context);
         draw_thread_ctx->arena = arena;
@@ -28,25 +25,19 @@ draw_begin_frame(Font_Renderer_Tag default_font)
     draw_thread_ctx->bucket_stack_count = 0;
 }
 
-void
-draw_end_frame(void)
-{
-    if (draw_thread_ctx)
-    {
+void draw_end_frame(void) {
+    if (draw_thread_ctx) {
         arena_pop_to(draw_thread_ctx->arena, draw_thread_ctx->arena_frame_start_pos);
     }
 }
 
-void
-draw_submit_bucket(void *window, Renderer_Handle window_equip, Draw_Bucket *bucket)
-{
+void draw_submit_bucket(void *window, Renderer_Handle window_equip, Draw_Bucket *bucket) {
     renderer_window_submit(window, window_equip, &bucket->passes);
 }
 
 // Bucket management
 Draw_Bucket *
-draw_bucket_make(void)
-{
+draw_bucket_make(void) {
     Draw_Bucket *bucket = push_struct_zero(draw_thread_ctx->arena, Draw_Bucket);
     MemoryZeroStruct(&bucket->passes);
 
@@ -59,36 +50,28 @@ draw_bucket_make(void)
     return bucket;
 }
 
-void
-draw_push_bucket(Draw_Bucket *bucket)
-{
-    if (draw_thread_ctx->bucket_stack_count < draw_thread_ctx->bucket_stack_cap)
-    {
+void draw_push_bucket(Draw_Bucket *bucket) {
+    if (draw_thread_ctx->bucket_stack_count < draw_thread_ctx->bucket_stack_cap) {
         draw_thread_ctx->bucket_stack[draw_thread_ctx->bucket_stack_count++] = draw_thread_ctx->current_bucket;
     }
     draw_thread_ctx->current_bucket = bucket;
 }
 
-void
-draw_pop_bucket(void)
-{
-    if (draw_thread_ctx->bucket_stack_count > 0)
-    {
+void draw_pop_bucket(void) {
+    if (draw_thread_ctx->bucket_stack_count > 0) {
         draw_thread_ctx->current_bucket = draw_thread_ctx->bucket_stack[draw_thread_ctx->bucket_stack_count - 1];
         draw_thread_ctx->bucket_stack_count--;
     }
 }
 
 Draw_Bucket *
-draw_top_bucket(void)
-{
+draw_top_bucket(void) {
     return draw_thread_ctx->current_bucket;
 }
 
 // Stack operations
 Renderer_Tex_2D_Sample_Kind
-draw_push_tex2d_sample_kind(Renderer_Tex_2D_Sample_Kind v)
-{
+draw_push_tex2d_sample_kind(Renderer_Tex_2D_Sample_Kind v) {
     Draw_Bucket                *bucket = draw_top_bucket();
     Renderer_Tex_2D_Sample_Kind old_val = bucket->stack_top.sample_kind;
     bucket->stack_top.sample_kind = v;
@@ -97,8 +80,7 @@ draw_push_tex2d_sample_kind(Renderer_Tex_2D_Sample_Kind v)
 }
 
 Mat3x3_f32
-draw_push_xform2d(Mat3x3_f32 v)
-{
+draw_push_xform2d(Mat3x3_f32 v) {
     Draw_Bucket *bucket = draw_top_bucket();
     Mat3x3_f32   old_val = bucket->stack_top.xform2d;
     bucket->stack_top.xform2d = v;
@@ -107,8 +89,7 @@ draw_push_xform2d(Mat3x3_f32 v)
 }
 
 Rng2_f32
-draw_push_clip(Rng2_f32 v)
-{
+draw_push_clip(Rng2_f32 v) {
     Draw_Bucket *bucket = draw_top_bucket();
     Rng2_f32     old_val = bucket->stack_top.clip;
     bucket->stack_top.clip = v;
@@ -116,9 +97,7 @@ draw_push_clip(Rng2_f32 v)
     return old_val;
 }
 
-f32
-draw_push_transparency(f32 v)
-{
+f32 draw_push_transparency(f32 v) {
     Draw_Bucket *bucket = draw_top_bucket();
     f32          old_val = bucket->stack_top.transparency;
     bucket->stack_top.transparency = v;
@@ -127,107 +106,87 @@ draw_push_transparency(f32 v)
 }
 
 Renderer_Tex_2D_Sample_Kind
-draw_pop_tex2d_sample_kind(void)
-{
+draw_pop_tex2d_sample_kind(void) {
     Draw_Bucket *bucket = draw_top_bucket();
     bucket->stack_gen += 1;
     return bucket->stack_top.sample_kind;
 }
 
 Mat3x3_f32
-draw_pop_xform2d(void)
-{
+draw_pop_xform2d(void) {
     Draw_Bucket *bucket = draw_top_bucket();
     bucket->stack_gen += 1;
     return bucket->stack_top.xform2d;
 }
 
 Rng2_f32
-draw_pop_clip(void)
-{
+draw_pop_clip(void) {
     Draw_Bucket *bucket = draw_top_bucket();
     bucket->stack_gen += 1;
     return bucket->stack_top.clip;
 }
 
-f32
-draw_pop_transparency(void)
-{
+f32 draw_pop_transparency(void) {
     Draw_Bucket *bucket = draw_top_bucket();
     bucket->stack_gen += 1;
     return bucket->stack_top.transparency;
 }
 
 Renderer_Tex_2D_Sample_Kind
-draw_top_tex2d_sample_kind(void)
-{
+draw_top_tex2d_sample_kind(void) {
     Draw_Bucket *bucket = draw_top_bucket();
     return bucket->stack_top.sample_kind;
 }
 
 Mat3x3_f32
-draw_top_xform2d(void)
-{
+draw_top_xform2d(void) {
     Draw_Bucket *bucket = draw_top_bucket();
     return bucket->stack_top.xform2d;
 }
 
 Rng2_f32
-draw_top_clip(void)
-{
+draw_top_clip(void) {
     Draw_Bucket *bucket = draw_top_bucket();
     return bucket->stack_top.clip;
 }
 
-f32
-draw_top_transparency(void)
-{
+f32 draw_top_transparency(void) {
     Draw_Bucket *bucket = draw_top_bucket();
     return bucket->stack_top.transparency;
 }
 
 // Core draw calls
 Renderer_Rect_2D_Inst *
-draw_rect(Rng2_f32 dst, Vec4_f32 color, f32 corner_radius, f32 border_thickness, f32 edge_softness)
-{
+draw_rect(Rng2_f32 dst, Vec4_f32 color, f32 corner_radius, f32 border_thickness, f32 edge_softness) {
     Draw_Bucket *bucket = draw_top_bucket();
     if (!bucket)
         return NULL;
 
     // Get or create UI pass
     Renderer_Pass *ui_pass = NULL;
-    for (Renderer_Pass_Node *node = bucket->passes.first; node != NULL; node = node->next)
-    {
-        if (node->v.kind == Renderer_Pass_Kind_UI)
-        {
+    for (Renderer_Pass_Node *node = bucket->passes.first; node != NULL; node = node->next) {
+        if (node->v.kind == Renderer_Pass_Kind_UI) {
             ui_pass = &node->v;
             break;
         }
     }
 
-    if (!ui_pass)
-    {
+    if (!ui_pass) {
         ui_pass = renderer_pass_from_kind(draw_thread_ctx->arena, &bucket->passes, Renderer_Pass_Kind_UI);
         MemoryZeroStruct(&ui_pass->params_ui->rects);
     }
 
     // Find or create batch group
     Renderer_Batch_Group_2D_Node *group = NULL;
-    if (ui_pass->params_ui->rects.first)
-    {
+    if (ui_pass->params_ui->rects.first) {
         group = ui_pass->params_ui->rects.first;
-    }
-    else
-    {
+    } else {
         Renderer_Batch_Group_2D_Node *new_node = push_struct(draw_thread_ctx->arena, Renderer_Batch_Group_2D_Node);
         new_node->next = NULL;
-        if (ui_pass->params_ui->rects.last)
-        {
+        if (ui_pass->params_ui->rects.last) {
             ui_pass->params_ui->rects.last->next = new_node;
             ui_pass->params_ui->rects.last = new_node;
-        }
-        else
-        {
+        } else {
             ui_pass->params_ui->rects.first = ui_pass->params_ui->rects.last = new_node;
         }
         ui_pass->params_ui->rects.count++;
@@ -256,25 +215,21 @@ draw_rect(Rng2_f32 dst, Vec4_f32 color, f32 corner_radius, f32 border_thickness,
 }
 
 Renderer_Rect_2D_Inst *
-draw_img(Rng2_f32 dst, Rng2_f32 src, Renderer_Handle texture, Vec4_f32 color, f32 corner_radius, f32 border_thickness, f32 edge_softness)
-{
+draw_img(Rng2_f32 dst, Rng2_f32 src, Renderer_Handle texture, Vec4_f32 color, f32 corner_radius, f32 border_thickness, f32 edge_softness) {
     Draw_Bucket *bucket = draw_top_bucket();
     if (!bucket)
         return NULL;
 
     // Get or create UI pass
     Renderer_Pass *ui_pass = NULL;
-    for (Renderer_Pass_Node *node = bucket->passes.first; node != NULL; node = node->next)
-    {
-        if (node->v.kind == Renderer_Pass_Kind_UI)
-        {
+    for (Renderer_Pass_Node *node = bucket->passes.first; node != NULL; node = node->next) {
+        if (node->v.kind == Renderer_Pass_Kind_UI) {
             ui_pass = &node->v;
             break;
         }
     }
 
-    if (!ui_pass)
-    {
+    if (!ui_pass) {
         ui_pass = renderer_pass_from_kind(draw_thread_ctx->arena, &bucket->passes, Renderer_Pass_Kind_UI);
         MemoryZeroStruct(&ui_pass->params_ui->rects);
     }
@@ -282,13 +237,10 @@ draw_img(Rng2_f32 dst, Rng2_f32 src, Renderer_Handle texture, Vec4_f32 color, f3
     // Create new batch group for this texture
     Renderer_Batch_Group_2D_Node *new_node = push_struct(draw_thread_ctx->arena, Renderer_Batch_Group_2D_Node);
     new_node->next = NULL;
-    if (ui_pass->params_ui->rects.last)
-    {
+    if (ui_pass->params_ui->rects.last) {
         ui_pass->params_ui->rects.last->next = new_node;
         ui_pass->params_ui->rects.last = new_node;
-    }
-    else
-    {
+    } else {
         ui_pass->params_ui->rects.first = ui_pass->params_ui->rects.last = new_node;
     }
     ui_pass->params_ui->rects.count++;
@@ -318,8 +270,7 @@ draw_img(Rng2_f32 dst, Rng2_f32 src, Renderer_Handle texture, Vec4_f32 color, f3
 
 // 3D rendering
 Renderer_Pass_Params_Geo_3D *
-draw_geo3d_begin(Rng2_f32 viewport, Mat4x4_f32 view, Mat4x4_f32 projection)
-{
+draw_geo3d_begin(Rng2_f32 viewport, Mat4x4_f32 view, Mat4x4_f32 projection) {
     Draw_Bucket *bucket = draw_top_bucket();
     if (!bucket)
         return NULL;
@@ -337,18 +288,15 @@ draw_geo3d_begin(Rng2_f32 viewport, Mat4x4_f32 view, Mat4x4_f32 projection)
 }
 
 Renderer_Mesh_3D_Inst *
-draw_mesh(Renderer_Handle mesh_vertices, Renderer_Handle mesh_indices, Renderer_Geo_Topology_Kind mesh_geo_topology, u32 mesh_geo_vertex_flags, Renderer_Handle albedo_tex, Mat4x4_f32 inst_xform)
-{
+draw_mesh(Renderer_Handle mesh_vertices, Renderer_Handle mesh_indices, Renderer_Geo_Topology_Kind mesh_geo_topology, u32 mesh_geo_vertex_flags, Renderer_Handle albedo_tex, Mat4x4_f32 inst_xform) {
     Draw_Bucket *bucket = draw_top_bucket();
     if (!bucket)
         return NULL;
 
     // Find 3D pass
     Renderer_Pass *geo_pass = NULL;
-    for (Renderer_Pass_Node *node = bucket->passes.first; node != NULL; node = node->next)
-    {
-        if (node->v.kind == Renderer_Pass_Kind_Geo_3D)
-        {
+    for (Renderer_Pass_Node *node = bucket->passes.first; node != NULL; node = node->next) {
+        if (node->v.kind == Renderer_Pass_Kind_Geo_3D) {
             geo_pass = &node->v;
             break;
         }
@@ -382,22 +330,17 @@ draw_mesh(Renderer_Handle mesh_vertices, Renderer_Handle mesh_indices, Renderer_
 
 // Text drawing
 Draw_Text_Run_List
-draw_text_runs_from_styled_strings(Arena *arena, f32 tab_size_px, Draw_Styled_String_List *strs)
-{
+draw_text_runs_from_styled_strings(Arena *arena, f32 tab_size_px, Draw_Styled_String_List *strs) {
     Draw_Text_Run_List run_list = {0};
     f32                base_align_px = 0;
 
-    for (Draw_Styled_String_Node *n = strs->first; n != NULL; n = n->next)
-    {
+    for (Draw_Styled_String_Node *n = strs->first; n != NULL; n = n->next) {
         Draw_Text_Run_Node *new_node = push_struct(arena, Draw_Text_Run_Node);
         new_node->next = NULL;
-        if (run_list.last)
-        {
+        if (run_list.last) {
             run_list.last->next = new_node;
             run_list.last = new_node;
-        }
-        else
-        {
+        } else {
             run_list.first = run_list.last = new_node;
         }
         run_list.node_count++;
@@ -413,14 +356,12 @@ draw_text_runs_from_styled_strings(Arena *arena, f32 tab_size_px, Draw_Styled_St
 }
 
 Vec2_f32
-draw_dim_from_styled_strings(f32 tab_size_px, Draw_Styled_String_List *strs)
-{
+draw_dim_from_styled_strings(f32 tab_size_px, Draw_Styled_String_List *strs) {
     Scratch            scratch = tctx_scratch_begin(0, 0);
     Draw_Text_Run_List runs = draw_text_runs_from_styled_strings(scratch.arena, tab_size_px, strs);
 
     Vec2_f32 dim = {{0, 0}};
-    for (Draw_Text_Run_Node *n = runs.first; n != NULL; n = n->next)
-    {
+    for (Draw_Text_Run_Node *n = runs.first; n != NULL; n = n->next) {
         dim.x += n->v.run.dim.x;
         dim.y = Max(dim.y, n->v.run.dim.y);
     }
@@ -429,9 +370,7 @@ draw_dim_from_styled_strings(f32 tab_size_px, Draw_Styled_String_List *strs)
     return dim;
 }
 
-void
-draw_text(Vec2_f32 p, String text, Font_Renderer_Tag font, f32 size, Vec4_f32 color)
-{
+void draw_text(Vec2_f32 p, String text, Font_Renderer_Tag font, f32 size, Vec4_f32 color) {
     Draw_Bucket *bucket = draw_top_bucket();
     if (!bucket)
         return;
@@ -441,14 +380,13 @@ draw_text(Vec2_f32 p, String text, Font_Renderer_Tag font, f32 size, Vec4_f32 co
 
     // Draw each piece
     f32 x_offset = 0;
-    for (u64 i = 0; i < run.piece_count; i++)
-    {
+    for (u64 i = 0; i < run.piece_count; i++) {
         Font_Renderer_Piece *piece = &run.pieces[i];
 
         // Calculate destination rectangle with pixel-grid alignment
         f32 width = piece->subrect.max.x - piece->subrect.min.x;
         f32 height = piece->subrect.max.y - piece->subrect.min.y;
-        
+
         // Snap text position to pixel grid for crisp rendering
         f32 x_pos = floorf(p.x + x_offset + piece->offset.x + 0.5f);
         f32 y_pos = floorf(p.y + piece->offset.y + 0.5f);
@@ -466,31 +404,26 @@ draw_text(Vec2_f32 p, String text, Font_Renderer_Tag font, f32 size, Vec4_f32 co
 
         // Draw with font texture flag set
         Renderer_Rect_2D_Inst *rect = draw_img(dst, src, tex, color, 0, 0, 0);
-        if (rect)
-        {
+        if (rect) {
             rect->is_font_texture = 1.0f; // Use nearest filtering for crisp font rendering
         }
         x_offset += piece->advance;
     }
 }
 
-void
-draw_text_run_list(Vec2_f32 p, Draw_Text_Run_List *list)
-{
+void draw_text_run_list(Vec2_f32 p, Draw_Text_Run_List *list) {
     f32 x_offset = 0;
-    for (Draw_Text_Run_Node *n = list->first; n != NULL; n = n->next)
-    {
+    for (Draw_Text_Run_Node *n = list->first; n != NULL; n = n->next) {
         Draw_Text_Run *run = &n->v;
 
         // Draw each piece in the run
-        for (u64 i = 0; i < run->run.piece_count; i++)
-        {
+        for (u64 i = 0; i < run->run.piece_count; i++) {
             Font_Renderer_Piece *piece = &run->run.pieces[i];
 
             // Calculate destination rectangle with pixel-grid alignment
             f32 width = piece->subrect.max.x - piece->subrect.min.x;
             f32 height = piece->subrect.max.y - piece->subrect.min.y;
-            
+
             // Snap text position to pixel grid for crisp rendering
             f32 x_pos = floorf(p.x + x_offset + piece->offset.x + 0.5f);
             f32 y_pos = floorf(p.y + piece->offset.y + 0.5f);

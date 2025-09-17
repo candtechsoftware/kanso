@@ -6,30 +6,26 @@
 
 // Simple array types following raddebugger pattern
 typedef struct U32Array U32Array;
-struct U32Array
-{
+struct U32Array {
     u64  count;
     u32 *v;
 };
 
 typedef struct U64Array U64Array;
-struct U64Array
-{
+struct U64Array {
     u64  count;
     u64 *v;
 };
 
 typedef struct F32Array F32Array;
-struct F32Array
-{
+struct F32Array {
     u64  count;
     f32 *v;
 };
 
 // Generic dynamic array for when type safety isn't needed
 typedef struct Array Array;
-struct Array
-{
+struct Array {
     void *data;
     u32   size;
     u32   cap;

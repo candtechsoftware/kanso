@@ -10,12 +10,9 @@
 static FILE    *g_log_file = NULL;
 static LogLevel g_min_level = LOG_LEVEL_DEBUG;
 
-void
-log_init(const char *log_file_path)
-{
+void log_init(const char *log_file_path) {
 #ifndef DEBUG
-    if (log_file_path)
-    {
+    if (log_file_path) {
 #    ifdef _WIN32
         fopen_s(&g_log_file, log_file_path, "w");
 #    else
@@ -25,19 +22,15 @@ log_init(const char *log_file_path)
 #endif
 }
 
-void
-log_shutdown()
-{
-    if (g_log_file)
-    {
+void log_shutdown() {
+    if (g_log_file) {
         fclose(g_log_file);
         g_log_file = NULL;
     }
 }
 
 static FILE *
-get_log_output()
-{
+get_log_output() {
 #ifdef DEBUG
     return stdout;
 #else
@@ -46,10 +39,8 @@ get_log_output()
 }
 
 static const char *
-log_level_str(LogLevel level)
-{
-    switch (level)
-    {
+log_level_str(LogLevel level) {
+    switch (level) {
     case LOG_LEVEL_DEBUG:
         return "DEBUG";
     case LOG_LEVEL_INFO:
@@ -64,8 +55,7 @@ log_level_str(LogLevel level)
 }
 
 static void
-write_header(FILE *out, LogLevel level, const char *file, u32 line)
-{
+write_header(FILE *out, LogLevel level, const char *file, u32 line) {
     time_t    t = time(NULL);
     struct tm tm = {0};
 #ifdef _WIN32
@@ -76,10 +66,8 @@ write_header(FILE *out, LogLevel level, const char *file, u32 line)
 
     const char *filename = file;
     const char *p = file;
-    while (*p)
-    {
-        if (*p == '/' || *p == '\\')
-        {
+    while (*p) {
+        if (*p == '/' || *p == '\\') {
             filename = p + 1;
         }
         p++;
@@ -90,46 +78,37 @@ write_header(FILE *out, LogLevel level, const char *file, u32 line)
 }
 
 static void
-process_format(FILE *out, const char *fmt, va_list args)
-{
+process_format(FILE *out, const char *fmt, va_list args) {
     const char *p = fmt;
 
-    while (*p)
-    {
-        if (*p == '{' && *(p + 1) && *(p + 2) == '}')
-        {
+    while (*p) {
+        if (*p == '{' && *(p + 1) && *(p + 2) == '}') {
             char spec = *(p + 1);
 
-            switch (spec)
-            {
-            case 'S':
-            {
+            switch (spec) {
+            case 'S': {
                 String str = va_arg(args, String);
                 fputs((const char *)str.data, out);
                 break;
 
                 break;
             }
-            case 's':
-            {
+            case 's': {
                 const char *str = va_arg(args, const char *);
                 fputs(str, out);
                 break;
             }
-            case 'd':
-            {
+            case 'd': {
                 int val = va_arg(args, int);
                 fprintf(out, "%d", val);
                 break;
             }
-            case 'f':
-            {
+            case 'f': {
                 double val = va_arg(args, double);
                 fprintf(out, "%f", val);
                 break;
             }
-            case 'o':
-            {
+            case 'o': {
                 // For now, just print a placeholder for objects
                 fputs("{ object }", out);
                 // Skip the argument
@@ -144,18 +123,14 @@ process_format(FILE *out, const char *fmt, va_list args)
             }
 
             p += 3;
-        }
-        else
-        {
+        } else {
             fputc(*p, out);
             p++;
         }
     }
 }
 
-void
-_log_impl(LogLevel level, const char *file, u32 line, const char *fmt, ...)
-{
+void _log_impl(LogLevel level, const char *file, u32 line, const char *fmt, ...) {
     if (level < g_min_level)
         return;
 
@@ -174,9 +149,7 @@ _log_impl(LogLevel level, const char *file, u32 line, const char *fmt, ...)
     fflush(out);
 }
 
-void
-log_print(const char *fmt, ...)
-{
+void log_print(const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
 

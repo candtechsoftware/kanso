@@ -25,11 +25,8 @@
 Font_Renderer_Cache_State *font_cache_state = NULL;
 
 // Simple hash function for strings (FNV-1a hash)
-u128
-font_cache_hash_from_string(String string)
-{
-    union
-    {
+u128 font_cache_hash_from_string(String string) {
+    union {
         XXH128_hash_t xxhash;
         u128          u128;
     } hash;
@@ -38,12 +35,9 @@ font_cache_hash_from_string(String string)
     return hash.u128;
 }
 
-u64
-font_cache_little_hash_from_string(u64 seed, String string)
-{
+u64 font_cache_little_hash_from_string(u64 seed, String string) {
     u64 hash = seed;
-    for (u32 i = 0; i < string.size; i++)
-    {
+    for (u32 i = 0; i < string.size; i++) {
         hash ^= (u64)string.data[i];
         hash *= 1099511628211ULL;
     }
@@ -52,30 +46,25 @@ font_cache_little_hash_from_string(u64 seed, String string)
 
 // Font_Renderer tag functions
 Font_Renderer_Tag
-font_tag_zero(void)
-{
+font_tag_zero(void) {
     Font_Renderer_Tag result = {0};
     return result;
 }
 
 Font_Renderer_Handle
-font_handle_from_tag(Font_Renderer_Tag tag)
-{
+font_handle_from_tag(Font_Renderer_Tag tag) {
     u64                       slot_idx = tag.data[1] % font_cache_state->font_hash_table_size;
     Font_Renderer_Cache_Node *existing_node = NULL;
 
-    for (Font_Renderer_Cache_Node *n = font_cache_state->font_hash_table[slot_idx].first; n != NULL; n = n->hash_next)
-    {
-        if (font_tag_equal(tag, n->tag))
-        {
+    for (Font_Renderer_Cache_Node *n = font_cache_state->font_hash_table[slot_idx].first; n != NULL; n = n->hash_next) {
+        if (font_tag_equal(tag, n->tag)) {
             existing_node = n;
             break;
         }
     }
 
     Font_Renderer_Handle result = font_handle_zero();
-    if (existing_node != NULL)
-    {
+    if (existing_node != NULL) {
         result = existing_node->handle;
     }
 
@@ -83,23 +72,19 @@ font_handle_from_tag(Font_Renderer_Tag tag)
 }
 
 Font_Renderer_Metrics
-font_metrics_from_tag(Font_Renderer_Tag tag)
-{
+font_metrics_from_tag(Font_Renderer_Tag tag) {
     u64                       slot_idx = tag.data[1] % font_cache_state->font_hash_table_size;
     Font_Renderer_Cache_Node *existing_node = NULL;
 
-    for (Font_Renderer_Cache_Node *n = font_cache_state->font_hash_table[slot_idx].first; n != NULL; n = n->hash_next)
-    {
-        if (font_tag_equal(tag, n->tag))
-        {
+    for (Font_Renderer_Cache_Node *n = font_cache_state->font_hash_table[slot_idx].first; n != NULL; n = n->hash_next) {
+        if (font_tag_equal(tag, n->tag)) {
             existing_node = n;
             break;
         }
     }
 
     Font_Renderer_Metrics result = {0};
-    if (existing_node != NULL)
-    {
+    if (existing_node != NULL) {
         result = existing_node->metrics;
     }
 
@@ -107,8 +92,7 @@ font_metrics_from_tag(Font_Renderer_Tag tag)
 }
 
 Font_Renderer_Tag
-font_tag_from_path(String path)
-{
+font_tag_from_path(String path) {
     // Produce tag from hash of path
     Font_Renderer_Tag result = {0};
     u128              hash = font_cache_hash_from_string(path);
@@ -120,22 +104,18 @@ font_tag_from_path(String path)
 
     // Check for existing node
     Font_Renderer_Cache_Node *existing_node = NULL;
-    for (Font_Renderer_Cache_Node *n = font_cache_state->font_hash_table[slot_idx].first; n != NULL; n = n->hash_next)
-    {
-        if (font_tag_equal(result, n->tag))
-        {
+    for (Font_Renderer_Cache_Node *n = font_cache_state->font_hash_table[slot_idx].first; n != NULL; n = n->hash_next) {
+        if (font_tag_equal(result, n->tag)) {
             existing_node = n;
             break;
         }
     }
 
     // Allocate new node if needed
-    if (existing_node == NULL)
-    {
+    if (existing_node == NULL) {
         Font_Renderer_Handle handle = font_open(path);
         Font_Renderer_Handle zero = font_handle_zero();
-        if (handle.data[0] != zero.data[0] || handle.data[1] != zero.data[1])
-        {
+        if (handle.data[0] != zero.data[0] || handle.data[1] != zero.data[1]) {
             Font_Renderer_Cache_Slot *slot = &font_cache_state->font_hash_table[slot_idx];
             existing_node = push_struct(font_cache_state->permanent_arena, Font_Renderer_Cache_Node);
             existing_node->tag = result;
@@ -145,18 +125,13 @@ font_tag_from_path(String path)
             existing_node->hash_next = NULL;
 
             // Add to linked list
-            if (slot->last)
-            {
+            if (slot->last) {
                 slot->last->hash_next = existing_node;
-            }
-            else
-            {
+            } else {
                 slot->first = existing_node;
             }
             slot->last = existing_node;
-        }
-        else
-        {
+        } else {
             // Invalid font, return zero tag
             result = font_tag_zero();
         }
@@ -166,8 +141,7 @@ font_tag_from_path(String path)
 }
 
 Font_Renderer_Tag
-font_tag_from_data(String *data)
-{
+font_tag_from_data(String *data) {
     // Produce tag from hash of data pointer
     Font_Renderer_Tag result = {0};
     String            ptr_str = {(u8 *)&data, sizeof(String *)};
@@ -180,18 +154,15 @@ font_tag_from_data(String *data)
 
     // Check for existing node
     Font_Renderer_Cache_Node *existing_node = NULL;
-    for (Font_Renderer_Cache_Node *n = font_cache_state->font_hash_table[slot_idx].first; n != NULL; n = n->hash_next)
-    {
-        if (font_tag_equal(result, n->tag))
-        {
+    for (Font_Renderer_Cache_Node *n = font_cache_state->font_hash_table[slot_idx].first; n != NULL; n = n->hash_next) {
+        if (font_tag_equal(result, n->tag)) {
             existing_node = n;
             break;
         }
     }
 
     // Allocate new node if needed
-    if (existing_node == NULL)
-    {
+    if (existing_node == NULL) {
         Font_Renderer_Handle      handle = font_open_from_data(data);
         Font_Renderer_Cache_Slot *slot = &font_cache_state->font_hash_table[slot_idx];
         Font_Renderer_Cache_Node *new_node = push_struct(font_cache_state->permanent_arena, Font_Renderer_Cache_Node);
@@ -202,12 +173,9 @@ font_tag_from_data(String *data)
         new_node->hash_next = NULL;
 
         // Add to linked list
-        if (slot->last)
-        {
+        if (slot->last) {
             slot->last->hash_next = new_node;
-        }
-        else
-        {
+        } else {
             slot->first = new_node;
         }
         slot->last = new_node;
@@ -217,23 +185,19 @@ font_tag_from_data(String *data)
 }
 
 String
-font_path_from_tag(Font_Renderer_Tag tag)
-{
+font_path_from_tag(Font_Renderer_Tag tag) {
     u64 slot_idx = tag.data[1] % font_cache_state->font_hash_table_size;
 
     Font_Renderer_Cache_Node *existing_node = NULL;
-    for (Font_Renderer_Cache_Node *n = font_cache_state->font_hash_table[slot_idx].first; n != NULL; n = n->hash_next)
-    {
-        if (font_tag_equal(tag, n->tag))
-        {
+    for (Font_Renderer_Cache_Node *n = font_cache_state->font_hash_table[slot_idx].first; n != NULL; n = n->hash_next) {
+        if (font_tag_equal(tag, n->tag)) {
             existing_node = n;
             break;
         }
     }
 
     String result = {0};
-    if (existing_node != NULL)
-    {
+    if (existing_node != NULL) {
         result = existing_node->path;
     }
 
@@ -242,11 +206,9 @@ font_path_from_tag(Font_Renderer_Tag tag)
 
 // Helper function to get vertex from corner
 static Vec2_s32
-font_vertex_from_corner(Corner corner)
-{
+font_vertex_from_corner(Corner corner) {
     Vec2_s32 result = {0, 0};
-    switch (corner)
-    {
+    switch (corner) {
     case Corner_00:
         result.x = 0;
         result.y = 0;
@@ -271,29 +233,25 @@ font_vertex_from_corner(Corner corner)
 
 // Atlas region allocation
 Rng2_s16
-font_atlas_region_alloc(Arena *arena, Font_Renderer_Atlas *atlas, Vec2_s16 needed_size)
-{
+font_atlas_region_alloc(Arena *arena, Font_Renderer_Atlas *atlas, Vec2_s16 needed_size) {
     // Find node with best-fit size
     Vec2_s16                         region_p0 = {0, 0};
     Vec2_s16                         region_sz = {0, 0};
     Font_Renderer_Atlas_Region_Node *node = NULL;
 
     Vec2_s16 n_supported_size = atlas->root_dim;
-    for (Font_Renderer_Atlas_Region_Node *n = atlas->root; n != NULL;)
-    {
+    for (Font_Renderer_Atlas_Region_Node *n = atlas->root; n != NULL;) {
         Font_Renderer_Atlas_Region_Node *next = NULL;
 
         // Check if taken
-        if (n->flags & Font_Renderer_Atlas_Region_Flag_Taken)
-        {
+        if (n->flags & Font_Renderer_Atlas_Region_Flag_Taken) {
             break;
         }
 
         // Check if can be allocated
         bool n_can_be_allocated = (n->num_allocated_descendants == 0);
 
-        if (n_can_be_allocated)
-        {
+        if (n_can_be_allocated) {
             region_sz = n_supported_size;
         }
 
@@ -302,12 +260,9 @@ font_atlas_region_alloc(Arena *arena, Font_Renderer_Atlas *atlas, Vec2_s16 neede
 
         // Find best child
         Font_Renderer_Atlas_Region_Node *best_child = NULL;
-        if (child_size.x >= needed_size.x && child_size.y >= needed_size.y)
-        {
-            for (Corner corner = (Corner)0; corner < Corner_COUNT; corner = (Corner)(corner + 1))
-            {
-                if (n->children[corner] == NULL)
-                {
+        if (child_size.x >= needed_size.x && child_size.y >= needed_size.y) {
+            for (Corner corner = (Corner)0; corner < Corner_COUNT; corner = (Corner)(corner + 1)) {
+                if (n->children[corner] == NULL) {
                     n->children[corner] = push_struct_zero(arena, Font_Renderer_Atlas_Region_Node);
                     n->children[corner]->parent = n;
                     Vec2_s16 corner_size = {(s16)(child_size.x / 2), (s16)(child_size.y / 2)};
@@ -318,8 +273,7 @@ font_atlas_region_alloc(Arena *arena, Font_Renderer_Atlas *atlas, Vec2_s16 neede
                 }
 
                 if (n->max_free_size[corner].x >= needed_size.x &&
-                    n->max_free_size[corner].y >= needed_size.y)
-                {
+                    n->max_free_size[corner].y >= needed_size.y) {
                     best_child = n->children[corner];
                     Vec2_s32 side_vertex = font_vertex_from_corner(corner);
                     region_p0.x += side_vertex.x * child_size.x;
@@ -331,8 +285,7 @@ font_atlas_region_alloc(Arena *arena, Font_Renderer_Atlas *atlas, Vec2_s16 neede
 
         if (best_child &&
             best_child->max_free_size[Corner_00].x >= needed_size.x &&
-            best_child->max_free_size[Corner_00].y >= needed_size.y)
-        {
+            best_child->max_free_size[Corner_00].y >= needed_size.y) {
             node = n;
             n_supported_size = child_size;
             next = best_child;
@@ -342,40 +295,31 @@ font_atlas_region_alloc(Arena *arena, Font_Renderer_Atlas *atlas, Vec2_s16 neede
     }
 
     // Allocate the node
-    if (node != NULL)
-    {
+    if (node != NULL) {
         node->flags = (Font_Renderer_Atlas_Region_Flags)((u32)node->flags | Font_Renderer_Atlas_Region_Flag_Taken);
 
         // Update parent allocated descendants
-        for (Font_Renderer_Atlas_Region_Node *p = node->parent; p != NULL; p = p->parent)
-        {
+        for (Font_Renderer_Atlas_Region_Node *p = node->parent; p != NULL; p = p->parent) {
             p->num_allocated_descendants += 1;
         }
 
         // Update max free sizes in parents
-        for (Font_Renderer_Atlas_Region_Node *p = node->parent; p != NULL; p = p->parent)
-        {
+        for (Font_Renderer_Atlas_Region_Node *p = node->parent; p != NULL; p = p->parent) {
             // Recalculate max free size for each corner
-            for (Corner corner = (Corner)0; corner < Corner_COUNT; corner = (Corner)(corner + 1))
-            {
+            for (Corner corner = (Corner)0; corner < Corner_COUNT; corner = (Corner)(corner + 1)) {
                 Vec2_s16 max_size = {0, 0};
 
-                if (p->children[corner] != NULL)
-                {
+                if (p->children[corner] != NULL) {
                     Font_Renderer_Atlas_Region_Node *child = p->children[corner];
 
                     // If child is not taken, use its max free sizes
-                    if (!(child->flags & Font_Renderer_Atlas_Region_Flag_Taken))
-                    {
+                    if (!(child->flags & Font_Renderer_Atlas_Region_Flag_Taken)) {
                         // Find the maximum free size among all corners of the child
-                        for (Corner child_corner = (Corner)0; child_corner < Corner_COUNT; child_corner = (Corner)(child_corner + 1))
-                        {
-                            if (child->max_free_size[child_corner].x > max_size.x)
-                            {
+                        for (Corner child_corner = (Corner)0; child_corner < Corner_COUNT; child_corner = (Corner)(child_corner + 1)) {
+                            if (child->max_free_size[child_corner].x > max_size.x) {
                                 max_size.x = child->max_free_size[child_corner].x;
                             }
-                            if (child->max_free_size[child_corner].y > max_size.y)
-                            {
+                            if (child->max_free_size[child_corner].y > max_size.y) {
                                 max_size.y = child->max_free_size[child_corner].y;
                             }
                         }
@@ -392,9 +336,7 @@ font_atlas_region_alloc(Arena *arena, Font_Renderer_Atlas *atlas, Vec2_s16 neede
     return result;
 }
 
-void
-font_atlas_region_release(Font_Renderer_Atlas *atlas, Rng2_s16 region)
-{
+void font_atlas_region_release(Font_Renderer_Atlas *atlas, Rng2_s16 region) {
     // Find the node that corresponds to this region
     Vec2_s16 region_p0 = region.min;
     Vec2_s16 region_sz = {(s16)(region.max.x - region.min.x), (s16)(region.max.y - region.min.y)};
@@ -404,23 +346,19 @@ font_atlas_region_release(Font_Renderer_Atlas *atlas, Rng2_s16 region)
     Font_Renderer_Atlas_Region_Node *node = atlas->root;
 
     // Traverse down the tree to find the exact node
-    while (node != NULL && (current_sz.x != region_sz.x || current_sz.y != region_sz.y))
-    {
+    while (node != NULL && (current_sz.x != region_sz.x || current_sz.y != region_sz.y)) {
         Vec2_s16 child_size = {(s16)(current_sz.x / 2), (s16)(current_sz.y / 2)};
 
         // Determine which quadrant the region is in
         bool found = false;
-        for (Corner corner = (Corner)0; corner < Corner_COUNT; corner = (Corner)(corner + 1))
-        {
+        for (Corner corner = (Corner)0; corner < Corner_COUNT; corner = (Corner)(corner + 1)) {
             Vec2_s32 side_vertex = font_vertex_from_corner(corner);
             Vec2_s16 child_p0 = {
                 (s16)(current_p0.x + side_vertex.x * child_size.x),
                 (s16)(current_p0.y + side_vertex.y * child_size.y)};
 
-            if (region_p0.x == child_p0.x && region_p0.y == child_p0.y)
-            {
-                if (node->children[corner] != NULL)
-                {
+            if (region_p0.x == child_p0.x && region_p0.y == child_p0.y) {
+                if (node->children[corner] != NULL) {
                     node = node->children[corner];
                     current_p0 = child_p0;
                     current_sz = child_size;
@@ -430,72 +368,55 @@ font_atlas_region_release(Font_Renderer_Atlas *atlas, Rng2_s16 region)
             }
         }
 
-        if (!found)
-        {
+        if (!found) {
             // Region not found
             return;
         }
     }
 
     // Release the node if found and it's taken
-    if (node != NULL && (node->flags & Font_Renderer_Atlas_Region_Flag_Taken))
-    {
+    if (node != NULL && (node->flags & Font_Renderer_Atlas_Region_Flag_Taken)) {
         // Clear the taken flag
         node->flags = (Font_Renderer_Atlas_Region_Flags)((u32)node->flags & ~Font_Renderer_Atlas_Region_Flag_Taken);
 
         // Update parent allocated descendants count
-        for (Font_Renderer_Atlas_Region_Node *p = node->parent; p != NULL; p = p->parent)
-        {
-            if (p->num_allocated_descendants > 0)
-            {
+        for (Font_Renderer_Atlas_Region_Node *p = node->parent; p != NULL; p = p->parent) {
+            if (p->num_allocated_descendants > 0) {
                 p->num_allocated_descendants -= 1;
             }
         }
 
         // Update max free sizes in parents
-        for (Font_Renderer_Atlas_Region_Node *p = node->parent; p != NULL; p = p->parent)
-        {
+        for (Font_Renderer_Atlas_Region_Node *p = node->parent; p != NULL; p = p->parent) {
             // Recalculate max free size for each corner
-            for (Corner corner = (Corner)0; corner < Corner_COUNT; corner = (Corner)(corner + 1))
-            {
+            for (Corner corner = (Corner)0; corner < Corner_COUNT; corner = (Corner)(corner + 1)) {
                 Vec2_s16 max_size = {0, 0};
 
-                if (p->children[corner] != NULL)
-                {
+                if (p->children[corner] != NULL) {
                     Font_Renderer_Atlas_Region_Node *child = p->children[corner];
 
                     // If child is not taken, use its size
-                    if (!(child->flags & Font_Renderer_Atlas_Region_Flag_Taken))
-                    {
+                    if (!(child->flags & Font_Renderer_Atlas_Region_Flag_Taken)) {
                         // Calculate child's actual size based on parent
                         Vec2_s16 parent_sz;
-                        if (p->parent != NULL)
-                        {
+                        if (p->parent != NULL) {
                             parent_sz.x = (s16)(current_sz.x * 2);
                             parent_sz.y = (s16)(current_sz.y * 2);
-                        }
-                        else
-                        {
+                        } else {
                             parent_sz = atlas->root_dim;
                         }
                         Vec2_s16 child_sz = {(s16)(parent_sz.x / 2), (s16)(parent_sz.y / 2)};
 
                         // If child has no allocated descendants, it's fully free
-                        if (child->num_allocated_descendants == 0)
-                        {
+                        if (child->num_allocated_descendants == 0) {
                             max_size = child_sz;
-                        }
-                        else
-                        {
+                        } else {
                             // Otherwise use the max of its children's free sizes
-                            for (Corner child_corner = (Corner)0; child_corner < Corner_COUNT; child_corner = (Corner)(child_corner + 1))
-                            {
-                                if (child->max_free_size[child_corner].x > max_size.x)
-                                {
+                            for (Corner child_corner = (Corner)0; child_corner < Corner_COUNT; child_corner = (Corner)(child_corner + 1)) {
+                                if (child->max_free_size[child_corner].x > max_size.x) {
                                     max_size.x = child->max_free_size[child_corner].x;
                                 }
-                                if (child->max_free_size[child_corner].y > max_size.y)
-                                {
+                                if (child->max_free_size[child_corner].y > max_size.y) {
                                     max_size.y = child->max_free_size[child_corner].y;
                                 }
                             }
@@ -511,14 +432,12 @@ font_atlas_region_release(Font_Renderer_Atlas *atlas, Rng2_s16 region)
 
 // Piece array functions
 Font_Renderer_Piece_Array
-font_piece_array_from_list(Arena *arena, Font_Renderer_Piece_List *list)
-{
+font_piece_array_from_list(Arena *arena, Font_Renderer_Piece_List *list) {
     Font_Renderer_Piece_Array result = {0};
     result.pieces = push_array(arena, Font_Renderer_Piece, list->count);
     result.count = 0;
 
-    for (Font_Renderer_Piece_Node *node = list->first; node != NULL; node = node->next)
-    {
+    for (Font_Renderer_Piece_Node *node = list->first; node != NULL; node = node->next) {
         result.pieces[result.count++] = node->v;
     }
 
@@ -526,14 +445,12 @@ font_piece_array_from_list(Arena *arena, Font_Renderer_Piece_List *list)
 }
 
 Font_Renderer_Piece_Array
-font_piece_array_copy(Arena *arena, Font_Renderer_Piece_Array *src)
-{
+font_piece_array_copy(Arena *arena, Font_Renderer_Piece_Array *src) {
     Font_Renderer_Piece_Array result = {0};
     result.pieces = push_array(arena, Font_Renderer_Piece, src->count);
     result.count = src->count;
 
-    for (u64 i = 0; i < src->count; i++)
-    {
+    for (u64 i = 0; i < src->count; i++) {
         result.pieces[i] = src->pieces[i];
     }
 
@@ -542,8 +459,7 @@ font_piece_array_copy(Arena *arena, Font_Renderer_Piece_Array *src)
 
 // Cache usage functions
 Font_Renderer_Style_Cache_Node *
-font_style_from_tag_size_flags(Font_Renderer_Tag tag, f32 size, Font_Renderer_Raster_Flags flags)
-{
+font_style_from_tag_size_flags(Font_Renderer_Tag tag, f32 size, Font_Renderer_Raster_Flags flags) {
     // Create style hash from tag, size, and flags
     u64 style_hash = tag.data[0] ^ tag.data[1];
     style_hash ^= *(u64 *)&size;
@@ -554,17 +470,14 @@ font_style_from_tag_size_flags(Font_Renderer_Tag tag, f32 size, Font_Renderer_Ra
     Font_Renderer_Style_Cache_Slot *slot = &font_cache_state->hash2style_slots[slot_idx];
 
     Font_Renderer_Style_Cache_Node *node = NULL;
-    for (Font_Renderer_Style_Cache_Node *n = slot->first; n != NULL; n = n->hash_next)
-    {
-        if (n->style_hash == style_hash)
-        {
+    for (Font_Renderer_Style_Cache_Node *n = slot->first; n != NULL; n = n->hash_next) {
+        if (n->style_hash == style_hash) {
             node = n;
             break;
         }
     }
 
-    if (node == NULL)
-    {
+    if (node == NULL) {
         // Create new node
         node = push_struct_zero(font_cache_state->permanent_arena, Font_Renderer_Style_Cache_Node);
         node->style_hash = style_hash;
@@ -578,8 +491,7 @@ font_style_from_tag_size_flags(Font_Renderer_Tag tag, f32 size, Font_Renderer_Ra
         Font_Renderer_Handle font_handle = font_handle_from_tag(tag);
         Font_Renderer        font = font_from_handle(font_handle);
 
-        if (font.face != NULL)
-        {
+        if (font.face != NULL) {
             // Set pixel size with DPI scaling (96 DPI / 72 points)
             FT_Set_Pixel_Sizes(font.face, 0, (FT_UInt)((96.0f / 72.0f) * size));
 
@@ -589,15 +501,12 @@ font_style_from_tag_size_flags(Font_Renderer_Tag tag, f32 size, Font_Renderer_Ra
             f32         total_width = 0.0f;
             s32         valid_chars = 0;
 
-            for (s32 i = 0; i < sample_len; i++)
-            {
+            for (s32 i = 0; i < sample_len; i++) {
                 FT_Error error = FT_Load_Char(font.face, sample_chars[i], FT_LOAD_DEFAULT);
-                if (error == 0)
-                {
+                if (error == 0) {
                     // Convert from 26.6 fixed point to pixels
                     f32 advance = (f32)(font.face->glyph->advance.x >> 6);
-                    if (advance > 0)
-                    {
+                    if (advance > 0) {
                         total_width += advance;
                         valid_chars++;
                     }
@@ -605,17 +514,12 @@ font_style_from_tag_size_flags(Font_Renderer_Tag tag, f32 size, Font_Renderer_Ra
             }
 
             // Use average width if we have valid characters, otherwise use 0.6 * size as fallback
-            if (valid_chars > 0)
-            {
+            if (valid_chars > 0) {
                 node->column_width = total_width / valid_chars;
-            }
-            else
-            {
+            } else {
                 node->column_width = size * 0.6f;
             }
-        }
-        else
-        {
+        } else {
             // Fallback if font info is not available
             node->column_width = size * 0.6f;
         }
@@ -628,13 +532,10 @@ font_style_from_tag_size_flags(Font_Renderer_Tag tag, f32 size, Font_Renderer_Ra
         node->run_slots = push_array_zero(font_cache_state->permanent_arena, Font_Renderer_Run_Cache_Slot, node->run_slots_count);
 
         // Add to linked list
-        if (slot->last)
-        {
+        if (slot->last) {
             slot->last->hash_next = node;
             node->hash_prev = slot->last;
-        }
-        else
-        {
+        } else {
             slot->first = node;
         }
         slot->last = node;
@@ -644,14 +545,12 @@ font_style_from_tag_size_flags(Font_Renderer_Tag tag, f32 size, Font_Renderer_Ra
 }
 
 Font_Renderer_Run
-font_run_from_string(Font_Renderer_Tag tag, f32 size, f32 base_align_px, f32 tab_size_px, Font_Renderer_Raster_Flags flags, String string)
-{
+font_run_from_string(Font_Renderer_Tag tag, f32 size, f32 base_align_px, f32 tab_size_px, Font_Renderer_Raster_Flags flags, String string) {
     Font_Renderer_Run result = {0};
 
     // Get style cache node
     Font_Renderer_Style_Cache_Node *style_node = font_style_from_tag_size_flags(tag, size, flags);
-    if (style_node == NULL)
-    {
+    if (style_node == NULL) {
         return result;
     }
 
@@ -662,10 +561,8 @@ font_run_from_string(Font_Renderer_Tag tag, f32 size, f32 base_align_px, f32 tab
     Font_Renderer_Run_Cache_Slot *run_slot = &style_node->run_slots[run_slot_idx];
 
     // Look for cached run
-    for (Font_Renderer_Run_Cache_Node *n = run_slot->first; n != NULL; n = n->next)
-    {
-        if (string_match(n->string, string))
-        {
+    for (Font_Renderer_Run_Cache_Node *n = run_slot->first; n != NULL; n = n->next) {
+        if (string_match(n->string, string)) {
             return n->run;
         }
     }
@@ -673,21 +570,18 @@ font_run_from_string(Font_Renderer_Tag tag, f32 size, f32 base_align_px, f32 tab
     // Build new run
     Font_Renderer_Handle font_handle = font_handle_from_tag(tag);
     Font_Renderer_Handle zero = font_handle_zero();
-    if (font_handle.data[0] == zero.data[0] && font_handle.data[1] == zero.data[1])
-    {
+    if (font_handle.data[0] == zero.data[0] && font_handle.data[1] == zero.data[1]) {
         return result;
     }
 
     // Rasterize the string
     Font_Renderer_Raster_Result raster = font_raster(font_cache_state->frame_arena, font_handle, size, string);
-    if (!raster.valid)
-    {
+    if (!raster.valid) {
         return result;
     }
 
     // Create atlas texture if needed
-    if (font_cache_state->first_atlas == NULL)
-    {
+    if (font_cache_state->first_atlas == NULL) {
         Font_Renderer_Atlas *atlas = push_struct_zero(font_cache_state->permanent_arena, Font_Renderer_Atlas);
         atlas->root_dim.x = 2048;
         atlas->root_dim.y = 2048;
@@ -744,12 +638,9 @@ font_run_from_string(Font_Renderer_Tag tag, f32 size, f32 base_align_px, f32 tab
     cache_node->run.piece_count = copied.count;
     cache_node->next = NULL;
 
-    if (run_slot->last)
-    {
+    if (run_slot->last) {
         run_slot->last->next = cache_node;
-    }
-    else
-    {
+    } else {
         run_slot->first = cache_node;
     }
     run_slot->last = cache_node;
@@ -759,32 +650,25 @@ font_run_from_string(Font_Renderer_Tag tag, f32 size, f32 base_align_px, f32 tab
 
 // Helper functions
 Vec2_f32
-font_dim_from_tag_size_string(Font_Renderer_Tag tag, f32 size, f32 base_align_px, f32 tab_size_px, String string)
-{
+font_dim_from_tag_size_string(Font_Renderer_Tag tag, f32 size, f32 base_align_px, f32 tab_size_px, String string) {
     Font_Renderer_Run run = font_run_from_string(tag, size, base_align_px, tab_size_px, Font_Renderer_Raster_Flag_Smooth, string);
     return run.dim;
 }
 
-f32
-font_column_size_from_tag_size(Font_Renderer_Tag tag, f32 size)
-{
+f32 font_column_size_from_tag_size(Font_Renderer_Tag tag, f32 size) {
     Font_Renderer_Style_Cache_Node *style_node = font_style_from_tag_size_flags(tag, size, Font_Renderer_Raster_Flag_Smooth);
-    if (style_node != NULL)
-    {
+    if (style_node != NULL) {
         return style_node->column_width;
     }
     return size * 0.6f;
 }
 
-u64
-font_char_pos_from_tag_size_string_p(Font_Renderer_Tag tag, f32 size, f32 base_align_px, f32 tab_size_px, String string, f32 p)
-{
+u64 font_char_pos_from_tag_size_string_p(Font_Renderer_Tag tag, f32 size, f32 base_align_px, f32 tab_size_px, String string, f32 p) {
     // Get font information
     Font_Renderer_Handle font_handle = font_handle_from_tag(tag);
     Font_Renderer        font = font_from_handle(font_handle);
 
-    if (font.face == NULL || string.size == 0)
-    {
+    if (font.face == NULL || string.size == 0) {
         return 0;
     }
 
@@ -795,29 +679,23 @@ font_char_pos_from_tag_size_string_p(Font_Renderer_Tag tag, f32 size, f32 base_a
     u64 result_pos = 0;
 
     // Iterate through the string
-    for (u32 i = 0; i < string.size;)
-    {
+    for (u32 i = 0; i < string.size;) {
         // Check if we've passed the target position
-        if (current_x >= p)
-        {
+        if (current_x >= p) {
             // Check if we're closer to current or previous character
-            if (i > 0)
-            {
+            if (i > 0) {
                 f32 prev_x = current_x;
 
                 // Get previous character width to find midpoint
                 u32 prev_i = i;
-                while (prev_i > 0 && (string.data[prev_i - 1] & 0xC0) == 0x80)
-                {
+                while (prev_i > 0 && (string.data[prev_i - 1] & 0xC0) == 0x80) {
                     prev_i--;
                 }
 
-                if (prev_i > 0)
-                {
+                if (prev_i > 0) {
                     // Get codepoint at prev_i - 1
                     s32 prev_cp = string.data[prev_i - 1];
-                    if (prev_cp >= 0x80)
-                    {
+                    if (prev_cp >= 0x80) {
                         // Handle UTF-8
                         s32 bytes_to_read = 0;
                         if ((prev_cp & 0xE0) == 0xC0)
@@ -827,11 +705,9 @@ font_char_pos_from_tag_size_string_p(Font_Renderer_Tag tag, f32 size, f32 base_a
                         else if ((prev_cp & 0xF8) == 0xF0)
                             bytes_to_read = 4;
 
-                        if (bytes_to_read > 0 && prev_i - 1 + bytes_to_read <= string.size)
-                        {
+                        if (bytes_to_read > 0 && prev_i - 1 + bytes_to_read <= string.size) {
                             prev_cp = 0;
-                            for (s32 j = 0; j < bytes_to_read; j++)
-                            {
+                            for (s32 j = 0; j < bytes_to_read; j++) {
                                 prev_cp = (prev_cp << 6) | (string.data[prev_i - 1 + j] & 0x3F);
                             }
                         }
@@ -839,8 +715,7 @@ font_char_pos_from_tag_size_string_p(Font_Renderer_Tag tag, f32 size, f32 base_a
 
                     f32      char_width = 0;
                     FT_Error error = FT_Load_Char(font.face, prev_cp, FT_LOAD_DEFAULT);
-                    if (error == 0)
-                    {
+                    if (error == 0) {
                         // Convert from 26.6 fixed point to pixels
                         char_width = (f32)(font.face->glyph->advance.x >> 6);
                     }
@@ -848,24 +723,17 @@ font_char_pos_from_tag_size_string_p(Font_Renderer_Tag tag, f32 size, f32 base_a
                     // Find the midpoint of the previous character
                     f32 midpoint = prev_x - (char_width / 2.0f);
 
-                    if (p < midpoint)
-                    {
+                    if (p < midpoint) {
                         // Closer to the start of the previous character
                         result_pos = prev_i - 1;
-                    }
-                    else
-                    {
+                    } else {
                         // Closer to the current position
                         result_pos = i;
                     }
-                }
-                else
-                {
+                } else {
                     result_pos = i;
                 }
-            }
-            else
-            {
+            } else {
                 result_pos = 0;
             }
             return result_pos;
@@ -875,21 +743,15 @@ font_char_pos_from_tag_size_string_p(Font_Renderer_Tag tag, f32 size, f32 base_a
         s32 codepoint = string.data[i];
         s32 bytes_consumed = 1;
 
-        if (codepoint >= 0x80)
-        {
+        if (codepoint >= 0x80) {
             // Multi-byte UTF-8
-            if ((codepoint & 0xE0) == 0xC0 && i + 1 < string.size)
-            {
+            if ((codepoint & 0xE0) == 0xC0 && i + 1 < string.size) {
                 codepoint = ((codepoint & 0x1F) << 6) | (string.data[i + 1] & 0x3F);
                 bytes_consumed = 2;
-            }
-            else if ((codepoint & 0xF0) == 0xE0 && i + 2 < string.size)
-            {
+            } else if ((codepoint & 0xF0) == 0xE0 && i + 2 < string.size) {
                 codepoint = ((codepoint & 0x0F) << 12) | ((string.data[i + 1] & 0x3F) << 6) | (string.data[i + 2] & 0x3F);
                 bytes_consumed = 3;
-            }
-            else if ((codepoint & 0xF8) == 0xF0 && i + 3 < string.size)
-            {
+            } else if ((codepoint & 0xF8) == 0xF0 && i + 3 < string.size) {
                 codepoint = ((codepoint & 0x07) << 18) | ((string.data[i + 1] & 0x3F) << 12) |
                             ((string.data[i + 2] & 0x3F) << 6) | (string.data[i + 3] & 0x3F);
                 bytes_consumed = 4;
@@ -897,33 +759,24 @@ font_char_pos_from_tag_size_string_p(Font_Renderer_Tag tag, f32 size, f32 base_a
         }
 
         // Handle special characters
-        if (codepoint == '\t')
-        {
+        if (codepoint == '\t') {
             // Tab handling
-            if (tab_size_px > 0)
-            {
+            if (tab_size_px > 0) {
                 f32 next_tab_stop = ((s32)(current_x / tab_size_px) + 1) * tab_size_px;
                 current_x = next_tab_stop;
-            }
-            else
-            {
+            } else {
                 // Default tab width (4 spaces)
                 f32 space_width = font_column_size_from_tag_size(tag, size);
                 current_x += space_width * 4;
             }
-        }
-        else if (codepoint == '\n' || codepoint == '\r')
-        {
+        } else if (codepoint == '\n' || codepoint == '\r') {
             // Newline - position is at the end of the line
             result_pos = i;
             return result_pos;
-        }
-        else
-        {
+        } else {
             // Regular character
             FT_Error error = FT_Load_Char(font.face, codepoint, FT_LOAD_DEFAULT);
-            if (error == 0)
-            {
+            if (error == 0) {
                 // Convert from 26.6 fixed point to pixels
                 current_x += (f32)(font.face->glyph->advance.x >> 6);
             }
@@ -939,8 +792,7 @@ font_char_pos_from_tag_size_string_p(Font_Renderer_Tag tag, f32 size, f32 base_a
 
 // Metrics functions
 Font_Renderer_Metrics
-font_metrics_from_tag_size(Font_Renderer_Tag tag, f32 size)
-{
+font_metrics_from_tag_size(Font_Renderer_Tag tag, f32 size) {
     Font_Renderer_Metrics base_metrics = font_metrics_from_tag(tag);
     Font_Renderer_Metrics result = base_metrics;
     result.accent *= size;
@@ -949,16 +801,12 @@ font_metrics_from_tag_size(Font_Renderer_Tag tag, f32 size)
     return result;
 }
 
-f32
-font_line_height_from_metrics(Font_Renderer_Metrics *metrics)
-{
+f32 font_line_height_from_metrics(Font_Renderer_Metrics *metrics) {
     return metrics->accent - metrics->descent + metrics->line_gap;
 }
 
 // Main API
-void
-font_cache_init(void)
-{
+void font_cache_init(void) {
     Arena *arena = arena_alloc();
     font_cache_state = push_struct(arena, Font_Renderer_Cache_State);
     font_cache_state->permanent_arena = arena;
@@ -974,17 +822,13 @@ font_cache_init(void)
     font_cache_state->hash2style_slots = push_array_zero(arena, Font_Renderer_Style_Cache_Slot, font_cache_state->hash2style_slots_count);
 }
 
-void
-font_cache_reset(void)
-{
+void font_cache_reset(void) {
     arena_clear(font_cache_state->raster_arena);
     arena_clear(font_cache_state->frame_arena);
     font_cache_state->frame_index = 0;
 }
 
-void
-font_cache_frame(void)
-{
+void font_cache_frame(void) {
     arena_clear(font_cache_state->frame_arena);
     font_cache_state->frame_index++;
 }

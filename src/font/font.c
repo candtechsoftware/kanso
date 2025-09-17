@@ -15,43 +15,36 @@
 #define internal static
 
 typedef struct Font_Renderer_State Font_Renderer_State;
-struct Font_Renderer_State
-{
+struct Font_Renderer_State {
     Arena     *arena;
     FT_Library library;
 };
 
 Font_Renderer_State *f_state = NULL;
 
-void
-font_init(void)
-{
+void font_init(void) {
     Arena *arena = arena_alloc();
     f_state = push_array(arena, Font_Renderer_State, 1);
     f_state->arena = arena;
 
     // Initialize FreeType library
     FT_Error error = FT_Init_FreeType(&f_state->library);
-    if (error)
-    {
+    if (error) {
         log_error("Failed to initialize FreeType library\n");
     }
 }
 
 String
-load_file(String path)
-{
+load_file(String path) {
     FILE *file = fopen((const char *)path.data, "rb");
-    if (!file)
-    {
+    if (!file) {
         log_error("Error trying to open file {s}\n", path.data);
         String empty = {0};
         return empty;
     }
 
     // Seek to end to get file size
-    if (fseek(file, 0, SEEK_END) != 0)
-    {
+    if (fseek(file, 0, SEEK_END) != 0) {
         log_error("Error seeking to end of file {s}\n", path.data);
         fclose(file);
         String empty = {0};
@@ -59,8 +52,7 @@ load_file(String path)
     }
 
     s64 size = ftell(file);
-    if (size < 0)
-    {
+    if (size < 0) {
         log_error("Error getting size of file {s}\n", path.data);
         fclose(file);
         String empty = {0};
@@ -68,8 +60,7 @@ load_file(String path)
     }
 
     // Seek back to beginning for reading
-    if (fseek(file, 0, SEEK_SET) != 0)
-    {
+    if (fseek(file, 0, SEEK_SET) != 0) {
         log_error("Error seeking to beginning of file {s}\n", path.data);
         fclose(file);
         String empty = {0};
@@ -80,8 +71,7 @@ load_file(String path)
     s64 read = (s64)fread(buffer, 1, size, file);
     fclose(file);
 
-    if (read != size)
-    {
+    if (read != size) {
         log_error("Error reading file {s}: expected %lld bytes, got %lld\n", path.data, (long long)size, (long long)read);
         arena_pop(f_state->arena, size);
         String empty = {0};
@@ -94,11 +84,9 @@ load_file(String path)
 }
 
 Font_Renderer_Handle
-font_open(String path)
-{
+font_open(String path) {
     String font_file = load_file(path);
-    if (!font_file.data || font_file.size == 0)
-    {
+    if (!font_file.data || font_file.size == 0) {
         log_error("Failed to load font file {s}\n", path.data);
         Font_Renderer_Handle empty = {0};
         return empty;
@@ -110,8 +98,7 @@ font_open(String path)
                                              (FT_Long)font_file.size,
                                              0,
                                              &font.face);
-    if (error)
-    {
+    if (error) {
         log_error("Error initializing font from memory\n");
         Font_Renderer_Handle empty = {0};
         return empty;
@@ -122,29 +109,25 @@ font_open(String path)
 }
 
 Font_Renderer
-font_from_handle(Font_Renderer_Handle handle)
-{
+font_from_handle(Font_Renderer_Handle handle) {
     Font_Renderer font = {0};
     font.face = (FT_Face)handle.data[0];
     return font;
 }
 
 Font_Renderer_Handle
-font_to_handle(Font_Renderer font)
-{
+font_to_handle(Font_Renderer font) {
     Font_Renderer_Handle handle = {0};
     handle.data[0] = (u64)font.face;
     return handle;
 }
 
 Font_Renderer_Raster_Result
-font_raster(Arena *arena, Font_Renderer_Handle handle, f32 size, String string)
-{
+font_raster(Arena *arena, Font_Renderer_Handle handle, f32 size, String string) {
     Font_Renderer_Raster_Result result = {0};
     Font_Renderer               font = font_from_handle(handle);
 
-    if (font.face != NULL)
-    {
+    if (font.face != NULL) {
         Scratch scratch = scratch_begin(arena);
         FT_Face face = font.face;
 
@@ -160,8 +143,7 @@ font_raster(Arena *arena, Font_Renderer_Handle handle, f32 size, String string)
 
         // Measure total width
         s32 total_width = 0;
-        for (u64 it = 0; it < str32.size; it++)
-        {
+        for (u64 it = 0; it < str32.size; it++) {
             FT_Load_Char(face, str32.data[it], FT_LOAD_DEFAULT);
             total_width += (face->glyph->advance.x >> 6);
         }
@@ -171,8 +153,7 @@ font_raster(Arena *arena, Font_Renderer_Handle handle, f32 size, String string)
         u8      *atlas = push_array(arena, u8, atlas_size);
 
         // Clear the atlas to transparent black
-        for (u64 i = 0; i < atlas_size; i++)
-        {
+        for (u64 i = 0; i < atlas_size; i++) {
             atlas[i] = 0;
         }
 
@@ -180,8 +161,7 @@ font_raster(Arena *arena, Font_Renderer_Handle handle, f32 size, String string)
         s32 atlas_write_x = 0;
 
         // Render each glyph
-        for (u64 it = 0; it < str32.size; it++)
-        {
+        for (u64 it = 0; it < str32.size; it++) {
             // Load and render the character with FT_LOAD_RENDER
             FT_Error error = FT_Load_Char(face, str32.data[it], FT_LOAD_RENDER);
             if (error)
@@ -194,17 +174,13 @@ font_raster(Arena *arena, Font_Renderer_Handle handle, f32 size, String string)
             s32 left = slot->bitmap_left;
             s32 top = slot->bitmap_top;
 
-            for (u32 row = 0; row < bitmap->rows; row++)
-            {
+            for (u32 row = 0; row < bitmap->rows; row++) {
                 s32 y = baseline - top + row;
-                for (u32 col = 0; col < bitmap->width; col++)
-                {
+                for (u32 col = 0; col < bitmap->width; col++) {
                     s32 x = atlas_write_x + left + col;
-                    if (x >= 0 && x < dim.x && y >= 0 && y < dim.y)
-                    {
+                    if (x >= 0 && x < dim.x && y >= 0 && y < dim.y) {
                         u64 off = (y * dim.x + x) * 4;
-                        if (off + 4 <= atlas_size)
-                        {
+                        if (off + 4 <= atlas_size) {
                             // White text with alpha from FreeType
                             atlas[off + 0] = 255;
                             atlas[off + 1] = 255;
@@ -230,13 +206,11 @@ font_raster(Arena *arena, Font_Renderer_Handle handle, f32 size, String string)
 }
 
 Font_Renderer_Metrics
-font_metrics_from_font(Font_Renderer_Handle handle)
-{
+font_metrics_from_font(Font_Renderer_Handle handle) {
     Font_Renderer_Metrics metrics = {0};
     Font_Renderer         font = font_from_handle(handle);
 
-    if (font.face != NULL)
-    {
+    if (font.face != NULL) {
         FT_Face face = font.face;
 
         // FreeType metrics are in font units, we need to normalize them
@@ -251,10 +225,8 @@ font_metrics_from_font(Font_Renderer_Handle handle)
 }
 
 Font_Renderer_Handle
-font_open_from_data(String *data)
-{
-    if (!data || !data->data || data->size == 0)
-    {
+font_open_from_data(String *data) {
+    if (!data || !data->data || data->size == 0) {
         log_error("Invalid font data\n");
         Font_Renderer_Handle empty = {0};
         return empty;
@@ -266,8 +238,7 @@ font_open_from_data(String *data)
                                              (FT_Long)data->size,
                                              0,
                                              &font.face);
-    if (error)
-    {
+    if (error) {
         log_error("Error init font from data\n");
         Font_Renderer_Handle empty = {0};
         return empty;
@@ -277,12 +248,9 @@ font_open_from_data(String *data)
     return handle;
 }
 
-void
-font_close(Font_Renderer_Handle handle)
-{
+void font_close(Font_Renderer_Handle handle) {
     Font_Renderer font = font_from_handle(handle);
-    if (font.face != NULL)
-    {
+    if (font.face != NULL) {
         FT_Done_Face(font.face);
     }
 }

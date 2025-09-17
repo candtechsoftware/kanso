@@ -14,8 +14,7 @@
 #include "os_gfx.h"
 
 typedef struct X11_Window_State X11_Window_State;
-struct X11_Window_State
-{
+struct X11_Window_State {
     Window           window;
     Atom             wm_delete_window;
     Atom             wm_state;
@@ -32,8 +31,7 @@ struct X11_Window_State
 };
 
 typedef struct X11_State X11_State;
-struct X11_State
-{
+struct X11_State {
     Display          *display;
     int               screen;
     Window            root_window;
@@ -51,7 +49,7 @@ struct X11_State
     Arena            *event_arena;
 };
 
-global X11_State *x11_state = 0;
+static X11_State *x11_state = 0;
 
 internal OS_Key            os_key_from_x11_keysym(KeySym keysym);
 internal KeySym            x11_keysym_from_os_key(OS_Key key);
@@ -62,10 +60,8 @@ internal void              x11_update_window_properties(X11_Window_State *window
 internal void              x11_process_events(void);
 
 internal void
-os_gfx_init(void)
-{
-    if (x11_state)
-    {
+os_gfx_init(void) {
+    if (x11_state) {
         return;
     }
 
@@ -74,8 +70,7 @@ os_gfx_init(void)
     x11_state->event_arena = arena_alloc();
 
     x11_state->display = XOpenDisplay(NULL);
-    if (!x11_state->display)
-    {
+    if (!x11_state->display) {
         ASSERT(0, "Failed to open X11 display");
         return;
     }
@@ -87,8 +82,7 @@ os_gfx_init(void)
     x11_state->colormap = DefaultColormap(x11_state->display, x11_state->screen);
 
     x11_state->input_method = XOpenIM(x11_state->display, NULL, NULL, NULL);
-    if (x11_state->input_method)
-    {
+    if (x11_state->input_method) {
         x11_state->input_context = XCreateIC(x11_state->input_method,
                                              XNInputStyle, XIMPreeditNothing | XIMStatusNothing,
                                              XNClientWindow, x11_state->root_window,
@@ -113,16 +107,13 @@ os_gfx_init(void)
 }
 
 internal f32
-os_default_refresh_rate(void)
-{
+os_default_refresh_rate(void) {
     return 60.0f;
 }
 
 internal OS_Handle
-os_window_open(OS_Window_Flags flags, Vec2_s64 size, String title)
-{
-    if (!x11_state || x11_state->window_count >= x11_state->window_capacity)
-    {
+os_window_open(OS_Window_Flags flags, Vec2_s64 size, String title) {
+    if (!x11_state || x11_state->window_count >= x11_state->window_capacity) {
         return os_handle_zero();
     }
 
@@ -148,8 +139,7 @@ os_window_open(OS_Window_Flags flags, Vec2_s64 size, String title)
                                          CWBackPixel | CWBorderPixel | CWColormap | CWEventMask,
                                          &window_attrs);
 
-    if (!window_state->window)
-    {
+    if (!window_state->window) {
         return os_handle_zero();
     }
 
@@ -162,8 +152,7 @@ os_window_open(OS_Window_Flags flags, Vec2_s64 size, String title)
 
     XSetWMProtocols(x11_state->display, window_state->window, &window_state->wm_delete_window, 1);
 
-    if (x11_state->input_context)
-    {
+    if (x11_state->input_context) {
         XSetICValues(x11_state->input_context, XNClientWindow, window_state->window, NULL);
         XSetICFocus(x11_state->input_context);
     }
@@ -195,13 +184,10 @@ os_window_open(OS_Window_Flags flags, Vec2_s64 size, String title)
 }
 
 internal void
-os_window_close(OS_Handle handle)
-{
+os_window_close(OS_Handle handle) {
     X11_Window_State *window_state = x11_window_state_from_handle(handle);
-    if (window_state)
-    {
-        if (x11_state->input_context)
-        {
+    if (window_state) {
+        if (x11_state->input_context) {
             XUnsetICFocus(x11_state->input_context);
         }
 
@@ -213,11 +199,9 @@ os_window_close(OS_Handle handle)
 }
 
 internal void
-os_window_set_title(OS_Handle handle, String title)
-{
+os_window_set_title(OS_Handle handle, String title) {
     X11_Window_State *window_state = x11_window_state_from_handle(handle);
-    if (window_state)
-    {
+    if (window_state) {
         Scratch scratch = tctx_scratch_begin(0, 0);
         u8     *null_term_title = push_array(scratch.arena, u8, title.size + 1);
         MemoryCopy(null_term_title, title.data, title.size);
@@ -232,11 +216,9 @@ os_window_set_title(OS_Handle handle, String title)
 }
 
 internal void
-os_window_set_icon(OS_Handle handle, Vec2_s32 size, String rgba_data)
-{
+os_window_set_icon(OS_Handle handle, Vec2_s32 size, String rgba_data) {
     X11_Window_State *window_state = x11_window_state_from_handle(handle);
-    if (window_state && rgba_data.size == (u32)(size.x * size.y * 4))
-    {
+    if (window_state && rgba_data.size == (u32)(size.x * size.y * 4)) {
         Scratch scratch = tctx_scratch_begin(0, 0);
 
         u32            icon_size = 2 + size.x * size.y;
@@ -245,8 +227,7 @@ os_window_set_icon(OS_Handle handle, Vec2_s32 size, String rgba_data)
         icon_data[0] = size.x;
         icon_data[1] = size.y;
 
-        for (s32 i = 0; i < size.x * size.y; i++)
-        {
+        for (s32 i = 0; i < size.x * size.y; i++) {
             u8 r = rgba_data.data[i * 4 + 0];
             u8 g = rgba_data.data[i * 4 + 1];
             u8 b = rgba_data.data[i * 4 + 2];
@@ -264,21 +245,17 @@ os_window_set_icon(OS_Handle handle, Vec2_s32 size, String rgba_data)
 }
 
 internal void
-os_window_set_repaint(OS_Handle handle, OS_Repaint_Func *repaint)
-{
+os_window_set_repaint(OS_Handle handle, OS_Repaint_Func *repaint) {
     X11_Window_State *window_state = x11_window_state_from_handle(handle);
-    if (window_state)
-    {
+    if (window_state) {
         window_state->repaint_func = repaint;
     }
 }
 
 internal b32
-os_window_is_max(OS_Handle handle)
-{
+os_window_is_max(OS_Handle handle) {
     X11_Window_State *window_state = x11_window_state_from_handle(handle);
-    if (window_state)
-    {
+    if (window_state) {
         x11_update_window_properties(window_state);
         return window_state->is_maximized;
     }
@@ -286,22 +263,18 @@ os_window_is_max(OS_Handle handle)
 }
 
 internal void
-os_window_to_minimize(OS_Handle handle)
-{
+os_window_to_minimize(OS_Handle handle) {
     X11_Window_State *window_state = x11_window_state_from_handle(handle);
-    if (window_state)
-    {
+    if (window_state) {
         XIconifyWindow(x11_state->display, window_state->window, x11_state->screen);
         XFlush(x11_state->display);
     }
 }
 
 internal void
-os_window_to_maximize(OS_Handle handle)
-{
+os_window_to_maximize(OS_Handle handle) {
     X11_Window_State *window_state = x11_window_state_from_handle(handle);
-    if (window_state)
-    {
+    if (window_state) {
         XEvent xev = {0};
         xev.type = ClientMessage;
         xev.xclient.window = window_state->window;
@@ -318,17 +291,12 @@ os_window_to_maximize(OS_Handle handle)
 }
 
 internal void
-os_window_restore(OS_Handle handle)
-{
+os_window_restore(OS_Handle handle) {
     X11_Window_State *window_state = x11_window_state_from_handle(handle);
-    if (window_state)
-    {
-        if (window_state->is_fullscreen)
-        {
+    if (window_state) {
+        if (window_state->is_fullscreen) {
             os_window_toggle_fullscreen(handle);
-        }
-        else if (window_state->is_maximized)
-        {
+        } else if (window_state->is_maximized) {
             XEvent xev = {0};
             xev.type = ClientMessage;
             xev.xclient.window = window_state->window;
@@ -346,22 +314,18 @@ os_window_restore(OS_Handle handle)
 }
 
 internal b32
-os_window_is_focused(OS_Handle handle)
-{
+os_window_is_focused(OS_Handle handle) {
     X11_Window_State *window_state = x11_window_state_from_handle(handle);
-    if (window_state)
-    {
+    if (window_state) {
         return window_state->is_focused;
     }
     return false;
 }
 
 internal b32
-os_window_is_fullscreen(OS_Handle handle)
-{
+os_window_is_fullscreen(OS_Handle handle) {
     X11_Window_State *window_state = x11_window_state_from_handle(handle);
-    if (window_state)
-    {
+    if (window_state) {
         x11_update_window_properties(window_state);
         return window_state->is_fullscreen;
     }
@@ -369,11 +333,9 @@ os_window_is_fullscreen(OS_Handle handle)
 }
 
 internal void
-os_window_toggle_fullscreen(OS_Handle handle)
-{
+os_window_toggle_fullscreen(OS_Handle handle) {
     X11_Window_State *window_state = x11_window_state_from_handle(handle);
-    if (window_state)
-    {
+    if (window_state) {
         XEvent xev = {0};
         xev.type = ClientMessage;
         xev.xclient.window = window_state->window;
@@ -389,21 +351,17 @@ os_window_toggle_fullscreen(OS_Handle handle)
 }
 
 internal void
-os_window_first_paint(OS_Handle handle)
-{
+os_window_first_paint(OS_Handle handle) {
     X11_Window_State *window_state = x11_window_state_from_handle(handle);
-    if (window_state && window_state->repaint_func)
-    {
+    if (window_state && window_state->repaint_func) {
         window_state->repaint_func();
     }
 }
 
 internal Rng2_f32
-os_rect_from_window(OS_Handle handle)
-{
+os_rect_from_window(OS_Handle handle) {
     X11_Window_State *window_state = x11_window_state_from_handle(handle);
-    if (window_state)
-    {
+    if (window_state) {
         Window       root;
         int          x, y;
         unsigned int width, height, border_width, depth;
@@ -422,12 +380,10 @@ os_rect_from_window(OS_Handle handle)
 }
 
 internal Rng2_f32
-os_client_rect_from_window(OS_Handle handle)
-{
+os_client_rect_from_window(OS_Handle handle) {
     X11_Window_State *window_state = x11_window_state_from_handle(handle);
 
-    if (window_state)
-    {
+    if (window_state) {
         Window       root;
         int          x, y;
         unsigned int width, height, border_width, depth;
@@ -444,11 +400,9 @@ os_client_rect_from_window(OS_Handle handle)
 }
 
 internal f32
-os_window_get_dpi_scale(OS_Handle handle)
-{
+os_window_get_dpi_scale(OS_Handle handle) {
     X11_Window_State *window_state = x11_window_state_from_handle(handle);
-    if (window_state && x11_state->display)
-    {
+    if (window_state && x11_state->display) {
         int screen = DefaultScreen(x11_state->display);
 
         int width_px = XDisplayWidth(x11_state->display, screen);
@@ -456,8 +410,7 @@ os_window_get_dpi_scale(OS_Handle handle)
         int width_mm = XDisplayWidthMM(x11_state->display, screen);
         int height_mm = XDisplayHeightMM(x11_state->display, screen);
 
-        if (width_mm > 0 && height_mm > 0)
-        {
+        if (width_mm > 0 && height_mm > 0) {
             f32 dpi_x = (f32)width_px * 25.4f / (f32)width_mm;
             f32 dpi_y = (f32)height_px * 25.4f / (f32)height_mm;
             f32 dpi = (dpi_x + dpi_y) / 2.0f;
@@ -476,10 +429,8 @@ os_window_get_dpi_scale(OS_Handle handle)
 }
 
 internal X11_Window_State *
-x11_window_state_from_handle(OS_Handle handle)
-{
-    if (os_handle_is_zero(handle) || handle.u64s[0] > x11_state->window_count)
-    {
+x11_window_state_from_handle(OS_Handle handle) {
+    if (os_handle_is_zero(handle) || handle.u64s[0] > x11_state->window_count) {
         return 0;
     }
 
@@ -487,8 +438,7 @@ x11_window_state_from_handle(OS_Handle handle)
 }
 
 internal void
-x11_update_window_properties(X11_Window_State *window_state)
-{
+x11_update_window_properties(X11_Window_State *window_state) {
     Atom           actual_type;
     int            actual_format;
     unsigned long  nitems, bytes_after;
@@ -498,21 +448,17 @@ x11_update_window_properties(X11_Window_State *window_state)
                            window_state->net_wm_state, 0, LONG_MAX, False,
                            XA_ATOM, &actual_type, &actual_format, &nitems,
                            &bytes_after, &prop) == Success &&
-        prop)
-    {
+        prop) {
         Atom *atoms = (Atom *)prop;
         window_state->is_maximized = false;
         window_state->is_fullscreen = false;
 
-        for (unsigned long i = 0; i < nitems; i++)
-        {
+        for (unsigned long i = 0; i < nitems; i++) {
             if (atoms[i] == window_state->net_wm_state_maximized_horz ||
-                atoms[i] == window_state->net_wm_state_maximized_vert)
-            {
+                atoms[i] == window_state->net_wm_state_maximized_vert) {
                 window_state->is_maximized = true;
             }
-            if (atoms[i] == window_state->net_wm_state_fullscreen)
-            {
+            if (atoms[i] == window_state->net_wm_state_fullscreen) {
                 window_state->is_fullscreen = true;
             }
         }
@@ -522,10 +468,8 @@ x11_update_window_properties(X11_Window_State *window_state)
 }
 
 internal OS_Key
-os_key_from_x11_keysym(KeySym keysym)
-{
-    switch (keysym)
-    {
+os_key_from_x11_keysym(KeySym keysym) {
+    switch (keysym) {
     case XK_Escape:
         return OS_Key_Esc;
     case XK_F1:
@@ -713,8 +657,7 @@ os_key_from_x11_keysym(KeySym keysym)
 }
 
 internal OS_Modifiers
-os_modifiers_from_x11_state(unsigned int state)
-{
+os_modifiers_from_x11_state(unsigned int state) {
     OS_Modifiers modifiers = (OS_Modifiers)0;
     if (state & ControlMask)
         modifiers = (OS_Modifiers)(modifiers | OS_Modifier_Ctrl);
@@ -726,18 +669,15 @@ os_modifiers_from_x11_state(unsigned int state)
 }
 
 internal OS_Event_List
-os_event_list_from_window(OS_Handle window)
-{
+os_event_list_from_window(OS_Handle window) {
     OS_Event_List result = {0};
 
-    if (!x11_state || window.u64s[0] == 0)
-    {
+    if (!x11_state || window.u64s[0] == 0) {
         return result;
     }
 
     u64 window_index = window.u64s[0] - 1;
-    if (window_index >= x11_state->window_count)
-    {
+    if (window_index >= x11_state->window_count) {
         return result;
     }
 
@@ -748,40 +688,30 @@ os_event_list_from_window(OS_Handle window)
                              ExposureMask | KeyPressMask | KeyReleaseMask |
                                  ButtonPressMask | ButtonReleaseMask |
                                  PointerMotionMask | StructureNotifyMask,
-                             &event))
-    {
+                             &event)) {
 
-        switch (event.type)
-        {
-        case ClientMessage:
-        {
-            if ((Atom)event.xclient.data.l[0] == win_state->wm_delete_window)
-            {
+        switch (event.type) {
+        case ClientMessage: {
+            if ((Atom)event.xclient.data.l[0] == win_state->wm_delete_window) {
                 Arena    *arena = arena_alloc();
                 OS_Event *os_event = push_array(arena, OS_Event, 1);
                 os_event->window = window;
                 os_event->kind = OS_Event_Window_Close;
 
-                if (result.last)
-                {
+                if (result.last) {
                     result.last->next = os_event;
                     os_event->prev = result.last;
                     result.last = os_event;
-                }
-                else
-                {
+                } else {
                     result.first = result.last = os_event;
                 }
                 result.count++;
             }
-        }
-        break;
+        } break;
 
-        case KeyPress:
-        {
+        case KeyPress: {
             OS_Key key = os_key_from_x11_keysym(XLookupKeysym(&event.xkey, 0));
-            if (key != OS_Key_Null)
-            {
+            if (key != OS_Key_Null) {
                 Arena    *arena = arena_alloc();
                 OS_Event *os_event = push_array(arena, OS_Event, 1);
                 os_event->window = window;
@@ -789,26 +719,20 @@ os_event_list_from_window(OS_Handle window)
                 os_event->key = key;
                 os_event->modifiers = os_modifiers_from_x11_state(event.xkey.state);
 
-                if (result.last)
-                {
+                if (result.last) {
                     result.last->next = os_event;
                     os_event->prev = result.last;
                     result.last = os_event;
-                }
-                else
-                {
+                } else {
                     result.first = result.last = os_event;
                 }
                 result.count++;
             }
-        }
-        break;
+        } break;
 
-        case KeyRelease:
-        {
+        case KeyRelease: {
             OS_Key key = os_key_from_x11_keysym(XLookupKeysym(&event.xkey, 0));
-            if (key != OS_Key_Null)
-            {
+            if (key != OS_Key_Null) {
                 Arena    *arena = arena_alloc();
                 OS_Event *os_event = push_array(arena, OS_Event, 1);
                 os_event->window = window;
@@ -816,20 +740,16 @@ os_event_list_from_window(OS_Handle window)
                 os_event->key = key;
                 os_event->modifiers = os_modifiers_from_x11_state(event.xkey.state);
 
-                if (result.last)
-                {
+                if (result.last) {
                     result.last->next = os_event;
                     os_event->prev = result.last;
                     result.last = os_event;
-                }
-                else
-                {
+                } else {
                     result.first = result.last = os_event;
                 }
                 result.count++;
             }
-        }
-        break;
+        } break;
         }
     }
 
@@ -837,11 +757,9 @@ os_event_list_from_window(OS_Handle window)
 }
 
 internal void *
-os_window_native_handle(OS_Handle handle)
-{
+os_window_native_handle(OS_Handle handle) {
     X11_Window_State *window_state = x11_window_state_from_handle(handle);
-    if (!window_state)
-    {
+    if (!window_state) {
         return NULL;
     }
 

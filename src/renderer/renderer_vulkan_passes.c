@@ -3,8 +3,7 @@
 
 // Helper to allocate from a dynamic buffer
 typedef struct Dynamic_Buffer Dynamic_Buffer;
-struct Dynamic_Buffer
-{
+struct Dynamic_Buffer {
     VkBuffer       buffer;
     VkDeviceMemory memory;
     void          *mapped;
@@ -16,8 +15,7 @@ static Dynamic_Buffer g_instance_buffer = {0};
 
 // Uniform buffer structures
 typedef struct UI_Uniforms UI_Uniforms;
-struct UI_Uniforms
-{
+struct UI_Uniforms {
     Vec2_f32   viewport_size_px;
     f32        opacity;
     f32        _pad;
@@ -25,26 +23,20 @@ struct UI_Uniforms
 };
 
 typedef struct Geo_3D_Uniforms Geo_3D_Uniforms;
-struct Geo_3D_Uniforms
-{
+struct Geo_3D_Uniforms {
     Mat4x4_f32 view;
     Mat4x4_f32 projection;
 };
 
 // Forward declarations
-void
-renderer_vulkan_submit_ui_pass(VkCommandBuffer cmd, Renderer_Pass_Params_UI *params,
-                               Renderer_Vulkan_Window_Equipment *equip);
-void
-renderer_vulkan_submit_blur_pass(VkCommandBuffer cmd, Renderer_Pass_Params_Blur *params,
-                                 Renderer_Vulkan_Window_Equipment *equip);
-void
-renderer_vulkan_submit_geo_3d_pass(VkCommandBuffer cmd, Renderer_Pass_Params_Geo_3D *params,
-                                   Renderer_Vulkan_Window_Equipment *equip);
+void renderer_vulkan_submit_ui_pass(VkCommandBuffer cmd, Renderer_Pass_Params_UI *params,
+                                    Renderer_Vulkan_Window_Equipment *equip);
+void renderer_vulkan_submit_blur_pass(VkCommandBuffer cmd, Renderer_Pass_Params_Blur *params,
+                                      Renderer_Vulkan_Window_Equipment *equip);
+void renderer_vulkan_submit_geo_3d_pass(VkCommandBuffer cmd, Renderer_Pass_Params_Geo_3D *params,
+                                        Renderer_Vulkan_Window_Equipment *equip);
 
-void
-renderer_window_submit(void *window, Renderer_Handle window_equip, Renderer_Pass_List *passes)
-{
+void renderer_window_submit(void *window, Renderer_Handle window_equip, Renderer_Pass_List *passes) {
     ZoneScoped;
     Renderer_Vulkan_Window_Equipment *equip = (Renderer_Vulkan_Window_Equipment *)window_equip.u64s[0];
     if (!equip || !passes || !equip->frame_begun)
@@ -60,21 +52,18 @@ renderer_window_submit(void *window, Renderer_Handle window_equip, Renderer_Pass
     render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     render_pass_info.renderPass = equip->render_pass;
     // Get the nth framebuffer from the array with bounds checking
-    if (equip->current_image_index >= equip->swapchain_image_count)
-    {
+    if (equip->current_image_index >= equip->swapchain_image_count) {
         printf("ERROR: current_image_index %d >= swapchain_image_count %d\n",
                equip->current_image_index, equip->swapchain_image_count);
         return;
     }
-    if (!equip->framebuffers)
-    {
+    if (!equip->framebuffers) {
         printf("ERROR: framebuffers array is NULL!\n");
         return;
     }
 
     // Validate framebuffer before use
-    if (!equip->framebuffers || equip->framebuffers[equip->current_image_index] == VK_NULL_HANDLE)
-    {
+    if (!equip->framebuffers || equip->framebuffers[equip->current_image_index] == VK_NULL_HANDLE) {
         log_error("Invalid framebuffer at index %u!", equip->current_image_index);
         return;
     }
@@ -105,15 +94,13 @@ renderer_window_submit(void *window, Renderer_Handle window_equip, Renderer_Pass
 
     // Submit each pass
     int pass_count = 0;
-    for (Renderer_Pass_Node *node = passes->first; node; node = node->next)
-    {
+    for (Renderer_Pass_Node *node = passes->first; node; node = node->next) {
         Renderer_Pass *pass = &node->v;
 
         pass_count++;
         printf("Processing pass %d of kind %d\n", pass_count, pass->kind);
 
-        switch (pass->kind)
-        {
+        switch (pass->kind) {
         case Renderer_Pass_Kind_UI:
             printf("Submitting UI pass\n");
             renderer_vulkan_submit_ui_pass(cmd, pass->params_ui, equip);
@@ -135,16 +122,13 @@ renderer_window_submit(void *window, Renderer_Handle window_equip, Renderer_Pass
 }
 
 static void
-ensure_dynamic_buffer(Dynamic_Buffer *buf, u64 required_size)
-{
-    if (buf->size < buf->offset + required_size)
-    {
+ensure_dynamic_buffer(Dynamic_Buffer *buf, u64 required_size) {
+    if (buf->size < buf->offset + required_size) {
         // Need to grow buffer
         u64 new_size = Max((buf->offset + required_size) * 2, MB(16));
 
         // Destroy old buffer
-        if (buf->buffer)
-        {
+        if (buf->buffer) {
             vkDeviceWaitIdle(g_vulkan->device);
             vkUnmapMemory(g_vulkan->device, buf->memory);
             vkDestroyBuffer(g_vulkan->device, buf->buffer, NULL);
@@ -182,10 +166,8 @@ ensure_dynamic_buffer(Dynamic_Buffer *buf, u64 required_size)
     // Don't reset offset if buffer is large enough
 }
 
-void
-renderer_vulkan_submit_ui_pass(VkCommandBuffer cmd, Renderer_Pass_Params_UI *params,
-                               Renderer_Vulkan_Window_Equipment *equip)
-{
+void renderer_vulkan_submit_ui_pass(VkCommandBuffer cmd, Renderer_Pass_Params_UI *params,
+                                    Renderer_Vulkan_Window_Equipment *equip) {
     ZoneScopedN("VulkanSubmitUIPass");
     // Bind UI pipeline
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, g_vulkan->pipelines.ui);
@@ -251,12 +233,10 @@ renderer_vulkan_submit_ui_pass(VkCommandBuffer cmd, Renderer_Pass_Params_UI *par
     u64 total_instance_size = 0;
     for (Renderer_Batch_Group_2D_Node *group_node = params->rects.first;
          group_node;
-         group_node = group_node->next)
-    {
+         group_node = group_node->next) {
         for (Renderer_Batch_Node *batch_node = group_node->batches.first;
              batch_node;
-             batch_node = batch_node->next)
-        {
+             batch_node = batch_node->next) {
             total_instance_size += batch_node->v.byte_count;
         }
     }
@@ -268,8 +248,7 @@ renderer_vulkan_submit_ui_pass(VkCommandBuffer cmd, Renderer_Pass_Params_UI *par
     int group_count = 0;
     for (Renderer_Batch_Group_2D_Node *group_node = params->rects.first;
          group_node;
-         group_node = group_node->next)
-    {
+         group_node = group_node->next) {
         group_count++;
         printf("Processing batch group %d\n", group_count);
         Renderer_Batch_Group_2D_Params *group_params = &group_node->params;
@@ -287,8 +266,7 @@ renderer_vulkan_submit_ui_pass(VkCommandBuffer cmd, Renderer_Pass_Params_UI *par
 
         // Check if we have a texture
         Renderer_Vulkan_Texture_2D *tex = NULL;
-        if (group_params->tex.u64s[0] != 0)
-        {
+        if (group_params->tex.u64s[0] != 0) {
             tex = (Renderer_Vulkan_Texture_2D *)group_params->tex.u64s[0];
         }
 
@@ -299,8 +277,7 @@ renderer_vulkan_submit_ui_pass(VkCommandBuffer cmd, Renderer_Pass_Params_UI *par
         tex_alloc_info.descriptorSetCount = 1;
         tex_alloc_info.pSetLayouts = &g_vulkan->descriptor_set_layouts.ui_texture;
 
-        if (vkAllocateDescriptorSets(g_vulkan->device, &tex_alloc_info, &texture_set) == VK_SUCCESS)
-        {
+        if (vkAllocateDescriptorSets(g_vulkan->device, &tex_alloc_info, &texture_set) == VK_SUCCESS) {
             // Update texture descriptor
             VkDescriptorImageInfo image_info = {0};
             image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -328,8 +305,7 @@ renderer_vulkan_submit_ui_pass(VkCommandBuffer cmd, Renderer_Pass_Params_UI *par
         // Draw each batch in the group
         for (Renderer_Batch_Node *batch_node = group_node->batches.first;
              batch_node;
-             batch_node = batch_node->next)
-        {
+             batch_node = batch_node->next) {
             Renderer_Batch *batch = &batch_node->v;
 
             if (batch->byte_count == 0)
@@ -351,10 +327,8 @@ renderer_vulkan_submit_ui_pass(VkCommandBuffer cmd, Renderer_Pass_Params_UI *par
     }
 }
 
-void
-renderer_vulkan_submit_blur_pass(VkCommandBuffer cmd, Renderer_Pass_Params_Blur *params,
-                                 Renderer_Vulkan_Window_Equipment *equip)
-{
+void renderer_vulkan_submit_blur_pass(VkCommandBuffer cmd, Renderer_Pass_Params_Blur *params,
+                                      Renderer_Vulkan_Window_Equipment *equip) {
     ZoneScopedN("VulkanSubmitBlurPass");
     // TODO: Implement blur pass
     // This typically involves:
@@ -364,13 +338,10 @@ renderer_vulkan_submit_blur_pass(VkCommandBuffer cmd, Renderer_Pass_Params_Blur 
     // 4. Composite back to main framebuffer
 }
 
-void
-renderer_vulkan_submit_geo_3d_pass(VkCommandBuffer cmd, Renderer_Pass_Params_Geo_3D *params,
-                                   Renderer_Vulkan_Window_Equipment *equip)
-{
+void renderer_vulkan_submit_geo_3d_pass(VkCommandBuffer cmd, Renderer_Pass_Params_Geo_3D *params,
+                                        Renderer_Vulkan_Window_Equipment *equip) {
     ZoneScopedN("VulkanSubmitGeo3DPass");
-    if (!g_vulkan->pipelines.geo_3d)
-    {
+    if (!g_vulkan->pipelines.geo_3d) {
         log_error("geo_3d pipeline is null!");
         return;
     }
@@ -435,37 +406,30 @@ renderer_vulkan_submit_geo_3d_pass(VkCommandBuffer cmd, Renderer_Pass_Params_Geo
 
     // Count total instances for buffer allocation
     u64 total_instance_size = 0;
-    for (u64 i = 0; i < params->mesh_batches.slots_count; i++)
-    {
+    for (u64 i = 0; i < params->mesh_batches.slots_count; i++) {
         Renderer_Batch_Group_3D_Map_Node *node = params->mesh_batches.slots[i];
-        while (node)
-        {
+        while (node) {
             for (Renderer_Batch_Node *batch_node = node->batches.first;
                  batch_node;
-                 batch_node = batch_node->next)
-            {
+                 batch_node = batch_node->next) {
                 total_instance_size += batch_node->v.byte_count;
             }
             node = node->next;
         }
     }
 
-    if (total_instance_size > 0)
-    {
+    if (total_instance_size > 0) {
         ensure_dynamic_buffer(&g_instance_buffer, total_instance_size);
     }
 
     // Process mesh batches
-    for (u64 i = 0; i < params->mesh_batches.slots_count; i++)
-    {
+    for (u64 i = 0; i < params->mesh_batches.slots_count; i++) {
         Renderer_Batch_Group_3D_Map_Node *node = params->mesh_batches.slots[i];
-        while (node)
-        {
+        while (node) {
             Renderer_Batch_Group_3D_Params *group_params = &node->params;
 
             // Bind vertex and index buffers
-            if (group_params->mesh_vertices.u64s[0] && group_params->mesh_indices.u64s[0])
-            {
+            if (group_params->mesh_vertices.u64s[0] && group_params->mesh_indices.u64s[0]) {
                 Renderer_Vulkan_Buffer *vertex_buffer = (Renderer_Vulkan_Buffer *)group_params->mesh_vertices.u64s[0];
                 Renderer_Vulkan_Buffer *index_buffer = (Renderer_Vulkan_Buffer *)group_params->mesh_indices.u64s[0];
 
@@ -479,8 +443,7 @@ renderer_vulkan_submit_geo_3d_pass(VkCommandBuffer cmd, Renderer_Pass_Params_Geo
 
                 // Check if we have a texture
                 Renderer_Vulkan_Texture_2D *tex = NULL;
-                if (group_params->albedo_tex.u64s[0] != 0)
-                {
+                if (group_params->albedo_tex.u64s[0] != 0) {
                     tex = (Renderer_Vulkan_Texture_2D *)group_params->albedo_tex.u64s[0];
                 }
 
@@ -491,8 +454,7 @@ renderer_vulkan_submit_geo_3d_pass(VkCommandBuffer cmd, Renderer_Pass_Params_Geo
                 tex_alloc_info.descriptorSetCount = 1;
                 tex_alloc_info.pSetLayouts = &g_vulkan->descriptor_set_layouts.geo_3d_texture;
 
-                if (vkAllocateDescriptorSets(g_vulkan->device, &tex_alloc_info, &texture_set) == VK_SUCCESS)
-                {
+                if (vkAllocateDescriptorSets(g_vulkan->device, &tex_alloc_info, &texture_set) == VK_SUCCESS) {
                     // Update texture descriptor
                     VkDescriptorImageInfo image_info = {0};
                     image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -520,8 +482,7 @@ renderer_vulkan_submit_geo_3d_pass(VkCommandBuffer cmd, Renderer_Pass_Params_Geo
                 // Draw each instance batch
                 for (Renderer_Batch_Node *batch_node = node->batches.first;
                      batch_node;
-                     batch_node = batch_node->next)
-                {
+                     batch_node = batch_node->next) {
                     Renderer_Batch *batch = &batch_node->v;
 
                     if (batch->byte_count == 0)

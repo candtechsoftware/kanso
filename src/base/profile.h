@@ -9,8 +9,7 @@
 #define PROF_MAX_ZONES       1024
 #define PROF_MAX_NAME_LENGTH 64
 
-typedef struct Prof_Zone
-{
+typedef struct Prof_Zone {
     char name[PROF_MAX_NAME_LENGTH];
     u64  start_ticks;
     u64  total_ticks;
@@ -18,8 +17,7 @@ typedef struct Prof_Zone
     u32  depth;
 } Prof_Zone;
 
-typedef struct Prof_State
-{
+typedef struct Prof_State {
     Prof_Zone zones[PROF_MAX_ZONES];
     u32       zone_count;
     u32       current_depth;
@@ -72,7 +70,6 @@ void prof_frame_mark(void);
 #    define Prof_End()       prof_end()
 
 #else
-
 // No-op macros when profiling is disabled
 #    define Prof_Init()
 #    define Prof_Shutdown()
@@ -105,13 +102,13 @@ void prof_frame_mark(void);
 
 // Tracy-compatible macros for easier migration
 #ifdef ENABLE_PROFILE
-#    define ZoneScoped       Prof_ScopeN(__FUNCTION__)
-#    define ZoneScopedN(x)   Prof_ScopeN(x)
-#    define ZoneScopedC(x)   Prof_ScopeN(__FUNCTION__)
-#    define ZoneScopedNC(n,c) Prof_ScopeN(n)
+#    define ZoneScoped         Prof_ScopeN(__FUNCTION__)
+#    define ZoneScopedN(x)     Prof_ScopeN(x)
+#    define ZoneScopedC(x)     Prof_ScopeN(__FUNCTION__)
+#    define ZoneScopedNC(n, c) Prof_ScopeN(n)
 #else
 #    define ZoneScoped
 #    define ZoneScopedN(x)
 #    define ZoneScopedC(x)
-#    define ZoneScopedNC(n,c)
+#    define ZoneScopedNC(n, c)
 #endif

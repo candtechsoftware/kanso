@@ -18,8 +18,7 @@ typedef int32_t  b32;
 typedef union u128 u128;
 
 // 128-bit type
-union u128
-{
+union u128 {
     u8  bytes[16];
     u16 words[8];
     u32 dwords[4];

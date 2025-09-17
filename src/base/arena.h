@@ -8,8 +8,7 @@
 #define ARENA_HEADER_SIZE 128
 
 typedef struct Arena_Params Arena_Params;
-struct Arena_Params
-{
+struct Arena_Params {
     u64         reserve_size;
     u64         commit_size;
     const char *allocation_site_file;
@@ -17,8 +16,7 @@ struct Arena_Params
 };
 
 typedef struct Arena Arena;
-struct Arena
-{
+struct Arena {
     Arena *prev;
     Arena *current;
     u64    cmt_size;
@@ -33,8 +31,7 @@ struct Arena
 };
 
 typedef struct Scratch Scratch;
-struct Scratch
-{
+struct Scratch {
     Arena *arena;
     u64    pos;
 };
@@ -43,8 +40,7 @@ Arena *
 arena_alloc_(Arena_Params *params);
 
 static inline Arena *
-arena_alloc_default(u64 reserve_size, u64 commit_size, const char *file, int line)
-{
+arena_alloc_default(u64 reserve_size, u64 commit_size, const char *file, int line) {
     Arena_Params params = {.reserve_size = reserve_size,
                            .commit_size = commit_size,
                            .allocation_site_file = file,
@@ -61,25 +57,19 @@ static u64 arena_default_commit_size = KB(64);
                         __FILE__,                   \
                         __LINE__)
 
-void
-arena_release(Arena *arena);
+void arena_release(Arena *arena);
 
-void *
+void      *
 arena_push(Arena *arena, u64 size, u64 align);
-u64
-arena_pos(Arena *arena);
-void
-arena_pop_to(Arena *arena, u64 pos);
+u64  arena_pos(Arena *arena);
+void arena_pop_to(Arena *arena, u64 pos);
 
-void
-arena_clear(Arena *arena);
-void
-arena_pop(Arena *arena, u64 amt);
+void arena_clear(Arena *arena);
+void arena_pop(Arena *arena, u64 amt);
 
 Scratch
-scratch_begin(Arena *arena);
-void
-scratch_end(Scratch *scratch);
+     scratch_begin(Arena *arena);
+void scratch_end(Scratch *scratch);
 
 // Convenience macros for common push operations
 #define push_array(arena, T, count) (T *)arena_push((arena), sizeof(T) * (count), _Alignof(T))

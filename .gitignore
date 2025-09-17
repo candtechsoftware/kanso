@@ -32,3 +32,4 @@ src/generated.h
 profile_*.json
 profile_trace.json
 
+*.log

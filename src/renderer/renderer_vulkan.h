@@ -5,8 +5,7 @@
 #include <vulkan/vulkan.h>
 
 typedef struct Renderer_Vulkan_State Renderer_Vulkan_State;
-struct Renderer_Vulkan_State
-{
+struct Renderer_Vulkan_State {
     Arena *arena;
 
     VkInstance               instance;
@@ -97,8 +96,7 @@ struct Renderer_Vulkan_State
 };
 
 typedef struct Renderer_Vulkan_Window_Equipment Renderer_Vulkan_Window_Equipment;
-struct Renderer_Vulkan_Window_Equipment
-{
+struct Renderer_Vulkan_Window_Equipment {
     VkSurfaceKHR   surface;
     VkSwapchainKHR swapchain;
     VkFormat       swapchain_format;
@@ -140,8 +138,7 @@ struct Renderer_Vulkan_Window_Equipment
     VkFramebuffer  blur_framebuffer_b;
 
     // Descriptor sets per frame
-    struct Frame_Resources
-    {
+    struct Frame_Resources {
         VkDescriptorSet ui_global_set;
         VkDescriptorSet blur_set;
         VkDescriptorSet geo_3d_global_set;
@@ -152,8 +149,7 @@ struct Renderer_Vulkan_Window_Equipment
 };
 
 typedef struct Renderer_Vulkan_Texture_2D Renderer_Vulkan_Texture_2D;
-struct Renderer_Vulkan_Texture_2D
-{
+struct Renderer_Vulkan_Texture_2D {
     VkImage                image;
     VkDeviceMemory         memory;
     VkImageView            view;
@@ -163,8 +159,7 @@ struct Renderer_Vulkan_Texture_2D
 };
 
 typedef struct Renderer_Vulkan_Buffer Renderer_Vulkan_Buffer;
-struct Renderer_Vulkan_Buffer
-{
+struct Renderer_Vulkan_Buffer {
     VkBuffer               buffer;
     VkDeviceMemory         memory;
     u64                    size;
@@ -177,27 +172,21 @@ extern Renderer_Vulkan_State *g_vulkan;
 
 // Vulkan utility functions
 VkFormat
-renderer_vulkan_format_from_tex_2d_format(Renderer_Tex_2D_Format format);
-u32
-renderer_vulkan_find_memory_type(u32 type_filter, VkMemoryPropertyFlags properties);
+    renderer_vulkan_format_from_tex_2d_format(Renderer_Tex_2D_Format format);
+u32 renderer_vulkan_find_memory_type(u32 type_filter, VkMemoryPropertyFlags properties);
 VkShaderModule
-renderer_vulkan_create_shader_module(const u8 *code, u64 size);
-void
-renderer_vulkan_create_buffer(VkDeviceSize size, VkBufferUsageFlags usage,
-                              VkMemoryPropertyFlags properties, VkBuffer *buffer,
-                              VkDeviceMemory *buffer_memory);
-void
-renderer_vulkan_create_image(u32 width, u32 height, VkFormat format, VkImageTiling tiling,
-                             VkImageUsageFlags usage, VkMemoryPropertyFlags properties,
-                             VkImage *image, VkDeviceMemory *image_memory);
+     renderer_vulkan_create_shader_module(const u8 *code, u64 size);
+void renderer_vulkan_create_buffer(VkDeviceSize size, VkBufferUsageFlags usage,
+                                   VkMemoryPropertyFlags properties, VkBuffer *buffer,
+                                   VkDeviceMemory *buffer_memory);
+void renderer_vulkan_create_image(u32 width, u32 height, VkFormat format, VkImageTiling tiling,
+                                  VkImageUsageFlags usage, VkMemoryPropertyFlags properties,
+                                  VkImage *image, VkDeviceMemory *image_memory);
 VkImageView
-renderer_vulkan_create_image_view(VkImage image, VkFormat format, VkImageAspectFlags aspect_flags);
-void
-renderer_vulkan_transition_image_layout(VkImage image, VkFormat format,
-                                        VkImageLayout old_layout, VkImageLayout new_layout);
-void
-renderer_vulkan_copy_buffer_to_image(VkBuffer buffer, VkImage image, u32 width, u32 height);
+     renderer_vulkan_create_image_view(VkImage image, VkFormat format, VkImageAspectFlags aspect_flags);
+void renderer_vulkan_transition_image_layout(VkImage image, VkFormat format,
+                                             VkImageLayout old_layout, VkImageLayout new_layout);
+void renderer_vulkan_copy_buffer_to_image(VkBuffer buffer, VkImage image, u32 width, u32 height);
 VkCommandBuffer
-renderer_vulkan_begin_single_time_commands();
-void
-renderer_vulkan_end_single_time_commands(VkCommandBuffer command_buffer);
+     renderer_vulkan_begin_single_time_commands();
+void renderer_vulkan_end_single_time_commands(VkCommandBuffer command_buffer);

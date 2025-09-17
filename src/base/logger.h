@@ -6,8 +6,7 @@
 #include <stdbool.h>
 
 // Log levels
-typedef enum
-{
+typedef enum {
     LOG_LEVEL_DEBUG = 0,
     LOG_LEVEL_INFO = 1,
     LOG_LEVEL_WARN = 2,
@@ -15,14 +14,11 @@ typedef enum
 } LogLevel;
 
 // Initialize/shutdown
-void
-log_init(const char *log_file_path);
-void
-log_shutdown(void);
+void log_init(const char *log_file_path);
+void log_shutdown(void);
 
 // Internal functions
-void
-_log_impl(LogLevel level, const char *file, u32 line, const char *fmt, ...);
+void _log_impl(LogLevel level, const char *file, u32 line, const char *fmt, ...);
 
 // Main logging macros
 #ifdef DEBUG

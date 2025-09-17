@@ -4,27 +4,23 @@
 #include "font.h"
 #include "../renderer/renderer_inc.h"
 
-typedef enum Font_Renderer_Raster_Flags
-{
+typedef enum Font_Renderer_Raster_Flags {
     Font_Renderer_Raster_Flag_Smooth = (1 << 0),
     Font_Renderer_Raster_Flag_Hinted = (1 << 1),
 } Font_Renderer_Raster_Flags;
 
 typedef struct Font_Renderer_Tag Font_Renderer_Tag;
-struct Font_Renderer_Tag
-{
+struct Font_Renderer_Tag {
     u64 data[2];
 };
 
 static inline b32
-font_tag_equal(Font_Renderer_Tag a, Font_Renderer_Tag b)
-{
+font_tag_equal(Font_Renderer_Tag a, Font_Renderer_Tag b) {
     return a.data[0] == b.data[0] && a.data[1] == b.data[1];
 }
 
 typedef struct Font_Renderer_Piece Font_Renderer_Piece;
-struct Font_Renderer_Piece
-{
+struct Font_Renderer_Piece {
     Renderer_Handle texture;
     Rng2_s16        subrect;
     Vec2_s16        offset;
@@ -33,30 +29,26 @@ struct Font_Renderer_Piece
 };
 
 typedef struct Font_Renderer_Piece_Array Font_Renderer_Piece_Array;
-struct Font_Renderer_Piece_Array
-{
+struct Font_Renderer_Piece_Array {
     Font_Renderer_Piece *pieces;
     u64                  count;
 };
 
 typedef struct Font_Renderer_Piece_Node Font_Renderer_Piece_Node;
-struct Font_Renderer_Piece_Node
-{
+struct Font_Renderer_Piece_Node {
     Font_Renderer_Piece_Node *next;
     Font_Renderer_Piece       v;
 };
 
 typedef struct Font_Renderer_Piece_List Font_Renderer_Piece_List;
-struct Font_Renderer_Piece_List
-{
+struct Font_Renderer_Piece_List {
     Font_Renderer_Piece_Node *first;
     Font_Renderer_Piece_Node *last;
     u64                       count;
 };
 
 typedef struct Font_Renderer_Run Font_Renderer_Run;
-struct Font_Renderer_Run
-{
+struct Font_Renderer_Run {
     Font_Renderer_Piece *pieces;
     u64                  piece_count;
     Vec2_f32             dim;
@@ -65,8 +57,7 @@ struct Font_Renderer_Run
 };
 
 typedef struct Font_Renderer_Cache_Node Font_Renderer_Cache_Node;
-struct Font_Renderer_Cache_Node
-{
+struct Font_Renderer_Cache_Node {
     Font_Renderer_Cache_Node *hash_next;
     Font_Renderer_Tag         tag;
     Font_Renderer_Handle      handle;
@@ -75,15 +66,13 @@ struct Font_Renderer_Cache_Node
 };
 
 typedef struct Font_Renderer_Cache_Slot Font_Renderer_Cache_Slot;
-struct Font_Renderer_Cache_Slot
-{
+struct Font_Renderer_Cache_Slot {
     Font_Renderer_Cache_Node *first;
     Font_Renderer_Cache_Node *last;
 };
 
 typedef struct Font_Renderer_Raster_Cache_Info Font_Renderer_Raster_Cache_Info;
-struct Font_Renderer_Raster_Cache_Info
-{
+struct Font_Renderer_Raster_Cache_Info {
     Rng2_s16 subrect;
     Vec2_s16 raster_dim;
     s16      atlas_num;
@@ -91,8 +80,7 @@ struct Font_Renderer_Raster_Cache_Info
 };
 
 typedef struct Font_Renderer_Hash_To_Info_Cache_Node Font_Renderer_Hash_To_Info_Cache_Node;
-struct Font_Renderer_Hash_To_Info_Cache_Node
-{
+struct Font_Renderer_Hash_To_Info_Cache_Node {
     Font_Renderer_Hash_To_Info_Cache_Node *hash_next;
     Font_Renderer_Hash_To_Info_Cache_Node *hash_prev;
     u64                                    hash;
@@ -100,30 +88,26 @@ struct Font_Renderer_Hash_To_Info_Cache_Node
 };
 
 typedef struct Font_Renderer_Hash_To_Info_Cache_Slot Font_Renderer_Hash_To_Info_Cache_Slot;
-struct Font_Renderer_Hash_To_Info_Cache_Slot
-{
+struct Font_Renderer_Hash_To_Info_Cache_Slot {
     Font_Renderer_Hash_To_Info_Cache_Node *first;
     Font_Renderer_Hash_To_Info_Cache_Node *last;
 };
 
 typedef struct Font_Renderer_Run_Cache_Node Font_Renderer_Run_Cache_Node;
-struct Font_Renderer_Run_Cache_Node
-{
+struct Font_Renderer_Run_Cache_Node {
     Font_Renderer_Run_Cache_Node *next;
     String                        string;
     Font_Renderer_Run             run;
 };
 
 typedef struct Font_Renderer_Run_Cache_Slot Font_Renderer_Run_Cache_Slot;
-struct Font_Renderer_Run_Cache_Slot
-{
+struct Font_Renderer_Run_Cache_Slot {
     Font_Renderer_Run_Cache_Node *first;
     Font_Renderer_Run_Cache_Node *last;
 };
 
 typedef struct Font_Renderer_Style_Cache_Node Font_Renderer_Style_Cache_Node;
-struct Font_Renderer_Style_Cache_Node
-{
+struct Font_Renderer_Style_Cache_Node {
     Font_Renderer_Style_Cache_Node        *hash_next;
     Font_Renderer_Style_Cache_Node        *hash_prev;
     u64                                    style_hash;
@@ -140,19 +124,16 @@ struct Font_Renderer_Style_Cache_Node
 };
 
 typedef struct Font_Renderer_Style_Cache_Slot Font_Renderer_Style_Cache_Slot;
-struct Font_Renderer_Style_Cache_Slot
-{
+struct Font_Renderer_Style_Cache_Slot {
     Font_Renderer_Style_Cache_Node *first;
     Font_Renderer_Style_Cache_Node *last;
 };
 
-typedef enum Font_Renderer_Atlas_Region_Flags
-{
+typedef enum Font_Renderer_Atlas_Region_Flags {
     Font_Renderer_Atlas_Region_Flag_Taken = (1 << 0),
 } Font_Renderer_Atlas_Region_Flags;
 
-typedef enum Corner
-{
+typedef enum Corner {
     Corner_00 = 0,
     Corner_01 = 1,
     Corner_10 = 2,
@@ -162,8 +143,7 @@ typedef enum Corner
 } Corner;
 
 typedef struct Font_Renderer_Atlas_Region_Node Font_Renderer_Atlas_Region_Node;
-struct Font_Renderer_Atlas_Region_Node
-{
+struct Font_Renderer_Atlas_Region_Node {
     Font_Renderer_Atlas_Region_Node *parent;
     Font_Renderer_Atlas_Region_Node *children[Corner_COUNT];
     Vec2_s16                         max_free_size[Corner_COUNT];
@@ -172,8 +152,7 @@ struct Font_Renderer_Atlas_Region_Node
 };
 
 typedef struct Font_Renderer_Atlas Font_Renderer_Atlas;
-struct Font_Renderer_Atlas
-{
+struct Font_Renderer_Atlas {
     Font_Renderer_Atlas             *next;
     Font_Renderer_Atlas             *prev;
     Renderer_Handle                  texture;
@@ -182,8 +161,7 @@ struct Font_Renderer_Atlas
 };
 
 typedef struct Font_Renderer_Cache_State Font_Renderer_Cache_State;
-struct Font_Renderer_Cache_State
-{
+struct Font_Renderer_Cache_State {
     Arena *permanent_arena;
     Arena *raster_arena;
     Arena *frame_arena;
@@ -201,10 +179,8 @@ struct Font_Renderer_Cache_State
 
 extern Font_Renderer_Cache_State *font_cache_state;
 
-u128
-font_cache_hash_from_string(String string);
-u64
-font_cache_little_hash_from_string(u64 seed, String string);
+u128 font_cache_hash_from_string(String string);
+u64  font_cache_little_hash_from_string(u64 seed, String string);
 
 Font_Renderer_Tag
 font_tag_zero(void);
@@ -220,9 +196,8 @@ String
 font_path_from_tag(Font_Renderer_Tag tag);
 
 Rng2_s16
-font_atlas_region_alloc(Arena *arena, Font_Renderer_Atlas *atlas, Vec2_s16 needed_size);
-void
-font_atlas_region_release(Font_Renderer_Atlas *atlas, Rng2_s16 region);
+     font_atlas_region_alloc(Arena *arena, Font_Renderer_Atlas *atlas, Vec2_s16 needed_size);
+void font_atlas_region_release(Font_Renderer_Atlas *atlas, Rng2_s16 region);
 
 Font_Renderer_Piece_Array
 font_piece_array_from_list(Arena *arena, Font_Renderer_Piece_List *list);
@@ -235,20 +210,14 @@ Font_Renderer_Run
 font_run_from_string(Font_Renderer_Tag tag, f32 size, f32 base_align_px, f32 tab_size_px, Font_Renderer_Raster_Flags flags, String string);
 
 Vec2_f32
-font_dim_from_tag_size_string(Font_Renderer_Tag tag, f32 size, f32 base_align_px, f32 tab_size_px, String string);
-f32
-font_column_size_from_tag_size(Font_Renderer_Tag tag, f32 size);
-u64
-font_char_pos_from_tag_size_string_p(Font_Renderer_Tag tag, f32 size, f32 base_align_px, f32 tab_size_px, String string, f32 p);
+    font_dim_from_tag_size_string(Font_Renderer_Tag tag, f32 size, f32 base_align_px, f32 tab_size_px, String string);
+f32 font_column_size_from_tag_size(Font_Renderer_Tag tag, f32 size);
+u64 font_char_pos_from_tag_size_string_p(Font_Renderer_Tag tag, f32 size, f32 base_align_px, f32 tab_size_px, String string, f32 p);
 
 Font_Renderer_Metrics
-font_metrics_from_tag_size(Font_Renderer_Tag tag, f32 size);
-f32
-font_line_height_from_metrics(Font_Renderer_Metrics *metrics);
+    font_metrics_from_tag_size(Font_Renderer_Tag tag, f32 size);
+f32 font_line_height_from_metrics(Font_Renderer_Metrics *metrics);
 
-void
-font_cache_init(void);
-void
-font_cache_reset(void);
-void
-font_cache_frame(void);
+void font_cache_init(void);
+void font_cache_reset(void);
+void font_cache_frame(void);

@@ -17,16 +17,13 @@
 #include "../../third_party/xxhash/xxhash.c"
 
 internal b32
-os_key_press(OS_Event_List *events, OS_Handle window, OS_Key key, OS_Modifiers mod)
-{
+os_key_press(OS_Event_List *events, OS_Handle window, OS_Key key, OS_Modifiers mod) {
     b32 result = 0;
 
-    for (OS_Event *event = events->first; event != NULL; event = event->next)
-    {
+    for (OS_Event *event = events->first; event != NULL; event = event->next) {
         if (event->kind == OS_Event_Press &&
             event->key == key &&
-            event->modifiers == mod)
-        {
+            event->modifiers == mod) {
             result = 1;
             break;
         }
@@ -36,16 +33,13 @@ os_key_press(OS_Event_List *events, OS_Handle window, OS_Key key, OS_Modifiers m
 }
 
 internal b32
-os_key_release(OS_Event_List *events, OS_Handle window, OS_Key key, OS_Modifiers mods)
-{
+os_key_release(OS_Event_List *events, OS_Handle window, OS_Key key, OS_Modifiers mods) {
     b32 result = 0;
 
-    for (OS_Event *event = events->first; event != NULL; event = event->next)
-    {
+    for (OS_Event *event = events->first; event != NULL; event = event->next) {
         if (event->kind == OS_Event_Release &&
             event->key == key &&
-            event->modifiers == mods)
-        {
+            event->modifiers == mods) {
             result = 1;
             break;
         }
@@ -55,14 +49,11 @@ os_key_release(OS_Event_List *events, OS_Handle window, OS_Key key, OS_Modifiers
 }
 
 internal b32
-os_text_codepoint(OS_Event_List *events, OS_Handle window, u32 codepoint)
-{
+os_text_codepoint(OS_Event_List *events, OS_Handle window, u32 codepoint) {
     b32 result = 0;
 
-    for (OS_Event *event = events->first; event != NULL; event = event->next)
-    {
-        if (event->kind == OS_Event_Text && event->character == codepoint)
-        {
+    for (OS_Event *event = events->first; event != NULL; event = event->next) {
+        if (event->kind == OS_Event_Text && event->character == codepoint) {
             result = 1;
             break;
         }
@@ -72,11 +63,9 @@ os_text_codepoint(OS_Event_List *events, OS_Handle window, u32 codepoint)
 }
 
 internal String
-os_string_from_key(OS_Key key)
-{
+os_string_from_key(OS_Key key) {
     String result = str_lit("");
-    switch (key)
-    {
+    switch (key) {
     case OS_Key_A:
         result = str_lit("A");
         break;
@@ -223,35 +212,22 @@ os_string_from_key(OS_Key key)
 }
 
 internal u32
-os_codepoint_from_modifiers_and_key(OS_Modifiers modifiers, OS_Key key)
-{
+os_codepoint_from_modifiers_and_key(OS_Modifiers modifiers, OS_Key key) {
     u32 result = 0;
 
-    if (key >= OS_Key_A && key <= OS_Key_Z)
-    {
-        if (modifiers & OS_Modifier_Shift)
-        {
+    if (key >= OS_Key_A && key <= OS_Key_Z) {
+        if (modifiers & OS_Modifier_Shift) {
             result = 'A' + (key - OS_Key_A);
-        }
-        else
-        {
+        } else {
             result = 'a' + (key - OS_Key_A);
         }
-    }
-    else if (key >= OS_Key_0 && key <= OS_Key_9)
-    {
+    } else if (key >= OS_Key_0 && key <= OS_Key_9) {
         result = '0' + (key - OS_Key_0);
-    }
-    else if (key == OS_Key_Space)
-    {
+    } else if (key == OS_Key_Space) {
         result = ' ';
-    }
-    else if (key == OS_Key_Enter)
-    {
+    } else if (key == OS_Key_Enter) {
         result = '\n';
-    }
-    else if (key == OS_Key_Tab)
-    {
+    } else if (key == OS_Key_Tab) {
         result = '\t';
     }
 
@@ -259,34 +235,22 @@ os_codepoint_from_modifiers_and_key(OS_Modifiers modifiers, OS_Key key)
 }
 
 internal OS_Key
-os_key_from_codepoint(u32 codepoint, OS_Modifiers *modifiers)
-{
+os_key_from_codepoint(u32 codepoint, OS_Modifiers *modifiers) {
     OS_Key result = OS_Key_Null;
 
-    if (codepoint >= 'a' && codepoint <= 'z')
-    {
+    if (codepoint >= 'a' && codepoint <= 'z') {
         result = (OS_Key)(OS_Key_A + (codepoint - 'a'));
-    }
-    else if (codepoint >= 'A' && codepoint <= 'Z')
-    {
+    } else if (codepoint >= 'A' && codepoint <= 'Z') {
         result = (OS_Key)(OS_Key_A + (codepoint - 'A'));
         if (modifiers)
             *modifiers |= OS_Modifier_Shift;
-    }
-    else if (codepoint >= '0' && codepoint <= '9')
-    {
+    } else if (codepoint >= '0' && codepoint <= '9') {
         result = OS_Key_0 + (codepoint - '0');
-    }
-    else if (codepoint == ' ')
-    {
+    } else if (codepoint == ' ') {
         result = OS_Key_Space;
-    }
-    else if (codepoint == '\n' || codepoint == '\r')
-    {
+    } else if (codepoint == '\n' || codepoint == '\r') {
         result = OS_Key_Enter;
-    }
-    else if (codepoint == '\t')
-    {
+    } else if (codepoint == '\t') {
         result = OS_Key_Tab;
     }
 
@@ -294,29 +258,25 @@ os_key_from_codepoint(u32 codepoint, OS_Modifiers *modifiers)
 }
 
 internal String
-os_string_from_modifier_key(Arena *arena, OS_Modifiers *mod_ptr)
-{
+os_string_from_modifier_key(Arena *arena, OS_Modifiers *mod_ptr) {
     OS_Modifiers mod = *mod_ptr;
     String       result = {0};
     u8          *ptr = push_array(arena, u8, 256);
     result.data = ptr;
 
-    if (mod & OS_Modifier_Ctrl)
-    {
+    if (mod & OS_Modifier_Ctrl) {
         u64 len = 5;
         MemoryCopy(ptr, "Ctrl+", len);
         ptr += len;
         result.size += len;
     }
-    if (mod & OS_Modifier_Shift)
-    {
+    if (mod & OS_Modifier_Shift) {
         u64 len = 6;
         MemoryCopy(ptr, "Shift+", len);
         ptr += len;
         result.size += len;
     }
-    if (mod & OS_Modifier_Alt)
-    {
+    if (mod & OS_Modifier_Alt) {
         u64 len = 4;
         MemoryCopy(ptr, "Alt+", len);
         ptr += len;
@@ -327,24 +287,16 @@ os_string_from_modifier_key(Arena *arena, OS_Modifiers *mod_ptr)
 }
 
 internal OS_Cursor_Kind
-os_cursor_kind_from_resize_sides(Side x, Side y)
-{
+os_cursor_kind_from_resize_sides(Side x, Side y) {
     OS_Cursor_Kind result = OS_Cursor_Kind_Pointer;
 
-    if ((x == Side_Min && y == Side_Min) || (x == Side_Max && y == Side_Max))
-    {
+    if ((x == Side_Min && y == Side_Min) || (x == Side_Max && y == Side_Max)) {
         result = OS_Cursor_Kind_NorthWestSouthEast;
-    }
-    else if ((x == Side_Min && y == Side_Max) || (x == Side_Max && y == Side_Min))
-    {
+    } else if ((x == Side_Min && y == Side_Max) || (x == Side_Max && y == Side_Min)) {
         result = OS_Cursor_Kind_NorthEastSouthWest;
-    }
-    else if (x != Side_Mid)
-    {
+    } else if (x != Side_Mid) {
         result = OS_Cursor_Kind_WestEast;
-    }
-    else if (y != Side_Mid)
-    {
+    } else if (y != Side_Mid) {
         result = OS_Cursor_Kind_NorthSouth;
     }
 
@@ -352,15 +304,12 @@ os_cursor_kind_from_resize_sides(Side x, Side y)
 }
 
 internal String
-os_string_from_event(Arena *arena, OS_Event *event)
-{
+os_string_from_event(Arena *arena, OS_Event *event) {
     String result = {0};
 
-    switch (event->kind)
-    {
+    switch (event->kind) {
     case OS_Event_Press:
-    case OS_Event_Release:
-    {
+    case OS_Event_Release: {
         String mod_str = os_string_from_modifier_key(arena, &event->modifiers);
         String key_str = os_string_from_key(event->key);
         u64    total_size = mod_str.size + key_str.size;
@@ -368,35 +317,26 @@ os_string_from_event(Arena *arena, OS_Event *event)
         result.size = total_size;
         MemoryCopy(result.data, mod_str.data, mod_str.size);
         MemoryCopy(result.data + mod_str.size, key_str.data, key_str.size);
-    }
-    break;
+    } break;
 
-    case OS_Event_Text:
-    {
+    case OS_Event_Text: {
         u8  utf8[4];
         u32 len = 0;
         u32 codepoint = event->character;
 
-        if (codepoint < 0x80)
-        {
+        if (codepoint < 0x80) {
             utf8[0] = (u8)codepoint;
             len = 1;
-        }
-        else if (codepoint < 0x800)
-        {
+        } else if (codepoint < 0x800) {
             utf8[0] = 0xC0 | (codepoint >> 6);
             utf8[1] = 0x80 | (codepoint & 0x3F);
             len = 2;
-        }
-        else if (codepoint < 0x10000)
-        {
+        } else if (codepoint < 0x10000) {
             utf8[0] = 0xE0 | (codepoint >> 12);
             utf8[1] = 0x80 | ((codepoint >> 6) & 0x3F);
             utf8[2] = 0x80 | (codepoint & 0x3F);
             len = 3;
-        }
-        else
-        {
+        } else {
             utf8[0] = 0xF0 | (codepoint >> 18);
             utf8[1] = 0x80 | ((codepoint >> 12) & 0x3F);
             utf8[2] = 0x80 | ((codepoint >> 6) & 0x3F);
@@ -407,36 +347,27 @@ os_string_from_event(Arena *arena, OS_Event *event)
         result.data = push_array(arena, u8, len);
         result.size = len;
         MemoryCopy(result.data, utf8, len);
-    }
-    break;
+    } break;
 
-    case OS_Event_Scroll:
-    {
+    case OS_Event_Scroll: {
         u8  buffer[256];
         u64 len = snprintf((char *)buffer, sizeof(buffer), "Scroll(%.2f, %.2f)", event->scroll.x, event->scroll.y);
         result.data = push_array(arena, u8, len);
         result.size = len;
         MemoryCopy(result.data, buffer, len);
-    }
-    break;
+    } break;
 
-    case OS_Event_Window_Close:
-    {
+    case OS_Event_Window_Close: {
         result = str_lit("WindowClose");
-    }
-    break;
+    } break;
 
-    case OS_Event_Window_Lose_Focus:
-    {
+    case OS_Event_Window_Lose_Focus: {
         result = str_lit("WindowLoseFocus");
-    }
-    break;
+    } break;
 
-    default:
-    {
+    default: {
         result = str_lit("UnknownEvent");
-    }
-    break;
+    } break;
     }
 
     return result;

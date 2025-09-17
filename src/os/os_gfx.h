@@ -2,8 +2,7 @@
 #include "../base/base_inc.h"
 #include "os.h"
 
-typedef enum Side
-{
+typedef enum Side {
     Side_Invalid = -1,
     Side_Min,
     Side_Mid,
@@ -11,8 +10,7 @@ typedef enum Side
     Side_COUNT
 } Side;
 
-typedef enum OS_Key
-{
+typedef enum OS_Key {
     OS_Key_Null,
     OS_Key_Esc,
     OS_Key_F1,
@@ -108,8 +106,7 @@ typedef enum OS_Key
     OS_Key_COUNT,
 } OS_Key;
 
-typedef enum OS_Event_Kind
-{
+typedef enum OS_Event_Kind {
     OS_Event_Null,
     OS_Event_Window_Close,
     OS_Event_Window_Lose_Focus,
@@ -121,16 +118,14 @@ typedef enum OS_Event_Kind
     OS_Event_COUNT,
 } OS_Event_Kind;
 
-typedef enum OS_Modifiers
-{
+typedef enum OS_Modifiers {
     OS_Modifier_Ctrl = (1 << 0),
     OS_Modifier_Shift = (1 << 1),
     OS_Modifier_Alt = (1 << 2),
 } OS_Modifiers;
 
 typedef struct OS_Event OS_Event;
-struct OS_Event
-{
+struct OS_Event {
     OS_Event     *next;
     OS_Event     *prev;
     OS_Handle     window;
@@ -144,21 +139,18 @@ struct OS_Event
 };
 
 typedef struct OS_Event_List OS_Event_List;
-struct OS_Event_List
-{
+struct OS_Event_List {
     OS_Event *first;
     OS_Event *last;
     u64       count;
 };
 
-struct OS_Modifiers_Key_Pair
-{
+struct OS_Modifiers_Key_Pair {
     OS_Modifiers modifiers;
     OS_Key       key;
 };
 
-typedef enum OS_Cursor_Kind
-{
+typedef enum OS_Cursor_Kind {
     OS_Cursor_Kind_Null,
     OS_Cursor_Kind_Hidden,
     OS_Cursor_Kind_Pointer,
@@ -178,14 +170,12 @@ typedef enum OS_Cursor_Kind
 typedef void
 OS_Repaint_Func(void);
 
-typedef enum OS_Window_Flags
-{
+typedef enum OS_Window_Flags {
     OS_Window_Flag_Custom_Border = (1 << 0),
 } OS_Window_Flags;
 
 typedef struct OS_Window_Params OS_Window_Params;
-struct OS_Window_Params
-{
+struct OS_Window_Params {
     OS_Window_Flags flags;
     Vec2_s32        size;
     String          title;
@@ -219,8 +209,7 @@ internal OS_Handle
 os_window_open(OS_Window_Flags flags, Vec2_s64 size, String title);
 
 static inline OS_Handle
-os_window_open_params(OS_Window_Params params)
-{
+os_window_open_params(OS_Window_Params params) {
     Vec2_s64 size = {params.size.x, params.size.y};
     return os_window_open(params.flags, size, params.title);
 }
