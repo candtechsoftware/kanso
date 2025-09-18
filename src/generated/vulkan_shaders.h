@@ -11,3 +11,7 @@ extern const unsigned char renderer_vulkan_blur_vert_shader_src[];
 extern const unsigned int renderer_vulkan_blur_vert_shader_src_size;
 extern const unsigned char renderer_vulkan_blur_frag_shader_src[];
 extern const unsigned int renderer_vulkan_blur_frag_shader_src_size;
+extern const unsigned char renderer_vulkan_mesh_vert_shader_src[];
+extern const unsigned int renderer_vulkan_mesh_vert_shader_src_size;
+extern const unsigned char renderer_vulkan_mesh_frag_shader_src[];
+extern const unsigned int renderer_vulkan_mesh_frag_shader_src_size;

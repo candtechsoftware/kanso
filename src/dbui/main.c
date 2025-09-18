@@ -13,7 +13,7 @@
 #include "../font/font_inc.c"
 #include "../draw/draw_inc.c"
 
-#include "tansaku/tansaku.h"
+#include "dbui/dbui.h"
 
 typedef struct App_State App_State;
 struct App_State {
