@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-#define nullptr NULL;
+#define nullptr NULL
 
 typedef uint8_t  u8;
 typedef uint16_t u16;

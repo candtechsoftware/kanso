@@ -269,26 +269,21 @@ renderer_pass_from_kind(Arena *arena, Renderer_Pass_List *list, Renderer_Pass_Ki
 
 void renderer_init();
 Renderer_Handle
-     renderer_window_equip(void *window);
-void renderer_window_unequip(void *window, Renderer_Handle window_equip);
-Renderer_Handle
-     renderer_tex_2d_alloc(Renderer_Resource_Kind kind, Vec2_f32 size, Renderer_Tex_2D_Format format, void *data);
-void renderer_tex_2d_release(Renderer_Handle texture);
-Renderer_Resource_Kind
-renderer_kind_from_tex_2d(Renderer_Handle texture);
-Vec2_f32
-renderer_size_from_tex_2d(Renderer_Handle texture);
-Renderer_Tex_2D_Format
-     renderer_format_from_tex_2d(Renderer_Handle texture);
-void renderer_fill_tex_2d_region(Renderer_Handle texture, Rng2_f32 subrect, void *data);
-Renderer_Handle
-     renderer_buffer_alloc(Renderer_Resource_Kind kind, u64 size, void *data);
-void renderer_buffer_release(Renderer_Handle buffer);
-void renderer_begin_frame();
-void renderer_end_frame();
-void renderer_window_begin_frame(void *window, Renderer_Handle window_equip);
-void renderer_window_end_frame(void *window, Renderer_Handle window_equip);
-void renderer_window_submit(void *window, Renderer_Handle window_equip, Renderer_Pass_List *passes);
+                       renderer_window_equip(OS_Handle window_handle);
+void                   renderer_window_unequip(OS_Handle window_handle, Renderer_Handle window_equip);
+Renderer_Handle        renderer_tex_2d_alloc(Renderer_Resource_Kind kind, Vec2_f32 size, Renderer_Tex_2D_Format format, void *data);
+void                   renderer_tex_2d_release(Renderer_Handle texture);
+Renderer_Resource_Kind renderer_kind_from_tex_2d(Renderer_Handle texture);
+Vec2_f32               renderer_size_from_tex_2d(Renderer_Handle texture);
+Renderer_Tex_2D_Format renderer_format_from_tex_2d(Renderer_Handle texture);
+void                   renderer_fill_tex_2d_region(Renderer_Handle texture, Rng2_f32 subrect, void *data);
+Renderer_Handle        renderer_buffer_alloc(Renderer_Resource_Kind kind, u64 size, void *data);
+void                   renderer_buffer_release(Renderer_Handle buffer);
+void                   renderer_begin_frame();
+void                   renderer_end_frame();
+void                   renderer_window_begin_frame(OS_Handle window_handle, Renderer_Handle window_equip);
+void                   renderer_window_end_frame(OS_Handle window_handle, Renderer_Handle window_equip);
+void                   renderer_window_submit(OS_Handle window_handle, Renderer_Handle window_equip, Renderer_Pass_List *passes);
 
 // Include platform-specific renderer implementation
 #ifdef __APPLE__

@@ -36,7 +36,7 @@ void renderer_vulkan_submit_blur_pass(VkCommandBuffer cmd, Renderer_Pass_Params_
 void renderer_vulkan_submit_geo_3d_pass(VkCommandBuffer cmd, Renderer_Pass_Params_Geo_3D *params,
                                         Renderer_Vulkan_Window_Equipment *equip);
 
-void renderer_window_submit(void *window, Renderer_Handle window_equip, Renderer_Pass_List *passes) {
+void renderer_window_submit(OS_Handle window, Renderer_Handle window_equip, Renderer_Pass_List *passes) {
     ZoneScoped;
     Renderer_Vulkan_Window_Equipment *equip = (Renderer_Vulkan_Window_Equipment *)window_equip.u64s[0];
     if (!equip || !passes || !equip->frame_begun)

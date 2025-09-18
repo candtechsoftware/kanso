@@ -95,7 +95,7 @@ struct Draw_Text_Run_List {
 // Main API functions
 void draw_begin_frame(Font_Renderer_Tag default_font);
 void draw_end_frame(void);
-void draw_submit_bucket(void *window, Renderer_Handle window_equip, Draw_Bucket *bucket);
+void draw_submit_bucket(OS_Handle window, Renderer_Handle window_equip, Draw_Bucket *bucket);
 
 // Bucket management
 Draw_Bucket      *
