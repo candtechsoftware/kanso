@@ -986,8 +986,9 @@ void renderer_vulkan_recreate_swapchain(Renderer_Vulkan_Window_Equipment *equip)
 
 // Window equipment functions
 Renderer_Handle
-renderer_window_equip(void *window) {
+renderer_window_equip(OS_Handle window_handle) {
     ZoneScoped;
+    void                             *window = os_window_native_handle(window_handle);
     Arena                            *arena = arena_alloc();
     Renderer_Vulkan_Window_Equipment *equip = push_array(arena, Renderer_Vulkan_Window_Equipment, 1);
     MemoryZero(equip, sizeof(Renderer_Vulkan_Window_Equipment));
@@ -1354,8 +1355,9 @@ renderer_window_equip(void *window) {
     return handle;
 }
 
-void renderer_window_unequip(void *window, Renderer_Handle window_equip) {
+void renderer_window_unequip(OS_Handle window_handle, Renderer_Handle window_equip) {
     ZoneScoped;
+    void                             *window = os_window_native_handle(window_handle);
     Renderer_Vulkan_Window_Equipment *equip = (Renderer_Vulkan_Window_Equipment *)window_equip.u64s[0];
     if (!equip)
         return;
@@ -1710,8 +1712,9 @@ void renderer_end_frame() {
     // Nothing to do here for Vulkan
 }
 
-void renderer_window_begin_frame(void *window, Renderer_Handle window_equip) {
+void renderer_window_begin_frame(OS_Handle window_handle, Renderer_Handle window_equip) {
     ZoneScoped;
+    void                             *window = os_window_native_handle(window_handle);
     Renderer_Vulkan_Window_Equipment *equip = (Renderer_Vulkan_Window_Equipment *)window_equip.u64s[0];
     if (!equip)
         return;
@@ -1757,8 +1760,9 @@ void renderer_window_begin_frame(void *window, Renderer_Handle window_equip) {
     equip->frame_begun = 1;
 }
 
-void renderer_window_end_frame(void *window, Renderer_Handle window_equip) {
+void renderer_window_end_frame(OS_Handle window_handle, Renderer_Handle window_equip) {
     ZoneScoped;
+    void                             *window = os_window_native_handle(window_handle);
     Renderer_Vulkan_Window_Equipment *equip = (Renderer_Vulkan_Window_Equipment *)window_equip.u64s[0];
     if (!equip || !equip->frame_begun)
         return;

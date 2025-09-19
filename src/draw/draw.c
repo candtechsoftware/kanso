@@ -31,7 +31,7 @@ void draw_end_frame(void) {
     }
 }
 
-void draw_submit_bucket(void *window, Renderer_Handle window_equip, Draw_Bucket *bucket) {
+void draw_submit_bucket(OS_Handle window, Renderer_Handle window_equip, Draw_Bucket *bucket) {
     renderer_window_submit(window, window_equip, &bucket->passes);
 }
 

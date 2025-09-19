@@ -206,9 +206,10 @@ renderer_init()
 }
 
 Renderer_Handle
-renderer_window_equip(void *window)
+renderer_window_equip(OS_Handle handle)
 {
     Prof_Begin(__FUNCTION__);
+    void *window = os_window_native_handle(handle);
     if (!r_metal_state || !window)
     {
         return renderer_handle_zero();
@@ -312,7 +313,7 @@ renderer_window_equip(void *window)
 }
 
 void
-renderer_window_unequip(void *window, Renderer_Handle window_equip)
+renderer_window_unequip(OS_Handle handle, Renderer_Handle window_equip)
 {
     if (!r_metal_state || window_equip.u64s[0] == 0)
     {
@@ -683,7 +684,7 @@ renderer_end_frame()
 }
 
 void
-renderer_window_begin_frame(void *window, Renderer_Handle window_equip)
+renderer_window_begin_frame(OS_Handle handle, Renderer_Handle window_equip)
 {
     Prof_Begin(__FUNCTION__);
     if (!r_metal_state || window_equip.u64s[0] == 0)
@@ -698,6 +699,7 @@ renderer_window_begin_frame(void *window, Renderer_Handle window_equip)
     }
 
     Renderer_Metal_Window_Equip *equip = &r_metal_state->window_equips[slot];
+    void *window = os_window_native_handle(handle);
     NSWindow                    *ns_window = (__bridge NSWindow *)window;
     NSRect                       frame = ns_window.contentView.frame;
     Vec2_f32                    new_size = (Vec2_f32){{(f32)frame.size.width, (f32)frame.size.height}};
@@ -737,14 +739,14 @@ renderer_window_begin_frame(void *window, Renderer_Handle window_equip)
 }
 
 void
-renderer_window_end_frame(void *window, Renderer_Handle window_equip)
+renderer_window_end_frame(OS_Handle handle, Renderer_Handle window_equip)
 {
     Prof_Begin(__FUNCTION__);
     // Any per-window cleanup
 }
 
 void
-renderer_window_submit(void *window, Renderer_Handle window_equip, Renderer_Pass_List *passes)
+renderer_window_submit(OS_Handle window, Renderer_Handle window_equip, Renderer_Pass_List *passes)
 {
     if (!r_metal_state || window_equip.u64s[0] == 0 || !passes)
     {
