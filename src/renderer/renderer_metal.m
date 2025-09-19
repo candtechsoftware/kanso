@@ -307,9 +307,9 @@ renderer_window_equip(OS_Handle handle)
 
     equip->depth_texture = metal_retain([metal_device(r_metal_state->device) newTextureWithDescriptor:depth_desc]);
 
-    Renderer_Handle handle = renderer_handle_zero();
-    handle.u64s[0] = slot + 1;
-    return handle;
+    Renderer_Handle result = renderer_handle_zero();
+    result.u64s[0] = slot + 1;
+    return result;
 }
 
 void
