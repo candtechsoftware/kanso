@@ -7,9 +7,7 @@
 #include "../base/profile.c"
 #include "../os/os_inc.c"
 
-#include "os.h"
 #include "tansaku.h"
-#include <unistd.h>
 
 typedef struct T_State T_State;
 struct T_State {
