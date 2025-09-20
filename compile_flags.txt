@@ -3,6 +3,7 @@
 -I/usr/include/freetype2
 -I/usr/local/include/freetype2
 -I/opt/homebrew/opt/freetype/include/freetype2
+-I/opt/homebrew/opt/libpq/include
 -std=c99
 -Wall
 -Wextra

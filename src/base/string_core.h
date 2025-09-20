@@ -63,6 +63,17 @@ cstr_to_string(const char *data, u32 size) {
     return result;
 }
 
+static inline const char *
+str_to_cstring(Arena *arena, String str) {
+    char *cstr = push_array(arena, char, str.size + 1);
+    if (!cstr)
+        return NULL;
+
+    MemoryCopy(cstr, str.data, str.size);
+    cstr[str.size] = '\0';
+    return cstr;
+}
+
 #define to_string(str) cstr_to_string(str, sizeof(str) - 1)
 #define str_lit(str)   cstr_to_string(str, sizeof(str) - 1)
 

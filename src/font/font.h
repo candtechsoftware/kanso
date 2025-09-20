@@ -2,28 +2,37 @@
 
 #include "../base/base_inc.h"
 
-// Forward declaration for FreeType face (opaque pointer)
-typedef struct FT_FaceRec_ *FT_Face;
+typedef union Font_Handle Font_Handle;
+union Font_Handle {
+    u64   u64s[2];
+    u32   u32s[4];
+    u16   u16s[8];
+    void *ptr;
+};
 
 typedef struct Font_Renderer Font_Renderer;
 struct Font_Renderer {
-    FT_Face face;
+    Font_Handle handle;
 };
 
-typedef struct Font_Renderer_Handle Font_Renderer_Handle;
-struct Font_Renderer_Handle {
-    u64 data[2];
-};
+typedef Font_Handle Font_Renderer_Handle;
 
 static inline b32
 font_handle_equal(Font_Renderer_Handle a, Font_Renderer_Handle b) {
-    return a.data[0] == b.data[0] && a.data[1] == b.data[1];
+    return a.u64s[0] == b.u64s[0] && a.u64s[1] == b.u64s[1];
 }
 
 static inline Font_Renderer_Handle
 font_handle_zero(void) {
     Font_Renderer_Handle res = {0};
     return res;
+}
+
+static inline Font_Handle
+font_handle_from_ptr(void *ptr) {
+    Font_Handle result = {0};
+    result.ptr = ptr;
+    return result;
 }
 
 typedef struct Font_Renderer_Metrics Font_Renderer_Metrics;

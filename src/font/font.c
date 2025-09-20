@@ -93,17 +93,19 @@ font_open(String path) {
     }
 
     Font_Renderer font = {0};
+    FT_Face       ft_face = NULL;
     FT_Error      error = FT_New_Memory_Face(f_state->library,
                                              (const FT_Byte *)font_file.data,
                                              (FT_Long)font_file.size,
                                              0,
-                                             &font.face);
+                                             &ft_face);
     if (error) {
         log_error("Error initializing font from memory\n");
         Font_Renderer_Handle empty = {0};
         return empty;
     }
 
+    font.handle = font_handle_from_ptr(ft_face);
     Font_Renderer_Handle handle = font_to_handle(font);
     return handle;
 }
@@ -111,15 +113,13 @@ font_open(String path) {
 Font_Renderer
 font_from_handle(Font_Renderer_Handle handle) {
     Font_Renderer font = {0};
-    font.face = (FT_Face)handle.data[0];
+    font.handle = handle;
     return font;
 }
 
 Font_Renderer_Handle
 font_to_handle(Font_Renderer font) {
-    Font_Renderer_Handle handle = {0};
-    handle.data[0] = (u64)font.face;
-    return handle;
+    return font.handle;
 }
 
 Font_Renderer_Raster_Result
@@ -127,9 +127,9 @@ font_raster(Arena *arena, Font_Renderer_Handle handle, f32 size, String string) 
     Font_Renderer_Raster_Result result = {0};
     Font_Renderer               font = font_from_handle(handle);
 
-    if (font.face != NULL) {
+    if (font.handle.ptr != NULL) {
         Scratch scratch = scratch_begin(arena);
-        FT_Face face = font.face;
+        FT_Face face = (FT_Face)font.handle.ptr;
 
         // Set pixel size with DPI scaling (96 DPI / 72 points)
         FT_Set_Pixel_Sizes(face, 0, (FT_UInt)((96.0f / 72.0f) * size));
@@ -210,8 +210,8 @@ font_metrics_from_font(Font_Renderer_Handle handle) {
     Font_Renderer_Metrics metrics = {0};
     Font_Renderer         font = font_from_handle(handle);
 
-    if (font.face != NULL) {
-        FT_Face face = font.face;
+    if (font.handle.ptr != NULL) {
+        FT_Face face = (FT_Face)font.handle.ptr;
 
         // FreeType metrics are in font units, we need to normalize them
         f32 units_per_em = (f32)face->units_per_EM;
@@ -233,24 +233,26 @@ font_open_from_data(String *data) {
     }
 
     Font_Renderer font = {0};
+    FT_Face       ft_face = NULL;
     FT_Error      error = FT_New_Memory_Face(f_state->library,
                                              (const FT_Byte *)data->data,
                                              (FT_Long)data->size,
                                              0,
-                                             &font.face);
+                                             &ft_face);
     if (error) {
         log_error("Error init font from data\n");
         Font_Renderer_Handle empty = {0};
         return empty;
     }
 
+    font.handle = font_handle_from_ptr(ft_face);
     Font_Renderer_Handle handle = font_to_handle(font);
     return handle;
 }
 
 void font_close(Font_Renderer_Handle handle) {
     Font_Renderer font = font_from_handle(handle);
-    if (font.face != NULL) {
-        FT_Done_Face(font.face);
+    if (font.handle.ptr != NULL) {
+        FT_Done_Face((FT_Face)font.handle.ptr);
     }
 }

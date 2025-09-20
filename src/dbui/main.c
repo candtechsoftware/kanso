@@ -14,6 +14,8 @@
 #include "../draw/draw_inc.c"
 
 #include "dbui/dbui.h"
+#include "postgres.h"
+#include "postgres.c"
 
 typedef struct Node_Connection Node_Connection;
 struct Node_Connection {
@@ -40,7 +42,7 @@ struct App_State {
     b32               mouse_down;
     Vec2_f64          mouse_pos;
     Vec2_f64          mouse_drag_offset;
-    s32               selected_node;  // -1 = no selection
+    s32               selected_node; // -1 = no selection
 
     // Node editor state
     Node_Box        nodes[3];
@@ -49,6 +51,16 @@ struct App_State {
 };
 
 App_State *g_state = nullptr;
+
+internal DB_Conn *db_connect(DB_Config config) {
+    switch (config.kind) {
+    case DB_KIND_POSTGRES:
+        return pg_connect(config);
+    default:
+        ASSERT(false, "Unimplemented");
+    }
+    return 0;
+}
 
 internal b32
 parse_args(Cmd_Line *cmd_line, App_Config *config) {
@@ -117,7 +129,7 @@ app_init(App_Config *config) {
     g_state->window_equip = renderer_window_equip(g_state->window);
     g_state->default_font = default_font;
     g_state->running = 1;
-    g_state->selected_node = -1;  // No node selected initially
+    g_state->selected_node = -1; // No node selected initially
 
     // Initialize nodes
     g_state->nodes[0] = (Node_Box){
@@ -142,6 +154,12 @@ app_init(App_Config *config) {
     g_state->connections[0] = (Node_Connection){.from_node = 0, .to_node = 1};
     g_state->connections[1] = (Node_Connection){.from_node = 1, .to_node = 2};
     g_state->connection_count = 2;
+
+    DB_Config db_config;
+    db_config.kind = DB_KIND_POSTGRES;
+    db_config.connection_string = str_lit("postgresql://dbui_user:dbui_pass@localhost:5434/package_manager");
+    DB_Conn *conn = db_connect(db_config);
+    ASSERT(conn != NULL, "Failed to connect to db");
 }
 
 internal b32
@@ -255,11 +273,11 @@ app_update() {
 
             // Draw node label
             if (node->name) {
-                String   label = {.data = (u8 *)node->name, .size = strlen(node->name)};
+                String            label = {.data = (u8 *)node->name, .size = strlen(node->name)};
                 Font_Renderer_Run run = font_run_from_string(g_state->default_font, 18.0f, 0, 18.0f * 4, Font_Renderer_Raster_Flag_Smooth, label);
-                Vec2_f32 text_pos = {{node->center.x - run.dim.x * 0.5f,
-                                      node->center.y - run.dim.y * 0.5f}};
-                Vec4_f32 text_color = {{1.0f, 1.0f, 1.0f, 1.0f}};
+                Vec2_f32          text_pos = {{node->center.x - run.dim.x * 0.5f,
+                                               node->center.y - run.dim.y * 0.5f}};
+                Vec4_f32          text_color = {{1.0f, 1.0f, 1.0f, 1.0f}};
                 draw_text(text_pos, label, g_state->default_font, 18.0f, text_color);
             }
         }
