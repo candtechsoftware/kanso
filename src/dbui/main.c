@@ -15,6 +15,20 @@
 
 #include "dbui/dbui.h"
 
+typedef struct Node_Connection Node_Connection;
+struct Node_Connection {
+    u32 from_node;
+    u32 to_node;
+};
+
+typedef struct Node_Box Node_Box;
+struct Node_Box {
+    Vec2_f32 center;
+    Vec2_f32 size;
+    Vec4_f32 color;
+    char    *name;
+};
+
 typedef struct App_State App_State;
 struct App_State {
     Arena            *arena;
@@ -23,6 +37,15 @@ struct App_State {
     Renderer_Handle   window_equip;
     Font_Renderer_Tag default_font;
     b32               running;
+    b32               mouse_down;
+    Vec2_f64          mouse_pos;
+    Vec2_f64          mouse_drag_offset;
+    s32               selected_node;  // -1 = no selection
+
+    // Node editor state
+    Node_Box        nodes[3];
+    Node_Connection connections[3];
+    u32             connection_count;
 };
 
 App_State *g_state = nullptr;
@@ -94,6 +117,41 @@ app_init(App_Config *config) {
     g_state->window_equip = renderer_window_equip(g_state->window);
     g_state->default_font = default_font;
     g_state->running = 1;
+    g_state->selected_node = -1;  // No node selected initially
+
+    // Initialize nodes
+    g_state->nodes[0] = (Node_Box){
+        .center = {{300.0f, 200.0f}},
+        .size = {{200.0f, 200.0f}},
+        .color = {{0.0f, 0.5f, 1.0f, 1.0f}}, // Blue
+        .name = "Input Node"};
+
+    g_state->nodes[1] = (Node_Box){
+        .center = {{700.0f, 450.0f}},
+        .size = {{200.0f, 200.0f}},
+        .color = {{1.0f, 0.0f, 0.0f, 1.0f}}, // Red
+        .name = "Process Node"};
+
+    g_state->nodes[2] = (Node_Box){
+        .center = {{1100.0f, 200.0f}},
+        .size = {{200.0f, 200.0f}},
+        .color = {{0.0f, 1.0f, 0.0f, 0.8f}}, // Green
+        .name = "Output Node"};
+
+    // Initialize connections (0->1, 1->2)
+    g_state->connections[0] = (Node_Connection){.from_node = 0, .to_node = 1};
+    g_state->connections[1] = (Node_Connection){.from_node = 1, .to_node = 2};
+    g_state->connection_count = 2;
+}
+
+internal b32
+point_in_rect(Vec2_f64 point, Vec2_f32 center, Vec2_f32 size) {
+    f32 half_width = size.x * 0.5f;
+    f32 half_height = size.y * 0.5f;
+    return (point.x >= center.x - half_width &&
+            point.x <= center.x + half_width &&
+            point.y >= center.y - half_height &&
+            point.y <= center.y + half_height);
 }
 
 internal void
@@ -109,53 +167,102 @@ app_update() {
 
         OS_Event_List evs = os_event_list_from_window(g_state->window);
         for (OS_Event *ev = evs.first; ev; ev = ev->next) {
+
             if (ev->kind == OS_Event_Window_Close || (ev->kind == OS_Event_Press && ev->key == OS_Key_Esc)) {
                 g_state->running = 0;
                 break;
+            }
+            if (ev->key == OS_Key_MouseLeft && ev->kind == OS_Event_Press) {
+                g_state->mouse_down = 1;
+                g_state->mouse_pos = (Vec2_f64){{ev->position.x, ev->position.y}};
+
+                g_state->selected_node = -1;
+                for (s32 i = 0; i < 3; i++) {
+                    if (point_in_rect(g_state->mouse_pos, g_state->nodes[i].center, g_state->nodes[i].size)) {
+                        g_state->selected_node = i;
+                        g_state->mouse_drag_offset.x = g_state->nodes[i].center.x - g_state->mouse_pos.x;
+                        g_state->mouse_drag_offset.y = g_state->nodes[i].center.y - g_state->mouse_pos.y;
+                        break;
+                    }
+                }
+            }
+            if (ev->key == OS_Key_MouseLeft && ev->kind == OS_Event_Release) {
+                g_state->mouse_down = 0;
+                g_state->selected_node = -1;
+            }
+            if (ev->kind == OS_Event_Drag && g_state->mouse_down) {
+                Vec2_f64 old_pos = g_state->mouse_pos;
+                g_state->mouse_pos = (Vec2_f64){{ev->position.x, ev->position.y}};
+
+                if (g_state->selected_node >= 0 && g_state->selected_node < 3) {
+                    g_state->nodes[g_state->selected_node].center.x = (f32)(g_state->mouse_pos.x + g_state->mouse_drag_offset.x);
+                    g_state->nodes[g_state->selected_node].center.y = (f32)(g_state->mouse_pos.y + g_state->mouse_drag_offset.y);
+                }
             }
         }
 
         renderer_window_begin_frame(g_state->window, g_state->window_equip);
 
-        // Begin draw frame
         draw_begin_frame(g_state->default_font);
         Draw_Bucket *bucket = draw_bucket_make();
         draw_push_bucket(bucket);
 
-        // Get window size for positioning
         Rng2_f32 window_rect = os_rect_from_window(g_state->window);
-        f32 window_width = window_rect.max.x - window_rect.min.x;
-        f32 window_height = window_rect.max.y - window_rect.min.y;
+        f32      window_width = window_rect.max.x - window_rect.min.x;
+        f32      window_height = window_rect.max.y - window_rect.min.y;
 
-        // Draw a red square in the center
-        f32 square_size = 200.0f;
-        f32 center_x = window_width / 2.0f;
-        f32 center_y = window_height / 2.0f;
+        // Draw connections first (so they appear behind nodes)main
+        Vec4_f32 connection_color = {{0.8f, 0.8f, 0.8f, 1.0f}};
+        for (u32 i = 0; i < g_state->connection_count; i++) {
+            Node_Connection *conn = &g_state->connections[i];
+            Node_Box        *from = &g_state->nodes[conn->from_node];
+            Node_Box        *to = &g_state->nodes[conn->to_node];
 
-        Rng2_f32 square_rect = {
-            .min = {{center_x - square_size/2, center_y - square_size/2}},
-            .max = {{center_x + square_size/2, center_y + square_size/2}}
-        };
+            // Calculate connection points (right side of from node, left side of to node)
+            Vec2_f32 start_point = {{from->center.x + from->size.x * 0.5f,
+                                     from->center.y}};
+            Vec2_f32 end_point = {{to->center.x - to->size.x * 0.5f,
+                                   to->center.y}};
 
-        // Draw red square with rounded corners
-        Vec4_f32 red_color = {{1.0f, 0.0f, 0.0f, 1.0f}};
-        draw_rect(square_rect, red_color, 10.0f, 0.0f, 2.0f);
+            // Draw line
+            draw_line(start_point, end_point, 1.0f, connection_color);
 
-        // Draw a blue square with border
-        Rng2_f32 blue_square = {
-            .min = {{100.0f, 100.0f}},
-            .max = {{300.0f, 300.0f}}
-        };
-        Vec4_f32 blue_color = {{0.0f, 0.5f, 1.0f, 1.0f}};
-        draw_rect(blue_square, blue_color, 5.0f, 3.0f, 1.0f);
+            // Draw connection dots at attachment points
+            Vec4_f32 dot_color = {{1.0f, 1.0f, 1.0f, 1.0f}};
+            f32      dot_size = 12.0f;
 
-        // Draw a green square in bottom right
-        Rng2_f32 green_square = {
-            .min = {{window_width - 250.0f, window_height - 250.0f}},
-            .max = {{window_width - 50.0f, window_height - 50.0f}}
-        };
-        Vec4_f32 green_color = {{0.0f, 1.0f, 0.0f, 0.8f}};
-        draw_rect(green_square, green_color, 20.0f, 0.0f, 3.0f);
+            Rng2_f32 start_dot = {
+                .min = {{start_point.x - dot_size / 2, start_point.y - dot_size / 2}},
+                .max = {{start_point.x + dot_size / 2, start_point.y + dot_size / 2}}};
+            draw_rect(start_dot, dot_color, dot_size / 2, 0.0f, 1.0f);
+
+            Rng2_f32 end_dot = {
+                .min = {{end_point.x - dot_size / 2, end_point.y - dot_size / 2}},
+                .max = {{end_point.x + dot_size / 2, end_point.y + dot_size / 2}}};
+            draw_rect(end_dot, dot_color, dot_size / 2, 0.0f, 1.0f);
+        }
+
+        // Draw nodes
+        for (u32 i = 0; i < 3; i++) {
+            Node_Box *node = &g_state->nodes[i];
+
+            Rng2_f32 node_rect = {
+                .min = {{node->center.x - node->size.x / 2, node->center.y - node->size.y / 2}},
+                .max = {{node->center.x + node->size.x / 2, node->center.y + node->size.y / 2}}};
+
+            f32 border_thickness = (i == g_state->selected_node) ? 4.0f : 2.0f;
+            draw_rect(node_rect, node->color, 10.0f, border_thickness, 1.0f);
+
+            // Draw node label
+            if (node->name) {
+                String   label = {.data = (u8 *)node->name, .size = strlen(node->name)};
+                Font_Renderer_Run run = font_run_from_string(g_state->default_font, 18.0f, 0, 18.0f * 4, Font_Renderer_Raster_Flag_Smooth, label);
+                Vec2_f32 text_pos = {{node->center.x - run.dim.x * 0.5f,
+                                      node->center.y - run.dim.y * 0.5f}};
+                Vec4_f32 text_color = {{1.0f, 1.0f, 1.0f, 1.0f}};
+                draw_text(text_pos, label, g_state->default_font, 18.0f, text_color);
+            }
+        }
 
         // Submit drawing
         draw_pop_bucket();
@@ -169,7 +276,6 @@ internal void
 app_shutdown() {
     renderer_window_unequip(g_state->window, g_state->window_equip);
     os_window_close(g_state->window);
-
 }
 
 int main(int argc, char **argv) {

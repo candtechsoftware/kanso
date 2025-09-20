@@ -154,8 +154,6 @@ int main(int argc, char **argv) {
         snprintf(shader_path, sizeof(shader_path), "src/renderer/shaders/glsl/%s",
                  shader->filename);
 
-        printf("Processing %s...\n", shader->filename);
-
         if (!file_exists(shader_path)) {
             printf("Error: Shader file not found: %s\n", shader_path);
             fclose(out_c);

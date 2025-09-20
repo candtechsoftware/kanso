@@ -268,6 +268,38 @@ draw_img(Rng2_f32 dst, Rng2_f32 src, Renderer_Handle texture, Vec4_f32 color, f3
     return rect;
 }
 
+void
+draw_line(Vec2_f32 p0, Vec2_f32 p1, f32 thickness, Vec4_f32 color) {
+    // Calculate line properties
+    f32 dx = p1.x - p0.x;
+    f32 dy = p1.y - p0.y;
+    f32 length = sqrtf(dx * dx + dy * dy);
+
+    if (length < 0.001f) return;
+
+    // For better quality, draw the line as many overlapping circles
+    // This creates a smooth anti-aliased appearance
+    f32 spacing = 0.5f; // Overlap circles for smoothness
+    int num_circles = (int)(length / spacing) + 1;
+
+    for (int i = 0; i <= num_circles; i++) {
+        f32 t = (f32)i / (f32)num_circles;
+        Vec2_f32 pos = {{
+            p0.x + dx * t,
+            p0.y + dy * t
+        }};
+
+        // Draw a circle at this position
+        Rng2_f32 circle_rect = {
+            .min = {{pos.x - thickness * 0.5f, pos.y - thickness * 0.5f}},
+            .max = {{pos.x + thickness * 0.5f, pos.y + thickness * 0.5f}}
+        };
+
+        // Use full corner radius to make it circular, with edge softness for anti-aliasing
+        draw_rect(circle_rect, color, thickness * 0.5f, 0.0f, 1.0f);
+    }
+}
+
 // 3D rendering
 Renderer_Pass_Params_Geo_3D *
 draw_geo3d_begin(Rng2_f32 viewport, Mat4x4_f32 view, Mat4x4_f32 projection) {

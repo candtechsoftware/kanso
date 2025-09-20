@@ -1,3 +1,4 @@
+#include <X11/X.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/Xatom.h>
@@ -12,6 +13,18 @@
 
 #include "../base/base_inc.h"
 #include "os_gfx.h"
+
+typedef enum X11_Mouse_Button {
+    MOUSE_LEFT = 1,
+    MOUSE_MIDDLE = 2,
+    MOUSE_RIGHT = 3,
+    MOUSE_SCROLL_UP = 4,
+    MOUSE_SCROLL_DOWN = 5,
+    MOUSE_SCROLL_LEFT = 6,
+    MOUSE_SCROLL_RIGHT = 7,
+    MOUSE_BACK = 8,
+    MOUSE_FORWARD = 9
+} X11_Mouse_Button;
 
 typedef struct X11_Window_State X11_Window_State;
 struct X11_Window_State {
@@ -468,6 +481,29 @@ x11_update_window_properties(X11_Window_State *window_state) {
 }
 
 internal OS_Key
+os_key_from_x11_button(X11_Mouse_Button btn) {
+    switch (btn) {
+    case MOUSE_LEFT: {
+        return OS_Key_MouseLeft;
+    } break;
+    case MOUSE_MIDDLE: {
+        return OS_Key_MouseMiddle;
+    } break;
+    case MOUSE_RIGHT: {
+        return OS_Key_MouseRight;
+    } break;
+    case MOUSE_SCROLL_UP:
+    case MOUSE_SCROLL_DOWN:
+    case MOUSE_SCROLL_LEFT:
+    case MOUSE_SCROLL_RIGHT:
+    case MOUSE_BACK:
+    case MOUSE_FORWARD:
+        return OS_Key_Null;
+    }
+
+    return OS_Key_Null;
+}
+internal OS_Key
 os_key_from_x11_keysym(KeySym keysym) {
     switch (keysym) {
     case XK_Escape:
@@ -687,7 +723,7 @@ os_event_list_from_window(OS_Handle window) {
     while (XCheckWindowEvent(x11_state->display, win_state->window,
                              ExposureMask | KeyPressMask | KeyReleaseMask |
                                  ButtonPressMask | ButtonReleaseMask |
-                                 PointerMotionMask | StructureNotifyMask,
+                                 PointerMotionMask | StructureNotifyMask | PointerMotionMask,
                              &event)) {
 
         switch (event.type) {
@@ -708,7 +744,78 @@ os_event_list_from_window(OS_Handle window) {
                 result.count++;
             }
         } break;
+        case MotionNotify: {
+            OS_Key key; 
+            u64    state = event.xmotion.state;
+            if (state & Button1Mask) {
+                key = OS_Key_MouseLeft;
+            } else {
+                key = OS_Key_MouseRight;
+            }
 
+            Arena    *arena = arena_alloc();
+            OS_Event *os_event = push_array(arena, OS_Event, 1);
+            os_event->window = window;
+            os_event->kind = OS_Event_Drag;
+            os_event->key = key;
+            os_event->modifiers = os_modifiers_from_x11_state(event.xkey.state);
+            os_event->position.x = event.xmotion.x;
+            os_event->position.y = event.xmotion.y;
+
+            if (result.last) {
+                result.last->next = os_event;
+                os_event->prev = result.last;
+                result.last = os_event;
+            } else {
+                result.first = result.last = os_event;
+            }
+            result.count++;
+
+        } break;
+        case ButtonPress: {
+            OS_Key key = os_key_from_x11_button(event.xbutton.button);
+            if (key != OS_Key_Null) {
+                Arena    *arena = arena_alloc();
+                OS_Event *os_event = push_array(arena, OS_Event, 1);
+                os_event->window = window;
+                os_event->kind = OS_Event_Press;
+                os_event->key = key;
+                os_event->modifiers = os_modifiers_from_x11_state(event.xkey.state);
+                os_event->position.x = event.xbutton.x;
+                os_event->position.y = event.xbutton.y;
+
+                if (result.last) {
+                    result.last->next = os_event;
+                    os_event->prev = result.last;
+                    result.last = os_event;
+                } else {
+                    result.first = result.last = os_event;
+                }
+                result.count++;
+            }
+        } break;
+        case ButtonRelease: {
+            OS_Key key = os_key_from_x11_button(event.xbutton.button);
+            if (key != OS_Key_Null) {
+                Arena    *arena = arena_alloc();
+                OS_Event *os_event = push_array(arena, OS_Event, 1);
+                os_event->window = window;
+                os_event->kind = OS_Event_Release;
+                os_event->key = key;
+                os_event->modifiers = os_modifiers_from_x11_state(event.xkey.state);
+                os_event->position.x = event.xbutton.x;
+                os_event->position.y = event.xbutton.y;
+
+                if (result.last) {
+                    result.last->next = os_event;
+                    os_event->prev = result.last;
+                    result.last = os_event;
+                } else {
+                    result.first = result.last = os_event;
+                }
+                result.count++;
+            }
+        } break;
         case KeyPress: {
             OS_Key key = os_key_from_x11_keysym(XLookupKeysym(&event.xkey, 0));
             if (key != OS_Key_Null) {
@@ -750,6 +857,8 @@ os_event_list_from_window(OS_Handle window) {
                 result.count++;
             }
         } break;
+        default:
+            break;
         }
     }
 

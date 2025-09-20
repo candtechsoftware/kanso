@@ -72,14 +72,9 @@ void renderer_window_submit(OS_Handle window, Renderer_Handle window_equip, Rend
     render_pass_info.renderArea.offset.x = 0;
     render_pass_info.renderArea.offset.y = 0;
     render_pass_info.renderArea.extent = equip->swapchain_extent;
-    printf("Render area: %dx%d, framebuffer[%d]: %p (count: %d)\n",
-           equip->swapchain_extent.width, equip->swapchain_extent.height,
-           equip->current_image_index,
-           (void *)(uintptr_t)equip->framebuffers[equip->current_image_index],
-           equip->swapchain_image_count);
 
     VkClearValue clear_values[2];
-    clear_values[0].color.float32[0] = 0.3f; // Match C++ version's gray
+    clear_values[0].color.float32[0] = 0.3f; 
     clear_values[0].color.float32[1] = 0.3f;
     clear_values[0].color.float32[2] = 0.3f;
     clear_values[0].color.float32[3] = 1.0f;
@@ -90,24 +85,15 @@ void renderer_window_submit(OS_Handle window, Renderer_Handle window_equip, Rend
     render_pass_info.pClearValues = clear_values;
 
     vkCmdBeginRenderPass(cmd, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
-    printf("Started render pass with gray clear color\n");
-
-    // Submit each pass
-    int pass_count = 0;
     for (Renderer_Pass_Node *node = passes->first; node; node = node->next) {
         Renderer_Pass *pass = &node->v;
 
-        pass_count++;
-        printf("Processing pass %d of kind %d\n", pass_count, pass->kind);
-
         switch (pass->kind) {
         case Renderer_Pass_Kind_UI:
-            printf("Submitting UI pass\n");
             renderer_vulkan_submit_ui_pass(cmd, pass->params_ui, equip);
             break;
 
         case Renderer_Pass_Kind_Blur:
-            printf("Submitting blur pass\n");
             renderer_vulkan_submit_blur_pass(cmd, pass->params_blur, equip);
             break;
 
@@ -117,7 +103,6 @@ void renderer_window_submit(OS_Handle window, Renderer_Handle window_equip, Rend
         }
     }
 
-    printf("Processed %d passes total. Ending render pass.\n", pass_count);
     vkCmdEndRenderPass(cmd);
 }
 
@@ -198,17 +183,13 @@ void renderer_vulkan_submit_ui_pass(VkCommandBuffer cmd, Renderer_Pass_Params_UI
     UI_Uniforms uniforms = {0};
     uniforms.viewport_size_px.x = (f32)equip->swapchain_extent.width / scale;
     uniforms.viewport_size_px.y = (f32)equip->swapchain_extent.height / scale;
-    printf("UI Uniforms: viewport_size=(%.1f, %.1f) scale=%.1f\n",
-           uniforms.viewport_size_px.x, uniforms.viewport_size_px.y, scale);
     uniforms.opacity = 1.0f;
-    // Identity matrix for texture sampling
+
     for (int i = 0; i < 4; i++)
         uniforms.texture_sample_channel_map.m[i][i] = 1.0f;
 
-    // Copy to uniform buffer
     memcpy((u8 *)g_vulkan->uniform_buffer.mapped + frame->uniform_offset, &uniforms, sizeof(uniforms));
 
-    // Update descriptor set
     VkDescriptorBufferInfo buffer_info = {0};
     buffer_info.buffer = g_vulkan->uniform_buffer.buffer;
     buffer_info.offset = frame->uniform_offset;
@@ -250,7 +231,6 @@ void renderer_vulkan_submit_ui_pass(VkCommandBuffer cmd, Renderer_Pass_Params_UI
          group_node;
          group_node = group_node->next) {
         group_count++;
-        printf("Processing batch group %d\n", group_count);
         Renderer_Batch_Group_2D_Params *group_params = &group_node->params;
 
         // Set scissor based on clip rect

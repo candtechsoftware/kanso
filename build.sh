@@ -185,7 +185,7 @@ OS_NAME=$(uname -s)
 echo "[Detected OS: $OS_NAME]"
 
 # --- Compile/Link Line Definitions -------------------------------------------
-common="-Isrc/ -g -DBUILD_GIT_HASH=\"$git_hash\" -DBUILD_GIT_HASH_FULL=\"$git_hash_full\" -Wall -Wno-unused-function -Wno-unused-variable -Wno-gnu-zero-variadic-macro-arguments -D_GNU_SOURCE -DGL_SILENCE_DEPRECATION"
+common="-std=c99 -Isrc/ -g -DBUILD_GIT_HASH=\"$git_hash\" -DBUILD_GIT_HASH_FULL=\"$git_hash_full\" -Wall -Wno-unused-function -Wno-unused-variable -Wno-gnu-zero-variadic-macro-arguments -D_GNU_SOURCE -DGL_SILENCE_DEPRECATION"
 
 # Add profiling flags if requested
 profile_flags=""

@@ -115,16 +115,14 @@ struct Renderer_Vulkan_Window_Equipment {
     VkDeviceMemory depth_image_memory;
     VkImageView    depth_image_view;
 
-    // Command buffers (fixed size for frames in flight)
     VkCommandBuffer command_buffers[2]; // MAX_FRAMES_IN_FLIGHT
 
-    // Synchronization (fixed size for frames in flight)
     VkSemaphore image_available_semaphores[2]; // MAX_FRAMES_IN_FLIGHT
     VkSemaphore render_finished_semaphores[2]; // MAX_FRAMES_IN_FLIGHT
     VkFence     in_flight_fences[2];           // MAX_FRAMES_IN_FLIGHT
     u32         current_frame;
     u32         current_image_index;
-    b32         frame_begun; // Track if frame was successfully begun
+    b32         frame_begun; 
 
     // Blur framebuffers
     VkImage        blur_texture_a;

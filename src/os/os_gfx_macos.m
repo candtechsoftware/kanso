@@ -891,8 +891,8 @@ os_event_list_from_window(OS_Handle window)
 
                 NSPoint mouse_loc = [event locationInWindow];
                 NSRect  frame = [[window_state->window contentView] frame];
-                os_event->position.x = (f32)mouse_loc.x;
-                os_event->position.y = (f32)frame.size.height - (f32)mouse_loc.y;
+                os_event->position.x = (f64)mouse_loc.x;
+                os_event->position.y = (f64)frame.size.height - (f64)mouse_loc.y;
 
                 os_event->next = NULL;
                 os_event->prev = result.last;
@@ -920,8 +920,8 @@ os_event_list_from_window(OS_Handle window)
 
                 NSPoint mouse_loc = [event locationInWindow];
                 NSRect  frame = [[window_state->window contentView] frame];
-                os_event->position.x = (f32)mouse_loc.x;
-                os_event->position.y = (f32)frame.size.height - (f32)mouse_loc.y;
+                os_event->position.x = (f64)mouse_loc.x;
+                os_event->position.y = (f64)frame.size.height - (f64)mouse_loc.y;
 
                 os_event->next = NULL;
                 os_event->prev = result.last;
@@ -940,7 +940,6 @@ os_event_list_from_window(OS_Handle window)
             break;
 
             case NSEventTypeMouseMoved:
-            case NSEventTypeLeftMouseDragged:
             {
                 OS_Event *os_event = push_array(frame_arena, OS_Event, 1);
                 os_event->window = window;
@@ -950,8 +949,37 @@ os_event_list_from_window(OS_Handle window)
 
                 NSPoint mouse_loc = [event locationInWindow];
                 NSRect  frame = [[window_state->window contentView] frame];
-                os_event->position.x = (f32)mouse_loc.x;
-                os_event->position.y = (f32)frame.size.height - (f32)mouse_loc.y;
+                os_event->position.x = (f64)mouse_loc.x;
+                os_event->position.y = (f64)frame.size.height - (f64)mouse_loc.y;
+
+                os_event->next = NULL;
+                os_event->prev = result.last;
+
+                if (result.last)
+                {
+                    result.last->next = os_event;
+                    result.last = os_event;
+                }
+                else
+                {
+                    result.first = result.last = os_event;
+                }
+                result.count++;
+            }
+            break;
+
+            case NSEventTypeLeftMouseDragged:
+            {
+                OS_Event *os_event = push_array(frame_arena, OS_Event, 1);
+                os_event->window = window;
+                os_event->kind = OS_Event_Drag;
+                os_event->key = OS_Key_MouseLeft;
+                os_event->modifiers = os_modifiers_from_macos_flags([event modifierFlags]);
+
+                NSPoint mouse_loc = [event locationInWindow];
+                NSRect  frame = [[window_state->window contentView] frame];
+                os_event->position.x = (f64)mouse_loc.x;
+                os_event->position.y = (f64)frame.size.height - (f64)mouse_loc.y;
 
                 os_event->next = NULL;
                 os_event->prev = result.last;

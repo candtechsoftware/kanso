@@ -51,6 +51,8 @@ Diagnostics:
 Completion:
   AllScopes: No
   IncludeCleaner: No
+  IncludeInsertion: Never
+  HeaderInsertion: Never
 
 Index:
   StandardLibrary: No

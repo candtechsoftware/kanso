@@ -22,6 +22,17 @@ typedef union Vec2_f32 {
     };
 } Vec2_f32;
 
+typedef union Vec2_f64 {
+    struct
+    {
+        f64  x, y;
+    };
+    struct
+    {
+        f64 u, v;
+    };
+} Vec2_f64;
+
 typedef struct Vec2_s16 {
     s16 x, y;
 } Vec2_s16;

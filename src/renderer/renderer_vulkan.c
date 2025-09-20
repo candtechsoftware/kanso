@@ -1719,17 +1719,13 @@ void renderer_window_begin_frame(OS_Handle window_handle, Renderer_Handle window
     if (!equip)
         return;
 
-    // Reset frame begun flag
     equip->frame_begun = 0;
 
-    // Wait for previous frame
     vkWaitForFences(g_vulkan->device, 1, &equip->in_flight_fences[equip->current_frame], VK_TRUE, UINT64_MAX);
 
-    // Acquire next image
     VkResult result = vkAcquireNextImageKHR(g_vulkan->device, equip->swapchain, UINT64_MAX,
                                             equip->image_available_semaphores[equip->current_frame],
                                             VK_NULL_HANDLE, &equip->current_image_index);
-    printf("Acquire image result: %d, image index: %d\n", result, equip->current_image_index);
 
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
         printf("Swapchain out of date on acquire, recreating...\n");
@@ -1740,13 +1736,10 @@ void renderer_window_begin_frame(OS_Handle window_handle, Renderer_Handle window
         return;
     }
 
-    // Reset fence
     vkResetFences(g_vulkan->device, 1, &equip->in_flight_fences[equip->current_frame]);
 
-    // Reset descriptor pool to prevent texture leakage between frames
     vkResetDescriptorPool(g_vulkan->device, g_vulkan->descriptor_pool, 0);
 
-    // Begin command buffer
     VkCommandBuffer cmd = equip->command_buffers[equip->current_frame];
     vkResetCommandBuffer(cmd, 0);
 
@@ -1754,9 +1747,7 @@ void renderer_window_begin_frame(OS_Handle window_handle, Renderer_Handle window
     begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
     VkResult begin_result = vkBeginCommandBuffer(cmd, &begin_info);
-    printf("Command buffer begin result: %d\n", begin_result);
 
-    // Mark frame as successfully begun
     equip->frame_begun = 1;
 }
 
@@ -1769,11 +1760,8 @@ void renderer_window_end_frame(OS_Handle window_handle, Renderer_Handle window_e
 
     VkCommandBuffer cmd = equip->command_buffers[equip->current_frame];
 
-    // End command buffer
     VkResult end_result = vkEndCommandBuffer(cmd);
-    printf("Command buffer end result: %d\n", end_result);
 
-    // Submit command buffer
     VkSubmitInfo submit_info = {0};
     submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
@@ -1794,7 +1782,6 @@ void renderer_window_end_frame(OS_Handle window_handle, Renderer_Handle window_e
         printf("ERROR: vkQueueSubmit failed with result: %d\n", submit_result);
     }
 
-    // Present
     VkPresentInfoKHR present_info = {0};
     present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
     present_info.waitSemaphoreCount = 1;
@@ -1808,17 +1795,14 @@ void renderer_window_end_frame(OS_Handle window_handle, Renderer_Handle window_e
     present_info.pImageIndices = image_indices;
 
     VkResult result = vkQueuePresentKHR(g_vulkan->present_queue, &present_info);
-    printf("Present result: %d (image index: %d)\n", result, equip->current_image_index);
 
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
-        printf("Recreating swapchain due to present result: %d\n", result);
+        log_error("Recreating swapchain due to present result: {d}\n", result);
         renderer_vulkan_recreate_swapchain(equip);
     } else if (result != VK_SUCCESS) {
-        printf("ERROR: Present failed with result: %d\n", result);
+        log_error("ERROR: Present failed with result: {d}\n", result);
     }
 
-    // Update frame index
     equip->current_frame = (equip->current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
-// Implementation moved to renderer_vulkan_passes.cpp
