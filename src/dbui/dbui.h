@@ -49,6 +49,61 @@ struct DB_Conn {
     DB_Handle handle;
 };
 
-internal b32      parse_args(Cmd_Line *cmd, App_Config *config);
-internal void     print_help(String bin_name);
-internal DB_Conn *db_connect(DB_Config config);
+typedef struct DB_Schema DB_Schema;
+struct DB_Schema {
+    String kind; // TODO(Alex) probably can be an enum
+    String schema;
+    String name;
+};
+
+typedef struct DB_Schema_Node DB_Schema_Node;
+struct DB_Schema_Node {
+    DB_Schema_Node *next;
+    DB_Schema_Node *prev;
+    DB_Schema       v;
+};
+
+typedef struct DB_Schema_List DB_Schema_List;
+struct DB_Schema_List {
+    DB_Schema_Node *first;
+    DB_Schema_Node *last;
+    u64             count;
+};
+
+typedef struct DB_Column_Info DB_Column_Info;
+struct DB_Column_Info {
+    String column_name;
+    String data_type;
+    String is_nullable;
+    String column_default;
+    String is_foreign_key;
+    String foreign_table_name;
+    String foreign_column_name;
+
+    // Cached for rendering
+    char  *display_text;  // "column_name: data_type" as C string
+    char  *fk_display;    // "→ foreign_table" as C string
+    b32    is_fk;         // Cached boolean to avoid str_match every frame
+};
+
+typedef struct DB_Row DB_Row;
+struct DB_Row {
+    Dyn_Array values;  // Array of String values
+};
+
+typedef struct DB_Table DB_Table;
+struct DB_Table {
+    Arena       *arena;
+    DB_Schema    schema;
+    Dyn_Array    columns;  // Array of DB_Column_Info
+    Dyn_Array    rows;     // Array of DB_Row
+    u64          row_count;
+    u64          column_count;
+};
+
+internal b32            parse_args(Cmd_Line *cmd, App_Config *config);
+internal void           print_help(String bin_name);
+internal DB_Conn       *db_connect(DB_Config config);
+internal DB_Schema_List db_get_all_schemas(DB_Conn *conn);
+internal DB_Table      *db_get_schema_info(DB_Conn *conn, DB_Schema schema);
+internal DB_Table      *db_get_data_from_schema(DB_Conn *conn, DB_Schema schema, u32 limit);

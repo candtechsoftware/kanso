@@ -5,6 +5,7 @@
 #include "../renderer/renderer_inc.h"
 #include "../font/font_inc.h"
 #include "../draw/draw_inc.h"
+#include <stdio.h>
 
 #include "../base/base_inc.c"
 #include "../base/profile.c"
@@ -28,7 +29,19 @@ struct Node_Box {
     Vec2_f32 center;
     Vec2_f32 size;
     Vec4_f32 color;
-    char    *name;
+    String   name;
+
+    DB_Schema schema;
+    DB_Table *table_info;
+    b32       is_expanded;
+
+    Node_Box *next;
+};
+
+typedef struct Node_Box_List Node_Box_List;
+struct Node_Box_List {
+    Node_Box *first;
+    Node_Box *last;
 };
 
 typedef struct App_State App_State;
@@ -40,14 +53,19 @@ struct App_State {
     Font_Renderer_Tag default_font;
     b32               running;
     b32               mouse_down;
+    b32               is_dragging;
     Vec2_f64          mouse_pos;
     Vec2_f64          mouse_drag_offset;
     s32               selected_node; // -1 = no selection
 
-    // Node editor state
-    Node_Box        nodes[3];
-    Node_Connection connections[3];
-    u32             connection_count;
+    Node_Box_List   *nodes;
+    Node_Connection *connections;
+    u64              connection_count;
+    u64              node_count;
+
+    DB_Schema_List schemas;
+    DB_Conn       *db_conn;
+    Dyn_Array     *list;
 };
 
 App_State *g_state = nullptr;
@@ -56,6 +74,37 @@ internal DB_Conn *db_connect(DB_Config config) {
     switch (config.kind) {
     case DB_KIND_POSTGRES:
         return pg_connect(config);
+    default:
+        ASSERT(false, "Unimplemented");
+    }
+    return 0;
+}
+
+internal DB_Schema_List db_get_all_schemas(DB_Conn *conn) {
+    DB_Schema_List list = {0};
+    switch (conn->kind) {
+    case DB_KIND_POSTGRES:
+        return pg_get_all_schemas(conn);
+    default:
+        ASSERT(false, "Unimplemented");
+    }
+    return list;
+}
+
+internal DB_Table *db_get_schema_info(DB_Conn *conn, DB_Schema schema) {
+    switch (conn->kind) {
+    case DB_KIND_POSTGRES:
+        return pg_get_schema_info(conn, schema);
+    default:
+        ASSERT(false, "Unimplemented");
+    }
+    return 0;
+}
+
+internal DB_Table *db_get_data_from_schema(DB_Conn *conn, DB_Schema schema, u32 limit) {
+    switch (conn->kind) {
+    case DB_KIND_POSTGRES:
+        return pg_get_data_from_schema(conn, schema, limit);
     default:
         ASSERT(false, "Unimplemented");
     }
@@ -129,37 +178,57 @@ app_init(App_Config *config) {
     g_state->window_equip = renderer_window_equip(g_state->window);
     g_state->default_font = default_font;
     g_state->running = 1;
-    g_state->selected_node = -1; // No node selected initially
-
-    // Initialize nodes
-    g_state->nodes[0] = (Node_Box){
-        .center = {{300.0f, 200.0f}},
-        .size = {{200.0f, 200.0f}},
-        .color = {{0.0f, 0.5f, 1.0f, 1.0f}}, // Blue
-        .name = "Input Node"};
-
-    g_state->nodes[1] = (Node_Box){
-        .center = {{700.0f, 450.0f}},
-        .size = {{200.0f, 200.0f}},
-        .color = {{1.0f, 0.0f, 0.0f, 1.0f}}, // Red
-        .name = "Process Node"};
-
-    g_state->nodes[2] = (Node_Box){
-        .center = {{1100.0f, 200.0f}},
-        .size = {{200.0f, 200.0f}},
-        .color = {{0.0f, 1.0f, 0.0f, 0.8f}}, // Green
-        .name = "Output Node"};
-
-    // Initialize connections (0->1, 1->2)
-    g_state->connections[0] = (Node_Connection){.from_node = 0, .to_node = 1};
-    g_state->connections[1] = (Node_Connection){.from_node = 1, .to_node = 2};
-    g_state->connection_count = 2;
+    g_state->selected_node = -1;
+    g_state->node_count = 0;
 
     DB_Config db_config;
     db_config.kind = DB_KIND_POSTGRES;
     db_config.connection_string = str_lit("postgresql://dbui_user:dbui_pass@localhost:5434/package_manager");
-    DB_Conn *conn = db_connect(db_config);
-    ASSERT(conn != NULL, "Failed to connect to db");
+    g_state->db_conn = db_connect(db_config);
+    ASSERT(g_state->db_conn != NULL, "Failed to connect to db");
+    g_state->schemas = db_get_all_schemas(g_state->db_conn);
+
+    g_state->nodes = push_array(g_state->arena, Node_Box_List, 1);
+
+    f32 x_offset = 300.0f;
+    f32 y_offset = 200.0f;
+
+    for (DB_Schema_Node *db_node = g_state->schemas.first; db_node; db_node = db_node->next) {
+        if (str_match(db_node->v.kind, str_lit("table"))) {
+            log_info("  -> Creating node for table: {S}", db_node->v.name);
+
+            f32               font_size = 18.0f;
+            Font_Renderer_Run text_run = font_run_from_string(
+                g_state->default_font, font_size, 0, font_size * 4,
+                Font_Renderer_Raster_Flag_Smooth, db_node->v.name);
+
+            f32 padding = 20.0f;
+            f32 box_width = text_run.dim.x + padding * 2;
+            f32 box_height = text_run.dim.y + padding * 2;
+
+            if (box_width < 150.0f)
+                box_width = 150.0f;
+            if (box_height < 60.0f)
+                box_height = 60.0f;
+
+            Node_Box *n = push_array(g_state->arena, Node_Box, 1);
+            n->center = (Vec2_f32){{x_offset + box_width / 2, y_offset}};
+            n->size = (Vec2_f32){{box_width, box_height}};
+            n->color = (Vec4_f32){{0.0f, 0.5f, 1.0f, 1.0f}};
+            n->name = str_push_copy(g_state->arena, db_node->v.name);
+            n->schema = db_node->v;
+            n->table_info = 0;
+            n->is_expanded = false;
+            SLLQueuePush(g_state->nodes->first, g_state->nodes->last, n);
+            g_state->node_count++;
+
+            x_offset += box_width + 30.0f; // Dynamic spacing based on box width
+            if (x_offset > 1100.0f) {
+                x_offset = 50.0f;
+                y_offset += 100.0f;
+            }
+        }
+    }
 }
 
 internal b32
@@ -192,29 +261,84 @@ app_update() {
             }
             if (ev->key == OS_Key_MouseLeft && ev->kind == OS_Event_Press) {
                 g_state->mouse_down = 1;
+                g_state->is_dragging = 0; // Reset drag flag
                 g_state->mouse_pos = (Vec2_f64){{ev->position.x, ev->position.y}};
 
                 g_state->selected_node = -1;
-                for (s32 i = 0; i < 3; i++) {
-                    if (point_in_rect(g_state->mouse_pos, g_state->nodes[i].center, g_state->nodes[i].size)) {
-                        g_state->selected_node = i;
-                        g_state->mouse_drag_offset.x = g_state->nodes[i].center.x - g_state->mouse_pos.x;
-                        g_state->mouse_drag_offset.y = g_state->nodes[i].center.y - g_state->mouse_pos.y;
+                s32 node_index = 0;
+                for (Node_Box *node = g_state->nodes->first; node; node = node->next) {
+                    if (point_in_rect(g_state->mouse_pos, node->center, node->size)) {
+                        g_state->selected_node = node_index;
+                        g_state->mouse_drag_offset.x = node->center.x - g_state->mouse_pos.x;
+                        g_state->mouse_drag_offset.y = node->center.y - g_state->mouse_pos.y;
                         break;
                     }
+                    node_index++;
                 }
             }
             if (ev->key == OS_Key_MouseLeft && ev->kind == OS_Event_Release) {
+                if (!g_state->is_dragging && g_state->selected_node >= 0) {
+                    s32 node_index = 0;
+                    for (Node_Box *node = g_state->nodes->first; node; node = node->next) {
+                        if (node_index == g_state->selected_node) {
+                            node->is_expanded = !node->is_expanded;
+
+                            if (node->is_expanded) {
+                                if (!node->table_info) {
+                                    node->table_info = db_get_schema_info(g_state->db_conn, node->schema);
+                                }
+                                if (node->table_info) {
+                                    f32 expanded_height = 80.0f + ((float)node->table_info->column_count * 25.0f);
+                                    if (expanded_height < node->size.y)
+                                        expanded_height = node->size.y;
+                                    node->size.y = expanded_height;
+
+                                    if (node->size.x < 400.0f)
+                                        node->size.x = 400.0f;
+                                }
+                            } else {
+                                f32 font_size = 18.0f;
+
+                                Font_Renderer_Run text_run = font_run_from_string(
+                                    g_state->default_font, font_size, 0, font_size * 4,
+                                    Font_Renderer_Raster_Flag_Smooth, node->schema.name);
+
+                                f32 padding = 20.0f;
+                                f32 box_width = text_run.dim.x + padding * 2;
+                                f32 box_height = text_run.dim.y + padding * 2;
+
+                                if (box_width < 150.0f)
+                                    box_width = 150.0f;
+                                if (box_height < 60.0f)
+                                    box_height = 60.0f;
+
+                                node->size = (Vec2_f32){{box_width, box_height}};
+                            }
+                            break;
+                        }
+                        node_index++;
+                    }
+                }
+
                 g_state->mouse_down = 0;
+                g_state->is_dragging = 0;
                 g_state->selected_node = -1;
             }
             if (ev->kind == OS_Event_Drag && g_state->mouse_down) {
+                g_state->is_dragging = 1; // Mark that we're dragging
                 Vec2_f64 old_pos = g_state->mouse_pos;
                 g_state->mouse_pos = (Vec2_f64){{ev->position.x, ev->position.y}};
 
-                if (g_state->selected_node >= 0 && g_state->selected_node < 3) {
-                    g_state->nodes[g_state->selected_node].center.x = (f32)(g_state->mouse_pos.x + g_state->mouse_drag_offset.x);
-                    g_state->nodes[g_state->selected_node].center.y = (f32)(g_state->mouse_pos.y + g_state->mouse_drag_offset.y);
+                if (g_state->selected_node >= 0) {
+                    s32 node_index = 0;
+                    for (Node_Box *node = g_state->nodes->first; node; node = node->next) {
+                        if (node_index == g_state->selected_node) {
+                            node->center.x = (f32)(g_state->mouse_pos.x + g_state->mouse_drag_offset.x);
+                            node->center.y = (f32)(g_state->mouse_pos.y + g_state->mouse_drag_offset.y);
+                            break;
+                        }
+                        node_index++;
+                    }
                 }
             }
         }
@@ -229,60 +353,70 @@ app_update() {
         f32      window_width = window_rect.max.x - window_rect.min.x;
         f32      window_height = window_rect.max.y - window_rect.min.y;
 
-        // Draw connections first (so they appear behind nodes)main
-        Vec4_f32 connection_color = {{0.8f, 0.8f, 0.8f, 1.0f}};
-        for (u32 i = 0; i < g_state->connection_count; i++) {
-            Node_Connection *conn = &g_state->connections[i];
-            Node_Box        *from = &g_state->nodes[conn->from_node];
-            Node_Box        *to = &g_state->nodes[conn->to_node];
-
-            // Calculate connection points (right side of from node, left side of to node)
-            Vec2_f32 start_point = {{from->center.x + from->size.x * 0.5f,
-                                     from->center.y}};
-            Vec2_f32 end_point = {{to->center.x - to->size.x * 0.5f,
-                                   to->center.y}};
-
-            // Draw line
-            draw_line(start_point, end_point, 1.0f, connection_color);
-
-            // Draw connection dots at attachment points
-            Vec4_f32 dot_color = {{1.0f, 1.0f, 1.0f, 1.0f}};
-            f32      dot_size = 12.0f;
-
-            Rng2_f32 start_dot = {
-                .min = {{start_point.x - dot_size / 2, start_point.y - dot_size / 2}},
-                .max = {{start_point.x + dot_size / 2, start_point.y + dot_size / 2}}};
-            draw_rect(start_dot, dot_color, dot_size / 2, 0.0f, 1.0f);
-
-            Rng2_f32 end_dot = {
-                .min = {{end_point.x - dot_size / 2, end_point.y - dot_size / 2}},
-                .max = {{end_point.x + dot_size / 2, end_point.y + dot_size / 2}}};
-            draw_rect(end_dot, dot_color, dot_size / 2, 0.0f, 1.0f);
-        }
-
         // Draw nodes
-        for (u32 i = 0; i < 3; i++) {
-            Node_Box *node = &g_state->nodes[i];
-
+        Prof_Begin("DrawNodes");
+        s32 node_index = 0;
+        for (Node_Box *node = g_state->nodes->first; node; node = node->next) {
             Rng2_f32 node_rect = {
                 .min = {{node->center.x - node->size.x / 2, node->center.y - node->size.y / 2}},
                 .max = {{node->center.x + node->size.x / 2, node->center.y + node->size.y / 2}}};
 
-            f32 border_thickness = (i == g_state->selected_node) ? 4.0f : 2.0f;
-            draw_rect(node_rect, node->color, 10.0f, border_thickness, 1.0f);
+            f32 border_thickness = (node_index == g_state->selected_node) ? 4.0f : 2.0f;
 
-            // Draw node label
-            if (node->name) {
-                String            label = {.data = (u8 *)node->name, .size = strlen(node->name)};
+            Vec4_f32 box_color = node->is_expanded ? (Vec4_f32){{0.1f, 0.3f, 0.6f, 1.0f}} : node->color;
+
+            draw_rect(node_rect, box_color, 10.0f, border_thickness, 1.0f);
+
+            if (node->name.size > 0) {
+                String            label = node->name;
                 Font_Renderer_Run run = font_run_from_string(g_state->default_font, 18.0f, 0, 18.0f * 4, Font_Renderer_Raster_Flag_Smooth, label);
                 Vec2_f32          text_pos = {{node->center.x - run.dim.x * 0.5f,
-                                               node->center.y - run.dim.y * 0.5f}};
+                                               node->center.y - node->size.y / 2 + 10.0f}};
                 Vec4_f32          text_color = {{1.0f, 1.0f, 1.0f, 1.0f}};
                 draw_text(text_pos, label, g_state->default_font, 18.0f, text_color);
-            }
-        }
 
-        // Submit drawing
+                if (node->is_expanded && node->table_info) {
+                    Prof_Begin("DrawColumnInfo");
+                    Scratch scratch = scratch_begin(g_state->arena);
+
+                    f32      column_y = text_pos.y + 30.0f;
+                    f32      small_font_size = 14.0f;
+                    Vec4_f32 column_color = {{0.9f, 0.9f, 0.9f, 1.0f}};
+                    Vec4_f32 fk_color = {{0.5f, 1.0f, 0.5f, 1.0f}};
+
+                    for (u32 i = 0; i < node->table_info->column_count; i++) {
+                        DB_Column_Info *col = dyn_array_get(&node->table_info->columns, DB_Column_Info, i);
+                        if (col && col->display_text) {
+                            // Use cached display text
+                            String   col_string = cstr_to_string(col->display_text, strlen(col->display_text));
+                            Vec2_f32 col_pos = {{node->center.x - node->size.x / 2 + 20.0f, column_y}};
+
+                            // Use cached is_fk boolean
+                            Vec4_f32 current_color = col->is_fk ? fk_color : column_color;
+
+                            draw_text(col_pos, col_string, g_state->default_font, small_font_size, current_color);
+
+                            // Draw foreign key reference if exists (using cached string)
+                            if (col->is_fk && col->fk_display) {
+                                String            fk_string = cstr_to_string(col->fk_display, strlen(col->fk_display));
+                                Font_Renderer_Run col_run = font_run_from_string(g_state->default_font, small_font_size, 0,
+                                                                                 small_font_size * 4, Font_Renderer_Raster_Flag_Smooth, col_string);
+                                Vec2_f32          fk_pos = {{col_pos.x + col_run.dim.x, column_y}};
+                                draw_text(fk_pos, fk_string, g_state->default_font, small_font_size, fk_color);
+                            }
+
+                            column_y += 22.0f;
+                        }
+                    }
+
+                    scratch_end(&scratch);
+                    Prof_End();
+                }
+            }
+            node_index++;
+        }
+        Prof_End();
+
         draw_pop_bucket();
         draw_end_frame();
         draw_submit_bucket(g_state->window, g_state->window_equip, bucket);

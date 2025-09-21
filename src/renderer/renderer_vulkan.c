@@ -837,13 +837,7 @@ void renderer_shutdown() {
 
 // Helper function to recreate swapchain
 void renderer_vulkan_recreate_swapchain(Renderer_Vulkan_Window_Equipment *equip) {
-    printf("RECREATING SWAPCHAIN - old extent: %dx%d\n", equip->swapchain_extent.width, equip->swapchain_extent.height);
-    // Get current window size
-    // Note: we don't have the window pointer here, so we'll handle differently
-
     vkDeviceWaitIdle(g_vulkan->device);
-
-    // Cleanup old swapchain resources
     for (u32 i = 0; i < equip->swapchain_image_count; i++) {
         if (equip->framebuffers)
             vkDestroyFramebuffer(g_vulkan->device, equip->framebuffers[i], NULL);
@@ -851,7 +845,6 @@ void renderer_vulkan_recreate_swapchain(Renderer_Vulkan_Window_Equipment *equip)
             vkDestroyImageView(g_vulkan->device, equip->swapchain_image_views[i], NULL);
     }
 
-    // Cleanup depth resources
     vkDestroyImageView(g_vulkan->device, equip->depth_image_view, NULL);
     vkDestroyImage(g_vulkan->device, equip->depth_image, NULL);
     vkFreeMemory(g_vulkan->device, equip->depth_image_memory, NULL);
@@ -869,9 +862,9 @@ void renderer_vulkan_recreate_swapchain(Renderer_Vulkan_Window_Equipment *equip)
         // Use current swapchain extent as fallback if we can't get window size
         extent = equip->swapchain_extent;
     }
-    printf("New swapchain extent: %dx%d (current: %dx%d)\n", extent.width, extent.height, capabilities.currentExtent.width, capabilities.currentExtent.height);
 
-    // Skip if minimized
+    log_debug("New swapchain extent: {d}x{d} (current: {d}x{d})\n", extent.width, extent.height, capabilities.currentExtent.width, capabilities.currentExtent.height);
+
     if (extent.width == 0 || extent.height == 0) {
         return;
     }
@@ -1728,7 +1721,7 @@ void renderer_window_begin_frame(OS_Handle window_handle, Renderer_Handle window
                                             VK_NULL_HANDLE, &equip->current_image_index);
 
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
-        printf("Swapchain out of date on acquire, recreating...\n");
+        log_info("Swapchain out of date on acquire, recreating...\n");
         // Recreate swapchain
         void renderer_vulkan_recreate_swapchain(Renderer_Vulkan_Window_Equipment * equip);
         renderer_vulkan_recreate_swapchain(equip);
@@ -1797,12 +1790,9 @@ void renderer_window_end_frame(OS_Handle window_handle, Renderer_Handle window_e
     VkResult result = vkQueuePresentKHR(g_vulkan->present_queue, &present_info);
 
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
-        log_error("Recreating swapchain due to present result: {d}\n", result);
+        log_info("Recreating swapchain due to present result: {d}\n", result);
         renderer_vulkan_recreate_swapchain(equip);
-    } else if (result != VK_SUCCESS) {
-        log_error("ERROR: Present failed with result: {d}\n", result);
-    }
+     }
 
     equip->current_frame = (equip->current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
-

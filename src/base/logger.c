@@ -88,9 +88,7 @@ process_format(FILE *out, const char *fmt, va_list args) {
             switch (spec) {
             case 'S': {
                 String str = va_arg(args, String);
-                fputs((const char *)str.data, out);
-                break;
-
+                fwrite(str.data, 1, str.size, out);
                 break;
             }
             case 's': {

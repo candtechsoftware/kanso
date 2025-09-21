@@ -221,15 +221,27 @@ void prof_report(void) {
         return;
     }
 
+    // Calculate total frame time and count
+    f64 avg_frame_time = 0;
+    for (int i = 0; i < 60 && g_frame_times[i] > 0; i++) {
+        avg_frame_time += g_frame_times[i];
+    }
+    avg_frame_time /= 60.0;
+
     print("\n=== Profiling Report ===\n");
-    print("Zone Name                                        | Calls    | Total (ms) | Avg (ms)\n");
-    print("--------------------------------------------------|----------|------------|----------\n");
+    if (g_frame_count > 0) {
+        print("Total Frames: {d} | Avg Frame Time: {f} ms | Avg FPS: {f}\n",
+              g_frame_count, avg_frame_time, 1000.0 / avg_frame_time);
+    }
+    print("Zone Name                                   | Calls      | Total (ms)   | Avg (ms)  | ms/Frame\n");
+    print("--------------------------------------------|------------|--------------|-----------|----------\n");
 
     for (u32 i = 0; i < g_prof_state.zone_count; i++) {
         Prof_Zone *zone = &g_prof_state.zones[i];
         if (zone->call_count > 0) {
             f64 total_ms = prof_ticks_to_ms(zone->total_ticks);
             f64 avg_ms = total_ms / (f64)zone->call_count;
+            f64 ms_per_frame = g_frame_count > 0 ? total_ms / (f64)g_frame_count : 0;
 
             // Indent based on depth
             for (u32 d = 0; d < zone->depth && d < 4; d++) {
@@ -241,7 +253,8 @@ void prof_report(void) {
 
             // Calculate padding
             int name_len = strlen(zone->name) + (zone->depth * 2);
-            int padding = 49 - name_len;
+            int padding = 44 - name_len;
+            if (padding < 1) padding = 1;
             for (int p = 0; p < padding; p++) {
                 print(" ");
             }
@@ -253,21 +266,29 @@ void prof_report(void) {
             char buf[32];
             snprintf(buf, sizeof(buf), "%d", zone->call_count);
             print("{s}", string_from_cstr(buf));
-            for (int p = strlen(buf); p < 8; p++)
+            for (int p = strlen(buf); p < 10; p++)
                 print(" ");
 
             print(" | ");
 
             // Print total time
-            snprintf(buf, sizeof(buf), "%.3f", total_ms);
+            snprintf(buf, sizeof(buf), "%.2f", total_ms);
             print("{s}", string_from_cstr(buf));
-            for (int p = strlen(buf); p < 10; p++)
+            for (int p = strlen(buf); p < 12; p++)
                 print(" ");
 
             print(" | ");
 
             // Print average time
             snprintf(buf, sizeof(buf), "%.3f", avg_ms);
+            print("{s}", string_from_cstr(buf));
+            for (int p = strlen(buf); p < 9; p++)
+                print(" ");
+
+            print(" | ");
+
+            // Print ms per frame
+            snprintf(buf, sizeof(buf), "%.3f", ms_per_frame);
             print("{s}", string_from_cstr(buf));
 
             print("\n");

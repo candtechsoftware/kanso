@@ -547,6 +547,7 @@ font_style_from_tag_size_flags(Font_Renderer_Tag tag, f32 size, Font_Renderer_Ra
 
 Font_Renderer_Run
 font_run_from_string(Font_Renderer_Tag tag, f32 size, f32 base_align_px, f32 tab_size_px, Font_Renderer_Raster_Flags flags, String string) {
+    Prof_ScopeN("Font run from string cached"); 
     Font_Renderer_Run result = {0};
 
     // Get style cache node
@@ -561,12 +562,26 @@ font_run_from_string(Font_Renderer_Tag tag, f32 size, f32 base_align_px, f32 tab
     u64                           run_slot_idx = string_hash_low % style_node->run_slots_count;
     Font_Renderer_Run_Cache_Slot *run_slot = &style_node->run_slots[run_slot_idx];
 
+    // Track cache statistics
+    static u64 cache_hits = 0;
+    static u64 cache_misses = 0;
+    static u64 cache_checks = 0;
+
     // Look for cached run
+    Prof_Begin("FontCacheLookup");
     for (Font_Renderer_Run_Cache_Node *n = run_slot->first; n != NULL; n = n->next) {
+        cache_checks++;
         if (string_match(n->string, string)) {
+            cache_hits++;
+            Prof_End();
+            Prof_End();
             return n->run;
         }
     }
+    Prof_End();
+
+    cache_misses++;
+    Prof_ScopeN("Font run from string recreate");
 
     // Build new run
     Font_Renderer_Handle font_handle = font_handle_from_tag(tag);

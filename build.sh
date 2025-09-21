@@ -205,9 +205,9 @@ if [ "$OS_NAME" = "Darwin" ]; then
     freetype_cflags=$(pkg-config --cflags freetype2 2>/dev/null || echo "-I/opt/homebrew/opt/freetype/include/freetype2")
     freetype_libs=$(pkg-config --libs freetype2 2>/dev/null || echo "-L/opt/homebrew/opt/freetype/lib -lfreetype")
 
-
+    # Add PostgreSQL support
     postgresql_cflags=$(pkg-config --cflags libpq 2>/dev/null || echo "-I/opt/homebrew/opt/libpq/include")
-    postgresql_libs=$(pkg-config --libs libpq 2>/dev/null   || echo "-L/opt/homebrew/opt/libpq/lib -lpq")
+    postgresql_libs=$(pkg-config --libs libpq 2>/dev/null || echo "-L/opt/homebrew/opt/libpq/lib -lpq")
 
     link_flags="-framework Cocoa -framework Metal -framework MetalKit -framework QuartzCore -framework IOKit -framework CoreVideo -ldl -lm $freetype_libs $postgresql_libs"
 
@@ -224,13 +224,17 @@ elif [ "$OS_NAME" = "Linux" ]; then
     freetype_cflags=$(pkg-config --cflags freetype2 2>/dev/null || echo "-I/usr/include/freetype2")
     freetype_libs=$(pkg-config --libs freetype2 2>/dev/null || echo "-lfreetype")
 
+    # Add PostgreSQL support
+    postgresql_cflags=$(pkg-config --cflags libpq 2>/dev/null || echo "-I/usr/include/postgresql")
+    postgresql_libs=$(pkg-config --libs libpq 2>/dev/null || echo "-lpq")
+
     common="$common -D_POSIX_C_SOURCE=200809L"
-    link_flags="-lvulkan -lX11 -lXext -lXcursor -lXi -ldl -lm $freetype_libs"
+    link_flags="-lvulkan -lX11 -lXext -lXcursor -lXi -ldl -lm $freetype_libs $postgresql_libs"
 
     if [[ "$BUILD_MODE" == "debug" ]]; then
-        compile_line="$compiler -O0 -DBUILD_DEBUG=1 -DUSE_VULKAN=1 ${common} ${profile_flags} ${freetype_cflags}"
+        compile_line="$compiler -O0 -DBUILD_DEBUG=1 -DUSE_VULKAN=1 ${common} ${profile_flags} ${freetype_cflags} ${postgresql_cflags}"
     else
-        compile_line="$compiler -O3 -DBUILD_DEBUG=0 -DUSE_VULKAN=1 ${common} ${profile_flags} ${freetype_cflags}"
+        compile_line="$compiler -O3 -DBUILD_DEBUG=0 -DUSE_VULKAN=1 ${common} ${profile_flags} ${freetype_cflags} ${postgresql_cflags}"
     fi
 else
     echo "Unsupported OS: $OS_NAME"
