@@ -867,6 +867,7 @@ renderer_metal_acquire_buffer_from_pool(u64 size)
 {
     Renderer_Metal_Frame_Data *frame = &r_metal_state->frames[r_metal_state->current_frame_index];
 
+
     size = (size + 255) & ~255;
     for (u32 i = 0; i < METAL_BUFFER_POOL_SIZE; i++)
     {
@@ -946,8 +947,26 @@ renderer_metal_acquire_buffer_from_pool(u64 size)
         return entry->buffer;
     }
 
+    // Pool exhausted - allocate emergency buffer
+    log_error("Metal buffer pool exhausted (size=%llu)\n", size);
     frame->buffer_pool_miss_count++;
-    return NULL;
+
+    u64 alloc_size = Max(size, METAL_BUFFER_POOL_MIN_SIZE);
+    if (size > METAL_BUFFER_POOL_MIN_SIZE) {
+        alloc_size = (size * METAL_BUFFER_POOL_GROWTH_FACTOR + 4095) & ~4095;
+    }
+
+    void *emergency_buffer = metal_retain([metal_device(r_metal_state->device)
+        newBufferWithLength:alloc_size
+                    options:MTLResourceStorageModeShared | MTLResourceCPUCacheModeWriteCombined]);
+
+    if (!emergency_buffer) {
+        assert(0 && "Failed to allocate emergency buffer!");
+        return NULL;
+    }
+
+    // Emergency buffer - not tracked in pool
+    return emergency_buffer;
 }
 
 void

@@ -131,7 +131,6 @@ font_raster(Arena *arena, Font_Renderer_Handle handle, f32 size, String string) 
         Scratch scratch = scratch_begin(arena);
         FT_Face face = (FT_Face)font.handle.ptr;
 
-        // Set pixel size with DPI scaling (96 DPI / 72 points)
         FT_Set_Pixel_Sizes(face, 0, (FT_UInt)((96.0f / 72.0f) * size));
 
         // Get font metrics (already in pixels after FT_Set_Pixel_Sizes)
@@ -160,7 +159,6 @@ font_raster(Arena *arena, Font_Renderer_Handle handle, f32 size, String string) 
         s32 baseline = ascent;
         s32 atlas_write_x = 0;
 
-        // Render each glyph
         for (u64 it = 0; it < str32.size; it++) {
             // Load and render the character with FT_LOAD_RENDER
             FT_Error error = FT_Load_Char(face, str32.data[it], FT_LOAD_RENDER);
@@ -170,7 +168,6 @@ font_raster(Arena *arena, Font_Renderer_Handle handle, f32 size, String string) 
             FT_GlyphSlot slot = face->glyph;
             FT_Bitmap   *bitmap = &slot->bitmap;
 
-            // Copy rendered glyph to atlas
             s32 left = slot->bitmap_left;
             s32 top = slot->bitmap_top;
 
@@ -191,7 +188,6 @@ font_raster(Arena *arena, Font_Renderer_Handle handle, f32 size, String string) 
                 }
             }
 
-            // Advance to next glyph position
             atlas_write_x += (slot->advance.x >> 6);
         }
 
@@ -216,7 +212,7 @@ font_metrics_from_font(Font_Renderer_Handle handle) {
         // FreeType metrics are in font units, we need to normalize them
         f32 units_per_em = (f32)face->units_per_EM;
 
-        metrics.accent = (f32)face->ascender / units_per_em;
+        metrics.ascent = (f32)face->ascender / units_per_em;
         metrics.descent = -(f32)face->descender / units_per_em;
         metrics.line_gap = (f32)(face->height - face->ascender + face->descender) / units_per_em;
     }

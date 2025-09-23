@@ -106,6 +106,12 @@ internal DB_Table *db_get_schema_info(DB_Conn *conn, DB_Schema schema) {
     return 0;
 }
 
+internal void db_free_schema_info(DB_Table *table) {
+    if (table && table->arena) {
+        arena_release(table->arena);
+    }
+}
+
 internal DB_Table *db_get_data_from_schema(DB_Conn *conn, DB_Schema schema, u32 limit) {
     switch (conn->kind) {
     case DB_KIND_POSTGRES:
@@ -204,7 +210,7 @@ app_init(App_Config *config) {
     f32 y_offset = 200.0f;
 
     for (DB_Schema_Node *db_node = g_state->schemas.first; db_node; db_node = db_node->next) {
-        if (str_match(db_node->v.kind, str_lit("table"))) {
+        if (db_node->v.kind == DB_SCHEMA_KIND_TABLE) {
 
             f32               font_size = 18.0f;
             Font_Renderer_Run text_run = font_run_from_string(
@@ -231,7 +237,7 @@ app_init(App_Config *config) {
             SLLQueuePush(g_state->nodes->first, g_state->nodes->last, n);
             g_state->node_count++;
 
-            x_offset += box_width + 30.0f; // Dynamic spacing based on box width
+            x_offset += box_width + 30.0f;
             if (x_offset > 1100.0f) {
                 x_offset = 50.0f;
                 y_offset += 100.0f;
@@ -257,7 +263,6 @@ app_init(App_Config *config) {
                         current = current->next;
                     }
 
-                    // Find to_node by name
                     current = g_state->nodes->first;
                     to_idx = 0;
                     while (current) {
@@ -390,6 +395,7 @@ app_update() {
                         for (Node_Box *node = g_state->nodes->first; node; node = node->next) {
                             if (node_index == g_state->selected_node &&
                                 point_in_rect((Vec2_f64){{world_mouse.x, world_mouse.y}}, node->center, node->size)) {
+
                                 node->is_expanded = !node->is_expanded;
 
                                 if (node->is_expanded) {
@@ -397,7 +403,10 @@ app_update() {
                                         node->table_info = db_get_schema_info(g_state->db_conn, node->schema);
                                     }
                                     if (node->table_info) {
-                                        f32 expanded_height = 80.0f + ((float)node->table_info->column_count * 25.0f);
+                                        Font_Renderer_Metrics metrics = font_metrics_from_tag_size(g_state->default_font, 14.0f);
+                                        f32 line_spacing = font_line_height_from_metrics(&metrics);
+
+                                        f32 expanded_height = 80.0f + ((float)node->table_info->column_count * line_spacing);
                                         if (expanded_height < node->size.y)
                                             expanded_height = node->size.y;
                                         node->size.y = expanded_height;
@@ -406,6 +415,11 @@ app_update() {
                                             node->size.x = 400.0f;
                                     }
                                 } else {
+                                    if (node->table_info) {
+                                        db_free_schema_info(node->table_info);
+                                        node->table_info = NULL;
+                                    }
+
                                     f32 font_size = 18.0f;
 
                                     Font_Renderer_Run text_run = font_run_from_string(
@@ -550,28 +564,35 @@ app_update() {
                     Vec4_f32 column_color = {{0.9f, 0.9f, 0.9f, 1.0f}};
                     Vec4_f32 fk_color = {{0.5f, 1.0f, 0.5f, 1.0f}};
 
+                    Font_Renderer_Metrics metrics = font_metrics_from_tag_size(g_state->default_font, small_font_size);
+                    f32 line_spacing = font_line_height_from_metrics(&metrics);
+
+                    f32 node_bottom = node->center.y + node->size.y / 2 - 10.0f; // 10px padding
+
                     for (u32 i = 0; i < node->table_info->column_count; i++) {
+                        if (column_y + line_spacing > node_bottom) {
+                            break;
+                        }
+
                         DB_Column_Info *col = dyn_array_get(&node->table_info->columns, DB_Column_Info, i);
+
                         if (col && col->display_text) {
-                            // Use cached display text
                             String   col_string = cstr_to_string(col->display_text, strlen(col->display_text));
                             Vec2_f32 col_pos = {{node->center.x - node->size.x / 2 + 20.0f, column_y}};
 
-                            // Use cached is_fk boolean
                             Vec4_f32 current_color = col->is_fk ? fk_color : column_color;
 
                             draw_text(col_pos, col_string, g_state->default_font, small_font_size, current_color);
 
-                            // Draw foreign key reference if exists (using cached string)
                             if (col->is_fk && col->fk_display) {
                                 String            fk_string = cstr_to_string(col->fk_display, strlen(col->fk_display));
                                 Font_Renderer_Run col_run = font_run_from_string(g_state->default_font, small_font_size, 0,
                                                                                  small_font_size * 4, Font_Renderer_Raster_Flag_Smooth, col_string);
-                                Vec2_f32          fk_pos = {{col_pos.x + col_run.dim.x, column_y}};
+                                Vec2_f32          fk_pos = {{col_pos.x + col_run.dim.x + 10.0f, column_y}};
                                 draw_text(fk_pos, fk_string, g_state->default_font, small_font_size, fk_color);
                             }
 
-                            column_y += 22.0f;
+                            column_y += line_spacing;
                         }
                     }
 

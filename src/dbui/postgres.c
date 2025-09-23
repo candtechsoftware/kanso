@@ -100,11 +100,21 @@ internal DB_Schema_List pg_get_all_schemas(DB_Conn *conn) {
         char *schema_str = PQgetvalue(res, r, 1);
         char *name_str = PQgetvalue(res, r, 2);
 
-        String kind_temp = cstr_to_string(kind_str, strlen(kind_str));
         String schema_temp = cstr_to_string(schema_str, strlen(schema_str));
         String name_temp = cstr_to_string(name_str, strlen(name_str));
 
-        node->v.kind = str_push_copy(conn->arena, kind_temp);
+        // Map PostgreSQL type to our enum
+        if (strcmp(kind_str, "table") == 0) {
+            node->v.kind = DB_SCHEMA_KIND_TABLE;
+        } else if (strcmp(kind_str, "view") == 0) {
+            node->v.kind = DB_SCHEMA_KIND_VIEW;
+        } else if (strcmp(kind_str, "function") == 0) {
+            node->v.kind = DB_SCHEMA_KIND_FUNCTION;
+        } else if (strcmp(kind_str, "sequence") == 0) {
+            node->v.kind = DB_SCHEMA_KIND_SEQUENCE;
+        } else {
+            node->v.kind = DB_SCHEMA_KIND_TABLE; // Default to table
+        }
         node->v.schema = str_push_copy(conn->arena, schema_temp);
         node->v.name = str_push_copy(conn->arena, name_temp);
 
@@ -199,14 +209,12 @@ internal DB_Table *pg_get_schema_info(DB_Conn *conn, DB_Schema schema) {
         col->foreign_table_name = str_push_copy(arena, cstr_to_string(fk_table, strlen(fk_table)));
         col->foreign_column_name = str_push_copy(arena, cstr_to_string(fk_column, strlen(fk_column)));
 
-        // Cache display strings for fast rendering
         char display_buf[512];
         snprintf(display_buf, sizeof(display_buf), "%s: %s", col_name, data_type);
         u64 display_len = strlen(display_buf);
         col->display_text = push_array(arena, char, display_len + 1);
         MemoryCopy(col->display_text, display_buf, display_len + 1);
 
-        // Cache foreign key check
         col->is_fk = (strcmp(is_fk, "YES") == 0);
 
         if (col->is_fk) {

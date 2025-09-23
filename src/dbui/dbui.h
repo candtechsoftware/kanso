@@ -49,9 +49,16 @@ struct DB_Conn {
     DB_Handle handle;
 };
 
+typedef enum DB_Schema_Kind {
+    DB_SCHEMA_KIND_TABLE,
+    DB_SCHEMA_KIND_VIEW,
+    DB_SCHEMA_KIND_FUNCTION,
+    DB_SCHEMA_KIND_SEQUENCE,
+} DB_Schema_Kind;
+
 typedef struct DB_Schema DB_Schema;
 struct DB_Schema {
-    String kind; // TODO(Alex) probably can be an enum
+    DB_Schema_Kind kind;
     String schema;
     String name;
 };
@@ -80,10 +87,9 @@ struct DB_Column_Info {
     String foreign_table_name;
     String foreign_column_name;
 
-    // Cached for rendering
-    char *display_text; // "column_name: data_type" as C string
-    char *fk_display;   // "→ foreign_table" as C string
-    b32   is_fk;        // Cached boolean to avoid str_match every frame
+    char *display_text; // "column_name: data_type"
+    char *fk_display;   // "→ foreign_table"
+    b32   is_fk;
 };
 
 typedef struct DB_Row DB_Row;
@@ -106,4 +112,5 @@ internal void           print_help(String bin_name);
 internal DB_Conn       *db_connect(DB_Config config);
 internal DB_Schema_List db_get_all_schemas(DB_Conn *conn);
 internal DB_Table      *db_get_schema_info(DB_Conn *conn, DB_Schema schema);
+internal void           db_free_schema_info(DB_Table *table);
 internal DB_Table      *db_get_data_from_schema(DB_Conn *conn, DB_Schema schema, u32 limit);

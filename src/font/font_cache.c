@@ -86,6 +86,11 @@ font_metrics_from_tag(Font_Renderer_Tag tag) {
     Font_Renderer_Metrics result = {0};
     if (existing_node != NULL) {
         result = existing_node->metrics;
+    } else {
+        // Return default metrics if font not found
+        result.ascent = 0.75f;   // Typical ascent ratio
+        result.descent = 0.25f;  // Typical descent ratio
+        result.line_gap = 0.2f;  // Typical line gap ratio
     }
 
     return result;
@@ -484,7 +489,7 @@ font_style_from_tag_size_flags(Font_Renderer_Tag tag, f32 size, Font_Renderer_Ra
 
         // Get font metrics
         Font_Renderer_Metrics metrics = font_metrics_from_tag(tag);
-        node->ascent = metrics.accent * size;
+        node->ascent = metrics.ascent * size;
         node->descent = metrics.descent * size;
 
         // Calculate column width using average of common characters
@@ -492,7 +497,6 @@ font_style_from_tag_size_flags(Font_Renderer_Tag tag, f32 size, Font_Renderer_Ra
         Font_Renderer        font = font_from_handle(font_handle);
 
         if (font.handle.ptr != NULL) {
-            // Set pixel size with DPI scaling (96 DPI / 72 points)
             FT_Face face = (FT_Face)font.handle.ptr;
             FT_Set_Pixel_Sizes(face, 0, (FT_UInt)((96.0f / 72.0f) * size));
 
@@ -562,17 +566,9 @@ font_run_from_string(Font_Renderer_Tag tag, f32 size, f32 base_align_px, f32 tab
     u64                           run_slot_idx = string_hash_low % style_node->run_slots_count;
     Font_Renderer_Run_Cache_Slot *run_slot = &style_node->run_slots[run_slot_idx];
 
-    // Track cache statistics
-    static u64 cache_hits = 0;
-    static u64 cache_misses = 0;
-    static u64 cache_checks = 0;
-
-    // Look for cached run
     Prof_Begin("FontCacheLookup");
     for (Font_Renderer_Run_Cache_Node *n = run_slot->first; n != NULL; n = n->next) {
-        cache_checks++;
         if (string_match(n->string, string)) {
-            cache_hits++;
             Prof_End();
             Prof_End();
             return n->run;
@@ -580,7 +576,6 @@ font_run_from_string(Font_Renderer_Tag tag, f32 size, f32 base_align_px, f32 tab
     }
     Prof_End();
 
-    cache_misses++;
     Prof_ScopeN("Font run from string recreate");
 
     // Build new run
@@ -688,7 +683,6 @@ u64 font_char_pos_from_tag_size_string_p(Font_Renderer_Tag tag, f32 size, f32 ba
         return 0;
     }
 
-    // Set pixel size with DPI scaling (96 DPI / 72 points)
     FT_Face face = (FT_Face)font.handle.ptr;
     FT_Set_Pixel_Sizes(face, 0, (FT_UInt)((96.0f / 72.0f) * size));
 
@@ -812,14 +806,24 @@ Font_Renderer_Metrics
 font_metrics_from_tag_size(Font_Renderer_Tag tag, f32 size) {
     Font_Renderer_Metrics base_metrics = font_metrics_from_tag(tag);
     Font_Renderer_Metrics result = base_metrics;
-    result.accent *= size;
+    result.ascent *= size;
     result.descent *= size;
     result.line_gap *= size;
     return result;
 }
 
 f32 font_line_height_from_metrics(Font_Renderer_Metrics *metrics) {
-    return metrics->accent - metrics->descent + metrics->line_gap;
+    f32 line_height = metrics->ascent + metrics->descent + metrics->line_gap;
+
+    // If we get an invalid line height (likely due to uninitialized metrics),
+    // return a sensible default based on typical font proportions
+    if (line_height <= 0.0f || metrics->ascent <= 0.0f) {
+        // Return a default that's reasonable for the font size
+        // This will be multiplied by font size in font_metrics_from_tag_size
+        return 1.2f; // Common line height ratio
+    }
+
+    return line_height;
 }
 
 // Main API

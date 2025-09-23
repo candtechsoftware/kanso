@@ -67,7 +67,8 @@ struct Renderer_Metal_Pipeline {
 };
 
 #    define METAL_FRAMES_IN_FLIGHT          2
-#    define METAL_BUFFER_POOL_SIZE          16
+// Buffer pool - increase if "Metal buffer pool exhausted" errors occur
+#    define METAL_BUFFER_POOL_SIZE          256
 #    define METAL_BUFFER_POOL_MIN_SIZE      (16 * 1024)
 #    define METAL_BUFFER_POOL_GROWTH_FACTOR 2
 

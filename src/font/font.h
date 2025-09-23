@@ -38,7 +38,7 @@ font_handle_from_ptr(void *ptr) {
 typedef struct Font_Renderer_Metrics Font_Renderer_Metrics;
 struct Font_Renderer_Metrics {
     // TODO(Alex) do we need to record height if we are doing the SDF??
-    f32 accent;
+    f32 ascent;
     f32 descent;
     f32 line_gap;
 };
