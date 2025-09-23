@@ -1792,7 +1792,7 @@ void renderer_window_end_frame(OS_Handle window_handle, Renderer_Handle window_e
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
         log_info("Recreating swapchain due to present result: {d}\n", result);
         renderer_vulkan_recreate_swapchain(equip);
-     }
+    }
 
     equip->current_frame = (equip->current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
 }

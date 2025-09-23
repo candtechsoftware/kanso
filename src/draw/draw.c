@@ -203,7 +203,32 @@ draw_rect(Rng2_f32 dst, Vec4_f32 color, f32 corner_radius, f32 border_thickness,
     Renderer_Rect_2D_Inst *rect = (Renderer_Rect_2D_Inst *)
         renderer_batch_list_push_inst(draw_thread_ctx->arena, &group->batches, sizeof(Renderer_Rect_2D_Inst), 256);
 
-    rect->dst = dst;
+    Mat3x3_f32 xform = bucket->stack_top.xform2d;
+    Vec2_f32   corners[4] = {
+        {{dst.min.x, dst.min.y}},
+        {{dst.max.x, dst.min.y}},
+        {{dst.min.x, dst.max.y}},
+        {{dst.max.x, dst.max.y}}};
+
+    for (int i = 0; i < 4; i++) {
+        f32 x = corners[i].x;
+        f32 y = corners[i].y;
+        corners[i].x = xform.m[0][0] * x + xform.m[0][1] * y + xform.m[0][2];
+        corners[i].y = xform.m[1][0] * x + xform.m[1][1] * y + xform.m[1][2];
+    }
+
+    rect->dst.min.x = rect->dst.max.x = corners[0].x;
+    rect->dst.min.y = rect->dst.max.y = corners[0].y;
+    for (int i = 1; i < 4; i++) {
+        if (corners[i].x < rect->dst.min.x)
+            rect->dst.min.x = corners[i].x;
+        if (corners[i].x > rect->dst.max.x)
+            rect->dst.max.x = corners[i].x;
+        if (corners[i].y < rect->dst.min.y)
+            rect->dst.min.y = corners[i].y;
+        if (corners[i].y > rect->dst.max.y)
+            rect->dst.max.y = corners[i].y;
+    }
     rect->src = (Rng2_f32){{{0, 0}}, {{1, 1}}};
     rect->colors[0] = rect->colors[1] = rect->colors[2] = rect->colors[3] = color;
     rect->corner_radii[0] = rect->corner_radii[1] = rect->corner_radii[2] = rect->corner_radii[3] = corner_radius;
@@ -256,7 +281,32 @@ draw_img(Rng2_f32 dst, Rng2_f32 src, Renderer_Handle texture, Vec4_f32 color, f3
     Renderer_Rect_2D_Inst *rect = (Renderer_Rect_2D_Inst *)
         renderer_batch_list_push_inst(draw_thread_ctx->arena, &group->batches, sizeof(Renderer_Rect_2D_Inst), 256);
 
-    rect->dst = dst;
+    Mat3x3_f32 xform = bucket->stack_top.xform2d;
+    Vec2_f32   corners[4] = {
+        {{dst.min.x, dst.min.y}},
+        {{dst.max.x, dst.min.y}},
+        {{dst.min.x, dst.max.y}},
+        {{dst.max.x, dst.max.y}}};
+
+    for (int i = 0; i < 4; i++) {
+        f32 x = corners[i].x;
+        f32 y = corners[i].y;
+        corners[i].x = xform.m[0][0] * x + xform.m[0][1] * y + xform.m[0][2];
+        corners[i].y = xform.m[1][0] * x + xform.m[1][1] * y + xform.m[1][2];
+    }
+
+    rect->dst.min.x = rect->dst.max.x = corners[0].x;
+    rect->dst.min.y = rect->dst.max.y = corners[0].y;
+    for (int i = 1; i < 4; i++) {
+        if (corners[i].x < rect->dst.min.x)
+            rect->dst.min.x = corners[i].x;
+        if (corners[i].x > rect->dst.max.x)
+            rect->dst.max.x = corners[i].x;
+        if (corners[i].y < rect->dst.min.y)
+            rect->dst.min.y = corners[i].y;
+        if (corners[i].y > rect->dst.max.y)
+            rect->dst.max.y = corners[i].y;
+    }
     rect->src = src;
     rect->colors[0] = rect->colors[1] = rect->colors[2] = rect->colors[3] = color;
     rect->corner_radii[0] = rect->corner_radii[1] = rect->corner_radii[2] = rect->corner_radii[3] = corner_radius;
@@ -268,34 +318,26 @@ draw_img(Rng2_f32 dst, Rng2_f32 src, Renderer_Handle texture, Vec4_f32 color, f3
     return rect;
 }
 
-void
-draw_line(Vec2_f32 p0, Vec2_f32 p1, f32 thickness, Vec4_f32 color) {
-    // Calculate line properties
+void draw_line(Vec2_f32 p0, Vec2_f32 p1, f32 thickness, Vec4_f32 color) {
     f32 dx = p1.x - p0.x;
     f32 dy = p1.y - p0.y;
     f32 length = sqrtf(dx * dx + dy * dy);
 
-    if (length < 0.001f) return;
+    if (length < 0.001f)
+        return;
 
-    // For better quality, draw the line as many overlapping circles
-    // This creates a smooth anti-aliased appearance
-    f32 spacing = 0.5f; // Overlap circles for smoothness
+    f32 spacing = 0.5f;
     int num_circles = (int)(length / spacing) + 1;
 
     for (int i = 0; i <= num_circles; i++) {
-        f32 t = (f32)i / (f32)num_circles;
-        Vec2_f32 pos = {{
-            p0.x + dx * t,
-            p0.y + dy * t
-        }};
+        f32      t = (f32)i / (f32)num_circles;
+        Vec2_f32 pos = {{p0.x + dx * t,
+                         p0.y + dy * t}};
 
-        // Draw a circle at this position
         Rng2_f32 circle_rect = {
             .min = {{pos.x - thickness * 0.5f, pos.y - thickness * 0.5f}},
-            .max = {{pos.x + thickness * 0.5f, pos.y + thickness * 0.5f}}
-        };
+            .max = {{pos.x + thickness * 0.5f, pos.y + thickness * 0.5f}}};
 
-        // Use full corner radius to make it circular, with edge softness for anti-aliasing
         draw_rect(circle_rect, color, thickness * 0.5f, 0.0f, 1.0f);
     }
 }

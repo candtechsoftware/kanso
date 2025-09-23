@@ -547,7 +547,7 @@ font_style_from_tag_size_flags(Font_Renderer_Tag tag, f32 size, Font_Renderer_Ra
 
 Font_Renderer_Run
 font_run_from_string(Font_Renderer_Tag tag, f32 size, f32 base_align_px, f32 tab_size_px, Font_Renderer_Raster_Flags flags, String string) {
-    Prof_ScopeN("Font run from string cached"); 
+    Prof_ScopeN("Font run from string cached");
     Font_Renderer_Run result = {0};
 
     // Get style cache node

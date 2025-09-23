@@ -74,7 +74,7 @@ void renderer_window_submit(OS_Handle window, Renderer_Handle window_equip, Rend
     render_pass_info.renderArea.extent = equip->swapchain_extent;
 
     VkClearValue clear_values[2];
-    clear_values[0].color.float32[0] = 0.3f; 
+    clear_values[0].color.float32[0] = 0.3f;
     clear_values[0].color.float32[1] = 0.3f;
     clear_values[0].color.float32[2] = 0.3f;
     clear_values[0].color.float32[3] = 1.0f;

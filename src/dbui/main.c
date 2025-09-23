@@ -66,6 +66,11 @@ struct App_State {
     DB_Schema_List schemas;
     DB_Conn       *db_conn;
     Dyn_Array     *list;
+
+    f32      zoom_level;
+    Vec2_f32 pan_offset;
+    b32      is_panning;
+    Vec2_f64 pan_start_pos;
 };
 
 App_State *g_state = nullptr;
@@ -180,6 +185,9 @@ app_init(App_Config *config) {
     g_state->running = 1;
     g_state->selected_node = -1;
     g_state->node_count = 0;
+    g_state->zoom_level = 1.0f;
+    g_state->pan_offset = (Vec2_f32){{0.0f, 0.0f}};
+    g_state->is_panning = 0;
 
     DB_Config db_config;
     db_config.kind = DB_KIND_POSTGRES;
@@ -189,13 +197,14 @@ app_init(App_Config *config) {
     g_state->schemas = db_get_all_schemas(g_state->db_conn);
 
     g_state->nodes = push_array(g_state->arena, Node_Box_List, 1);
+    g_state->connections = NULL;
+    g_state->connection_count = 0;
 
     f32 x_offset = 300.0f;
     f32 y_offset = 200.0f;
 
     for (DB_Schema_Node *db_node = g_state->schemas.first; db_node; db_node = db_node->next) {
         if (str_match(db_node->v.kind, str_lit("table"))) {
-            log_info("  -> Creating node for table: {S}", db_node->v.name);
 
             f32               font_size = 18.0f;
             Font_Renderer_Run text_run = font_run_from_string(
@@ -229,6 +238,69 @@ app_init(App_Config *config) {
             }
         }
     }
+
+    for (Node_Box *from_node = g_state->nodes->first; from_node; from_node = from_node->next) {
+        if (!from_node->table_info) {
+            from_node->table_info = db_get_schema_info(g_state->db_conn, from_node->schema);
+        }
+
+        if (from_node->table_info) {
+            for (u32 i = 0; i < from_node->table_info->column_count; i++) {
+                DB_Column_Info *col = dyn_array_get(&from_node->table_info->columns, DB_Column_Info, i);
+                if (col && col->is_fk && col->foreign_table_name.size > 0) {
+                    u32       from_idx = 0;
+                    u32       to_idx = 0;
+                    Node_Box *current = g_state->nodes->first;
+
+                    while (current && current != from_node) {
+                        from_idx++;
+                        current = current->next;
+                    }
+
+                    // Find to_node by name
+                    current = g_state->nodes->first;
+                    to_idx = 0;
+                    while (current) {
+                        if (str_match(current->name, col->foreign_table_name)) {
+                            if (!g_state->connections) {
+                                g_state->connections = push_array(g_state->arena, Node_Connection, 100);
+                            }
+                            g_state->connections[g_state->connection_count].from_node = from_idx;
+                            g_state->connections[g_state->connection_count].to_node = to_idx;
+                            g_state->connection_count++;
+                            break;
+                        }
+                        to_idx++;
+                        current = current->next;
+                    }
+                }
+            }
+        }
+    }
+}
+
+internal Vec2_f32
+mat3x3_transform_point(Mat3x3_f32 m, Vec2_f32 p) {
+    Vec2_f32 result;
+    result.x = m.m[0][0] * p.x + m.m[0][1] * p.y + m.m[0][2];
+    result.y = m.m[1][0] * p.x + m.m[1][1] * p.y + m.m[1][2];
+    return result;
+}
+
+internal Vec2_f32
+screen_to_world(Vec2_f64 screen_pos) {
+    Vec2_f32 result;
+    result.x = (f32)(screen_pos.x - g_state->pan_offset.x) / g_state->zoom_level;
+    result.y = (f32)(screen_pos.y - g_state->pan_offset.y) / g_state->zoom_level;
+    return result;
+}
+
+internal Vec2_f32
+world_to_screen(Vec2_f32 world_pos) {
+    Vec2_f32 result;
+    result.x = g_state->pan_offset.x + world_pos.x * g_state->zoom_level;
+    result.y = g_state->pan_offset.y + world_pos.y * g_state->zoom_level;
+    return result;
 }
 
 internal b32
@@ -259,82 +331,124 @@ app_update() {
                 g_state->running = 0;
                 break;
             }
-            if (ev->key == OS_Key_MouseLeft && ev->kind == OS_Event_Press) {
-                g_state->mouse_down = 1;
-                g_state->is_dragging = 0; // Reset drag flag
-                g_state->mouse_pos = (Vec2_f64){{ev->position.x, ev->position.y}};
 
-                g_state->selected_node = -1;
-                s32 node_index = 0;
-                for (Node_Box *node = g_state->nodes->first; node; node = node->next) {
-                    if (point_in_rect(g_state->mouse_pos, node->center, node->size)) {
-                        g_state->selected_node = node_index;
-                        g_state->mouse_drag_offset.x = node->center.x - g_state->mouse_pos.x;
-                        g_state->mouse_drag_offset.y = node->center.y - g_state->mouse_pos.y;
-                        break;
-                    }
-                    node_index++;
-                }
+            if (ev->kind == OS_Event_Scroll) {
+                Vec2_f32 world_mouse_before = screen_to_world(g_state->mouse_pos);
+
+                f32 old_zoom = g_state->zoom_level;
+                f32 zoom_delta = ev->scroll.y * 0.1f;
+                g_state->zoom_level *= (1.0f + zoom_delta);
+                if (g_state->zoom_level < 0.2f)
+                    g_state->zoom_level = 0.2f;
+                if (g_state->zoom_level > 5.0f)
+                    g_state->zoom_level = 5.0f;
+
+                g_state->pan_offset.x = (f32)g_state->mouse_pos.x - world_mouse_before.x * g_state->zoom_level;
+                g_state->pan_offset.y = (f32)g_state->mouse_pos.y - world_mouse_before.y * g_state->zoom_level;
             }
-            if (ev->key == OS_Key_MouseLeft && ev->kind == OS_Event_Release) {
-                if (!g_state->is_dragging && g_state->selected_node >= 0) {
+
+            if (ev->key == OS_Key_MouseMiddle && ev->kind == OS_Event_Press) {
+                g_state->is_panning = 1;
+                g_state->pan_start_pos = (Vec2_f64){{ev->position.x, ev->position.y}};
+            }
+            if (ev->key == OS_Key_MouseMiddle && ev->kind == OS_Event_Release) {
+                g_state->is_panning = 0;
+            }
+            if (ev->key == OS_Key_MouseLeft && ev->kind == OS_Event_Press) {
+                Vec2_f64 event_mouse_pos = (Vec2_f64){{ev->position.x, ev->position.y}};
+                g_state->mouse_pos = event_mouse_pos;
+
+                if (ev->modifiers & OS_Modifier_Ctrl) {
+                    g_state->is_panning = 1;
+                    g_state->pan_start_pos = g_state->mouse_pos;
+                } else {
+                    g_state->mouse_down = 1;
+                    g_state->is_dragging = 0;
+
+                    Vec2_f32 world_mouse = screen_to_world(event_mouse_pos);
+
+                    g_state->selected_node = -1;
                     s32 node_index = 0;
                     for (Node_Box *node = g_state->nodes->first; node; node = node->next) {
-                        if (node_index == g_state->selected_node) {
-                            node->is_expanded = !node->is_expanded;
-
-                            if (node->is_expanded) {
-                                if (!node->table_info) {
-                                    node->table_info = db_get_schema_info(g_state->db_conn, node->schema);
-                                }
-                                if (node->table_info) {
-                                    f32 expanded_height = 80.0f + ((float)node->table_info->column_count * 25.0f);
-                                    if (expanded_height < node->size.y)
-                                        expanded_height = node->size.y;
-                                    node->size.y = expanded_height;
-
-                                    if (node->size.x < 400.0f)
-                                        node->size.x = 400.0f;
-                                }
-                            } else {
-                                f32 font_size = 18.0f;
-
-                                Font_Renderer_Run text_run = font_run_from_string(
-                                    g_state->default_font, font_size, 0, font_size * 4,
-                                    Font_Renderer_Raster_Flag_Smooth, node->schema.name);
-
-                                f32 padding = 20.0f;
-                                f32 box_width = text_run.dim.x + padding * 2;
-                                f32 box_height = text_run.dim.y + padding * 2;
-
-                                if (box_width < 150.0f)
-                                    box_width = 150.0f;
-                                if (box_height < 60.0f)
-                                    box_height = 60.0f;
-
-                                node->size = (Vec2_f32){{box_width, box_height}};
-                            }
+                        if (point_in_rect((Vec2_f64){{world_mouse.x, world_mouse.y}}, node->center, node->size)) {
+                            g_state->selected_node = node_index;
+                            g_state->mouse_drag_offset.x = node->center.x - world_mouse.x;
+                            g_state->mouse_drag_offset.y = node->center.y - world_mouse.y;
                             break;
                         }
                         node_index++;
                     }
                 }
-
-                g_state->mouse_down = 0;
-                g_state->is_dragging = 0;
-                g_state->selected_node = -1;
             }
-            if (ev->kind == OS_Event_Drag && g_state->mouse_down) {
-                g_state->is_dragging = 1; // Mark that we're dragging
+            if (ev->key == OS_Key_MouseLeft && ev->kind == OS_Event_Release) {
+                if (g_state->is_panning) {
+                    g_state->is_panning = 0;
+                } else {
+                    if (!g_state->is_dragging && g_state->selected_node >= 0) {
+                        Vec2_f32 world_mouse = screen_to_world(g_state->mouse_pos);
+                        s32      node_index = 0;
+                        for (Node_Box *node = g_state->nodes->first; node; node = node->next) {
+                            if (node_index == g_state->selected_node &&
+                                point_in_rect((Vec2_f64){{world_mouse.x, world_mouse.y}}, node->center, node->size)) {
+                                node->is_expanded = !node->is_expanded;
+
+                                if (node->is_expanded) {
+                                    if (!node->table_info) {
+                                        node->table_info = db_get_schema_info(g_state->db_conn, node->schema);
+                                    }
+                                    if (node->table_info) {
+                                        f32 expanded_height = 80.0f + ((float)node->table_info->column_count * 25.0f);
+                                        if (expanded_height < node->size.y)
+                                            expanded_height = node->size.y;
+                                        node->size.y = expanded_height;
+
+                                        if (node->size.x < 400.0f)
+                                            node->size.x = 400.0f;
+                                    }
+                                } else {
+                                    f32 font_size = 18.0f;
+
+                                    Font_Renderer_Run text_run = font_run_from_string(
+                                        g_state->default_font, font_size, 0, font_size * 4,
+                                        Font_Renderer_Raster_Flag_Smooth, node->schema.name);
+
+                                    f32 padding = 20.0f;
+                                    f32 box_width = text_run.dim.x + padding * 2;
+                                    f32 box_height = text_run.dim.y + padding * 2;
+
+                                    if (box_width < 150.0f)
+                                        box_width = 150.0f;
+                                    if (box_height < 60.0f)
+                                        box_height = 60.0f;
+
+                                    node->size = (Vec2_f32){{box_width, box_height}};
+                                }
+                                break;
+                            }
+                            node_index++;
+                        }
+                    }
+
+                    g_state->mouse_down = 0;
+                    g_state->is_dragging = 0;
+                    g_state->selected_node = -1;
+                }
+            }
+            if (ev->kind == OS_Event_Drag) {
                 Vec2_f64 old_pos = g_state->mouse_pos;
                 g_state->mouse_pos = (Vec2_f64){{ev->position.x, ev->position.y}};
 
-                if (g_state->selected_node >= 0) {
-                    s32 node_index = 0;
+                if (g_state->is_panning) {
+                    g_state->pan_offset.x += (f32)(g_state->mouse_pos.x - old_pos.x);
+                    g_state->pan_offset.y += (f32)(g_state->mouse_pos.y - old_pos.y);
+                } else if (g_state->mouse_down && g_state->selected_node >= 0) {
+                    g_state->is_dragging = 1;
+                    Vec2_f32 world_mouse = screen_to_world(g_state->mouse_pos);
+                    s32      node_index = 0;
                     for (Node_Box *node = g_state->nodes->first; node; node = node->next) {
                         if (node_index == g_state->selected_node) {
-                            node->center.x = (f32)(g_state->mouse_pos.x + g_state->mouse_drag_offset.x);
-                            node->center.y = (f32)(g_state->mouse_pos.y + g_state->mouse_drag_offset.y);
+                            node->center.x = world_mouse.x + g_state->mouse_drag_offset.x;
+                            node->center.y = world_mouse.y + g_state->mouse_drag_offset.y;
                             break;
                         }
                         node_index++;
@@ -353,7 +467,59 @@ app_update() {
         f32      window_width = window_rect.max.x - window_rect.min.x;
         f32      window_height = window_rect.max.y - window_rect.min.y;
 
-        // Draw nodes
+        Mat3x3_f32 scale_matrix = mat3x3_scale(g_state->zoom_level);
+        Mat3x3_f32 translate_matrix = mat3x3_translate(g_state->pan_offset.x, g_state->pan_offset.y);
+        Mat3x3_f32 view_transform = mat3x3_mul(translate_matrix, scale_matrix);
+        draw_push_xform2d(view_transform);
+
+        Prof_Begin("DrawConnections");
+        for (u64 i = 0; i < g_state->connection_count; i++) {
+            Node_Connection *conn = &g_state->connections[i];
+
+            Node_Box *from_node = NULL;
+            Node_Box *to_node = NULL;
+            u32       idx = 0;
+            for (Node_Box *node = g_state->nodes->first; node; node = node->next) {
+                if (idx == conn->from_node)
+                    from_node = node;
+                if (idx == conn->to_node)
+                    to_node = node;
+                idx++;
+            }
+
+            if (from_node && to_node) {
+                Vec2_f32 from_center = from_node->center;
+                Vec2_f32 to_center = to_node->center;
+
+                Vec2_f32 dir = {{to_center.x - from_center.x, to_center.y - from_center.y}};
+                f32      len = sqrtf(dir.x * dir.x + dir.y * dir.y);
+                if (len > 0.0f) {
+                    dir.x /= len;
+                    dir.y /= len;
+
+                    Vec2_f32 from_edge = {{from_center.x + dir.x * (from_node->size.x / 2),
+                                           from_center.y + dir.y * (from_node->size.y / 2)}};
+                    Vec2_f32 to_edge = {{to_center.x - dir.x * (to_node->size.x / 2),
+                                         to_center.y - dir.y * (to_node->size.y / 2)}};
+
+                    f32      line_thickness = 2.0f;
+                    Vec4_f32 line_color = {{0.3f, 0.8f, 0.3f, 0.8f}};
+
+                    draw_line(from_edge, to_edge, line_thickness, line_color);
+
+                    f32      arrow_size = 10.0f;
+                    Vec2_f32 arrow_p1 = {{to_edge.x - dir.x * arrow_size - dir.y * arrow_size * 0.5f,
+                                          to_edge.y - dir.y * arrow_size + dir.x * arrow_size * 0.5f}};
+                    Vec2_f32 arrow_p2 = {{to_edge.x - dir.x * arrow_size + dir.y * arrow_size * 0.5f,
+                                          to_edge.y - dir.y * arrow_size - dir.x * arrow_size * 0.5f}};
+
+                    draw_line(to_edge, arrow_p1, line_thickness, line_color);
+                    draw_line(to_edge, arrow_p2, line_thickness, line_color);
+                }
+            }
+        }
+        Prof_End();
+
         Prof_Begin("DrawNodes");
         s32 node_index = 0;
         for (Node_Box *node = g_state->nodes->first; node; node = node->next) {
@@ -417,6 +583,7 @@ app_update() {
         }
         Prof_End();
 
+        draw_pop_xform2d();
         draw_pop_bucket();
         draw_end_frame();
         draw_submit_bucket(g_state->window, g_state->window_equip, bucket);

@@ -133,7 +133,7 @@ f32 draw_top_transparency(void);
 // Core draw calls
 Renderer_Rect_2D_Inst *
 draw_rect(Rng2_f32 dst, Vec4_f32 color, f32 corner_radius, f32 border_thickness, f32 edge_softness);
-Renderer_Rect_2D_Inst *
+Renderer_Rect_2D_Inst      *
 draw_img(Rng2_f32 dst, Rng2_f32 src, Renderer_Handle texture, Vec4_f32 color, f32 corner_radius, f32 border_thickness, f32 edge_softness);
 void draw_line(Vec2_f32 p0, Vec2_f32 p1, f32 thickness, Vec4_f32 color);
 

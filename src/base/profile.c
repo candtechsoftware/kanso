@@ -254,7 +254,8 @@ void prof_report(void) {
             // Calculate padding
             int name_len = strlen(zone->name) + (zone->depth * 2);
             int padding = 44 - name_len;
-            if (padding < 1) padding = 1;
+            if (padding < 1)
+                padding = 1;
             for (int p = 0; p < padding; p++) {
                 print(" ");
             }

@@ -122,7 +122,7 @@ struct Renderer_Vulkan_Window_Equipment {
     VkFence     in_flight_fences[2];           // MAX_FRAMES_IN_FLIGHT
     u32         current_frame;
     u32         current_image_index;
-    b32         frame_begun; 
+    b32         frame_begun;
 
     // Blur framebuffers
     VkImage        blur_texture_a;

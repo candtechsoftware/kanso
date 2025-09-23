@@ -81,24 +81,24 @@ struct DB_Column_Info {
     String foreign_column_name;
 
     // Cached for rendering
-    char  *display_text;  // "column_name: data_type" as C string
-    char  *fk_display;    // "→ foreign_table" as C string
-    b32    is_fk;         // Cached boolean to avoid str_match every frame
+    char *display_text; // "column_name: data_type" as C string
+    char *fk_display;   // "→ foreign_table" as C string
+    b32   is_fk;        // Cached boolean to avoid str_match every frame
 };
 
 typedef struct DB_Row DB_Row;
 struct DB_Row {
-    Dyn_Array values;  // Array of String values
+    Dyn_Array values; // Array of String values
 };
 
 typedef struct DB_Table DB_Table;
 struct DB_Table {
-    Arena       *arena;
-    DB_Schema    schema;
-    Dyn_Array    columns;  // Array of DB_Column_Info
-    Dyn_Array    rows;     // Array of DB_Row
-    u64          row_count;
-    u64          column_count;
+    Arena    *arena;
+    DB_Schema schema;
+    Dyn_Array columns; // Array of DB_Column_Info
+    Dyn_Array rows;    // Array of DB_Row
+    u64       row_count;
+    u64       column_count;
 };
 
 internal b32            parse_args(Cmd_Line *cmd, App_Config *config);

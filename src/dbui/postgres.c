@@ -86,7 +86,7 @@ internal DB_Schema_List pg_get_all_schemas(DB_Conn *conn) {
         log_error("Query Failed {s}\n", query);
         PQclear(res);
         PQfinish(c);
-        Prof_End(); 
+        Prof_End();
         return list;
     }
 
@@ -111,15 +111,15 @@ internal DB_Schema_List pg_get_all_schemas(DB_Conn *conn) {
         DLLPushBack_NPZ(0, list.first, list.last, node, next, prev);
         list.count++;
     }
-    Prof_End(); 
+    Prof_End();
     return list;
 }
 
 internal DB_Table *pg_get_schema_info(DB_Conn *conn, DB_Schema schema) {
-    PROF_FUNCTION; 
+    PROF_FUNCTION;
     PGconn *c = handle_to_conn(conn->handle);
 
-    Arena *arena = arena_alloc();
+    Arena    *arena = arena_alloc();
     DB_Table *table = push_struct_zero(arena, DB_Table);
     table->arena = arena;
     table->schema = schema;
@@ -127,38 +127,38 @@ internal DB_Table *pg_get_schema_info(DB_Conn *conn, DB_Schema schema) {
     table->columns = (Dyn_Array){0};
     table->rows = (Dyn_Array){0};
 
-    char query_buffer[4096];
+    char        query_buffer[4096];
     const char *schema_name_cstr = str_to_cstring(arena, schema.schema);
     const char *table_name_cstr = str_to_cstring(arena, schema.name);
 
     snprintf(query_buffer, sizeof(query_buffer),
-        "SELECT "
-        "    c.column_name, "
-        "    c.data_type, "
-        "    c.is_nullable, "
-        "    c.column_default, "
-        "    CASE WHEN fk.column_name IS NOT NULL THEN 'YES' ELSE 'NO' END AS is_foreign_key, "
-        "    COALESCE(fk.foreign_table_name, '') AS foreign_table_name, "
-        "    COALESCE(fk.foreign_column_name, '') AS foreign_column_name "
-        "FROM information_schema.columns c "
-        "LEFT JOIN ( "
-        "    SELECT "
-        "        kcu.column_name, "
-        "        ccu.table_name AS foreign_table_name, "
-        "        ccu.column_name AS foreign_column_name "
-        "    FROM information_schema.table_constraints tc "
-        "    JOIN information_schema.key_column_usage kcu "
-        "        ON tc.constraint_name = kcu.constraint_name "
-        "        AND tc.table_schema = kcu.table_schema "
-        "    JOIN information_schema.constraint_column_usage ccu "
-        "        ON ccu.constraint_name = tc.constraint_name "
-        "        AND ccu.table_schema = tc.table_schema "
-        "    WHERE tc.constraint_type = 'FOREIGN KEY' "
-        "        AND tc.table_name = '%s' "
-        ") fk ON c.column_name = fk.column_name "
-        "WHERE c.table_name = '%s' "
-        "ORDER BY c.ordinal_position",
-        table_name_cstr, table_name_cstr);
+             "SELECT "
+             "    c.column_name, "
+             "    c.data_type, "
+             "    c.is_nullable, "
+             "    c.column_default, "
+             "    CASE WHEN fk.column_name IS NOT NULL THEN 'YES' ELSE 'NO' END AS is_foreign_key, "
+             "    COALESCE(fk.foreign_table_name, '') AS foreign_table_name, "
+             "    COALESCE(fk.foreign_column_name, '') AS foreign_column_name "
+             "FROM information_schema.columns c "
+             "LEFT JOIN ( "
+             "    SELECT "
+             "        kcu.column_name, "
+             "        ccu.table_name AS foreign_table_name, "
+             "        ccu.column_name AS foreign_column_name "
+             "    FROM information_schema.table_constraints tc "
+             "    JOIN information_schema.key_column_usage kcu "
+             "        ON tc.constraint_name = kcu.constraint_name "
+             "        AND tc.table_schema = kcu.table_schema "
+             "    JOIN information_schema.constraint_column_usage ccu "
+             "        ON ccu.constraint_name = tc.constraint_name "
+             "        AND ccu.table_schema = tc.table_schema "
+             "    WHERE tc.constraint_type = 'FOREIGN KEY' "
+             "        AND tc.table_name = '%s' "
+             ") fk ON c.column_name = fk.column_name "
+             "WHERE c.table_name = '%s' "
+             "ORDER BY c.ordinal_position",
+             table_name_cstr, table_name_cstr);
 
     PGresult *res = PQexec(c, query_buffer);
 
@@ -167,7 +167,7 @@ internal DB_Table *pg_get_schema_info(DB_Conn *conn, DB_Schema schema) {
         log_error("Failed to get schema info: {s}", error_msg);
         PQclear(res);
         arena_release(arena);
-        Prof_End(); 
+        Prof_End();
         return 0;
     }
 
@@ -221,7 +221,7 @@ internal DB_Table *pg_get_schema_info(DB_Conn *conn, DB_Schema schema) {
     }
 
     PQclear(res);
-    Prof_End(); 
+    Prof_End();
     return table;
 }
 
@@ -229,7 +229,7 @@ internal DB_Table *pg_get_data_from_schema(DB_Conn *conn, DB_Schema schema, u32 
     PROF_FUNCTION;
     PGconn *c = handle_to_conn(conn->handle);
 
-    Arena *arena = arena_alloc();
+    Arena    *arena = arena_alloc();
     DB_Table *table = push_struct_zero(arena, DB_Table);
     table->arena = arena;
     table->schema = schema;
@@ -237,7 +237,7 @@ internal DB_Table *pg_get_data_from_schema(DB_Conn *conn, DB_Schema schema, u32 
     table->columns = (Dyn_Array){0};
     table->rows = (Dyn_Array){0};
 
-    char table_name[512];
+    char        table_name[512];
     const char *schema_cstr = str_to_cstring(arena, schema.schema);
     const char *name_cstr = str_to_cstring(arena, schema.name);
 
@@ -269,7 +269,7 @@ internal DB_Table *pg_get_data_from_schema(DB_Conn *conn, DB_Schema schema, u32 
         }
         PQclear(res);
         arena_release(arena);
-        Prof_End(); 
+        Prof_End();
         return 0;
     }
 
@@ -278,7 +278,7 @@ internal DB_Table *pg_get_data_from_schema(DB_Conn *conn, DB_Schema schema, u32 
 
     for (u64 c = 0; c < table->column_count; c++) {
         DB_Column_Info *col = dyn_array_push(arena, &table->columns, DB_Column_Info);
-        const char *col_name = PQfname(res, (int)c);
+        const char     *col_name = PQfname(res, (int)c);
         col->column_name = str_push_copy(arena, cstr_to_string(col_name, strlen(col_name)));
 
         // For data display, we don't have type info, but we can still cache the name
@@ -292,14 +292,14 @@ internal DB_Table *pg_get_data_from_schema(DB_Conn *conn, DB_Schema schema, u32 
         DB_Row *row = dyn_array_push(arena, &table->rows, DB_Row);
 
         for (u64 c = 0; c < table->column_count; c++) {
-            char *value_str = PQgetvalue(res, (int)r, (int)c);
-            String value = cstr_to_string(value_str, strlen(value_str));
+            char   *value_str = PQgetvalue(res, (int)r, (int)c);
+            String  value = cstr_to_string(value_str, strlen(value_str));
             String *stored_value = dyn_array_push(arena, &row->values, String);
             *stored_value = str_push_copy(arena, value);
         }
     }
 
     PQclear(res);
-    Prof_End(); 
+    Prof_End();
     return table;
-} 
+}

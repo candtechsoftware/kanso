@@ -745,7 +745,7 @@ os_event_list_from_window(OS_Handle window) {
             }
         } break;
         case MotionNotify: {
-            OS_Key key; 
+            OS_Key key;
             u64    state = event.xmotion.state;
             if (state & Button1Mask) {
                 key = OS_Key_MouseLeft;
@@ -773,13 +773,13 @@ os_event_list_from_window(OS_Handle window) {
 
         } break;
         case ButtonPress: {
-            OS_Key key = os_key_from_x11_button(event.xbutton.button);
-            if (key != OS_Key_Null) {
+            if (event.xbutton.button == 4 || event.xbutton.button == 5) {
                 Arena    *arena = arena_alloc();
                 OS_Event *os_event = push_array(arena, OS_Event, 1);
                 os_event->window = window;
-                os_event->kind = OS_Event_Press;
-                os_event->key = key;
+                os_event->kind = OS_Event_Scroll;
+                os_event->scroll.x = 0.0f;
+                os_event->scroll.y = (event.xbutton.button == 4) ? 1.0f : -1.0f;
                 os_event->modifiers = os_modifiers_from_x11_state(event.xkey.state);
                 os_event->position.x = event.xbutton.x;
                 os_event->position.y = event.xbutton.y;
@@ -792,6 +792,27 @@ os_event_list_from_window(OS_Handle window) {
                     result.first = result.last = os_event;
                 }
                 result.count++;
+            } else {
+                OS_Key key = os_key_from_x11_button(event.xbutton.button);
+                if (key != OS_Key_Null) {
+                    Arena    *arena = arena_alloc();
+                    OS_Event *os_event = push_array(arena, OS_Event, 1);
+                    os_event->window = window;
+                    os_event->kind = OS_Event_Press;
+                    os_event->key = key;
+                    os_event->modifiers = os_modifiers_from_x11_state(event.xkey.state);
+                    os_event->position.x = event.xbutton.x;
+                    os_event->position.y = event.xbutton.y;
+
+                    if (result.last) {
+                        result.last->next = os_event;
+                        os_event->prev = result.last;
+                        result.last = os_event;
+                    } else {
+                        result.first = result.last = os_event;
+                    }
+                    result.count++;
+                }
             }
         } break;
         case ButtonRelease: {

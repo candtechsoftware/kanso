@@ -25,7 +25,7 @@ typedef union Vec2_f32 {
 typedef union Vec2_f64 {
     struct
     {
-        f64  x, y;
+        f64 x, y;
     };
     struct
     {
@@ -280,6 +280,32 @@ static inline Mat3x3_f32
 mat3x3_identity(void) {
     Mat3x3_f32 result = {0};
     result.m[0][0] = result.m[1][1] = result.m[2][2] = 1;
+    return result;
+}
+
+static inline Mat3x3_f32
+mat3x3_translate(f32 x, f32 y) {
+    Mat3x3_f32 result = mat3x3_identity();
+    result.m[0][2] = x;
+    result.m[1][2] = y;
+    return result;
+}
+
+static inline Mat3x3_f32
+mat3x3_scale(f32 s) {
+    Mat3x3_f32 result = {0};
+    result.m[0][0] = s;
+    result.m[1][1] = s;
+    result.m[2][2] = 1;
+    return result;
+}
+
+static inline Mat3x3_f32
+mat3x3_scale_xy(f32 sx, f32 sy) {
+    Mat3x3_f32 result = {0};
+    result.m[0][0] = sx;
+    result.m[1][1] = sy;
+    result.m[2][2] = 1;
     return result;
 }
 
