@@ -5,7 +5,7 @@
 #include "../renderer/renderer_inc.h"
 #include "../font/font_inc.h"
 #include "../draw/draw_inc.h"
-#include <stdio.h>
+#include "../ui/ui_core.h"
 
 #include "../base/base_inc.c"
 #include "../base/profile.c"
@@ -13,10 +13,13 @@
 #include "../renderer/renderer_inc.c"
 #include "../font/font_inc.c"
 #include "../draw/draw_inc.c"
+#include "../ui/ui_core.c"
 
 #include "dbui/dbui.h"
 #include "postgres.h"
 #include "postgres.c"
+
+#include <stdio.h>
 
 typedef struct Node_Connection Node_Connection;
 struct Node_Connection {
@@ -54,8 +57,8 @@ struct App_State {
     b32               running;
     b32               mouse_down;
     b32               is_dragging;
-    Vec2_f64          mouse_pos;
-    Vec2_f64          mouse_drag_offset;
+    Vec2_f32          mouse_pos;
+    Vec2_f32          mouse_drag_offset;
     s32               selected_node; // -1 = no selection
 
     Node_Box_List   *nodes;
@@ -70,7 +73,7 @@ struct App_State {
     f32      zoom_level;
     Vec2_f32 pan_offset;
     b32      is_panning;
-    Vec2_f64 pan_start_pos;
+    Vec2_f32 pan_start_pos;
 };
 
 App_State *g_state = nullptr;
@@ -293,10 +296,10 @@ mat3x3_transform_point(Mat3x3_f32 m, Vec2_f32 p) {
 }
 
 internal Vec2_f32
-screen_to_world(Vec2_f64 screen_pos) {
+screen_to_world(Vec2_f32 screen_pos) {
     Vec2_f32 result;
-    result.x = (f32)(screen_pos.x - g_state->pan_offset.x) / g_state->zoom_level;
-    result.y = (f32)(screen_pos.y - g_state->pan_offset.y) / g_state->zoom_level;
+    result.x = (screen_pos.x - g_state->pan_offset.x) / g_state->zoom_level;
+    result.y = (screen_pos.y - g_state->pan_offset.y) / g_state->zoom_level;
     return result;
 }
 
@@ -354,13 +357,13 @@ app_update() {
 
             if (ev->key == OS_Key_MouseMiddle && ev->kind == OS_Event_Press) {
                 g_state->is_panning = 1;
-                g_state->pan_start_pos = (Vec2_f64){{ev->position.x, ev->position.y}};
+                g_state->pan_start_pos = (Vec2_f32){{ev->position.x, ev->position.y}};
             }
             if (ev->key == OS_Key_MouseMiddle && ev->kind == OS_Event_Release) {
                 g_state->is_panning = 0;
             }
             if (ev->key == OS_Key_MouseLeft && ev->kind == OS_Event_Press) {
-                Vec2_f64 event_mouse_pos = (Vec2_f64){{ev->position.x, ev->position.y}};
+                Vec2_f32 event_mouse_pos = (Vec2_f32){{ev->position.x, ev->position.y}};
                 g_state->mouse_pos = event_mouse_pos;
 
                 if (ev->modifiers & OS_Modifier_Ctrl) {
@@ -449,12 +452,12 @@ app_update() {
                 }
             }
             if (ev->kind == OS_Event_Drag) {
-                Vec2_f64 old_pos = g_state->mouse_pos;
-                g_state->mouse_pos = (Vec2_f64){{ev->position.x, ev->position.y}};
+                Vec2_f32 old_pos = g_state->mouse_pos;
+                g_state->mouse_pos = (Vec2_f32){{ev->position.x, ev->position.y}};
 
                 if (g_state->is_panning) {
-                    g_state->pan_offset.x += (f32)(g_state->mouse_pos.x - old_pos.x);
-                    g_state->pan_offset.y += (f32)(g_state->mouse_pos.y - old_pos.y);
+                    g_state->pan_offset.x += (g_state->mouse_pos.x - old_pos.x);
+                    g_state->pan_offset.y += (g_state->mouse_pos.y - old_pos.y);
                 } else if (g_state->mouse_down && g_state->selected_node >= 0) {
                     g_state->is_dragging = 1;
                     Vec2_f32 world_mouse = screen_to_world(g_state->mouse_pos);

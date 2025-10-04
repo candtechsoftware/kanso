@@ -149,6 +149,9 @@ while [[ $# -gt 0 ]]; do
             # Check if it's a binary name (directory exists in src/)
             if [ -d "src/$1" ] && [ -f "src/$1/main.c" ]; then
                 BINARY_NAME="$1"
+            # Special case for ui_test
+            elif [ "$1" = "ui_test" ] && [ -f "src/test/ui_test.c" ]; then
+                BINARY_NAME="ui_test"
             else
                 echo "Error: Unknown option '$1'"
                 echo ""
@@ -264,24 +267,32 @@ fi
 # --- Build Binary -------------------------------------------------------------
 echo "Building ${BINARY_NAME}..."
 
+# Determine source file location
+if [ "$BINARY_NAME" = "ui_test" ]; then
+    SOURCE_FILE="src/test/ui_test.c"
+else
+    SOURCE_FILE="src/${BINARY_NAME}/main.c"
+fi
+
 # Check if source file exists
-if [ ! -f "src/${BINARY_NAME}/main.c" ]; then
-    echo "Error: Source file src/${BINARY_NAME}/main.c does not exist!"
+if [ ! -f "$SOURCE_FILE" ]; then
+    echo "Error: Source file $SOURCE_FILE does not exist!"
     echo "Available binaries:"
     for dir in src/*/; do
         if [ -f "${dir}main.c" ]; then
             echo "  - $(basename $dir)"
         fi
     done
+    echo "  - ui_test"
     exit 1
 fi
 
 if [ "$OS_NAME" = "Darwin" ]; then
     echo "Unity build for macOS with Metal renderer"
-    $compile_line -x objective-c -o build/${BINARY_NAME} src/${BINARY_NAME}/main.c $link_flags
+    $compile_line -x objective-c -o build/${BINARY_NAME} $SOURCE_FILE $link_flags
 else
     echo "Unity build for Linux with Vulkan renderer"
-    $compile_line -o build/${BINARY_NAME} src/${BINARY_NAME}/main.c src/generated/vulkan_shaders.c $link_flags
+    $compile_line -o build/${BINARY_NAME} $SOURCE_FILE src/generated/vulkan_shaders.c $link_flags
 fi
 
 if [ $? -eq 0 ]; then

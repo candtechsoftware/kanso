@@ -134,7 +134,7 @@ struct OS_Event {
     OS_Modifiers  modifiers;
     OS_Key        key;
     u32           character;
-    Vec2_f64      position;
+    Vec2_f32      position;
     Vec2_f32      scroll;
     Vec2_f32      path;
 };
